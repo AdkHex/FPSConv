@@ -73,7 +73,8 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
             elif url.path == "/api/modes":
                 self._json({"modes": list(engine.FPS_CONVERSIONS),
                             "ratios": {k: round(v, 6) for k, v in engine.FPS_CONVERSIONS.items()},
-                            "version": __version__, "app": APP_NAME, "frozen": engine.FROZEN})
+                            "version": __version__, "app": APP_NAME, "frozen": engine.FROZEN,
+                            "encode": self._encode_options()})
             elif url.path == "/api/update":
                 self._json(updater.snapshot())
             elif url.path == "/api/logs":
@@ -95,14 +96,23 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
             if url.path == "/api/jobs":
                 items = [i for i in data.get("items", []) if i.get("path")]
                 mode = data.get("conv_type", "")
+                task = data.get("task") or engine.TASK_FPS
                 out_dir = data.get("out_dir") or ""
                 if not out_dir:
                     return self._json({"error": "choose an output folder first"}, HTTPStatus.BAD_REQUEST)
-                if mode not in engine.FPS_CONVERSIONS:
-                    return self._json({"error": f"unknown conversion {mode!r}"}, HTTPStatus.BAD_REQUEST)
-                bad = [i["conv_type"] for i in items if i.get("conv_type") and i["conv_type"] not in engine.FPS_CONVERSIONS]
-                if bad:
-                    return self._json({"error": f"unknown conversion {bad[0]!r}"}, HTTPStatus.BAD_REQUEST)
+                if task not in (engine.TASK_FPS, engine.TASK_ENCODE):
+                    return self._json({"error": f"unknown task {task!r}"}, HTTPStatus.BAD_REQUEST)
+                encode = data.get("encode") or {}
+                if task == engine.TASK_ENCODE:
+                    err = self._check_encode(encode)
+                    if err:
+                        return self._json({"error": err}, HTTPStatus.BAD_REQUEST)
+                else:
+                    if mode not in engine.FPS_CONVERSIONS:
+                        return self._json({"error": f"unknown conversion {mode!r}"}, HTTPStatus.BAD_REQUEST)
+                    bad = [i["conv_type"] for i in items if i.get("conv_type") and i["conv_type"] not in engine.FPS_CONVERSIONS]
+                    if bad:
+                        return self._json({"error": f"unknown conversion {bad[0]!r}"}, HTTPStatus.BAD_REQUEST)
                 missing = [i["path"] for i in items if not os.path.isfile(i["path"])]
                 if missing:
                     return self._json({"error": "file not found: " + "; ".join(missing)}, HTTPStatus.BAD_REQUEST)
@@ -110,8 +120,22 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                     queue.set_workers(int(data["workers"]))
                 added = queue.add(items, mode, out_dir,
                                   bitrate=int(data.get("bitrate") or 0),
-                                  overwrite=data.get("overwrite") or "overwrite")
+                                  overwrite=data.get("overwrite") or "overwrite",
+                                  task=task, encode=encode)
                 self._json({"added": [j.id for j in added]})
+            elif url.path == "/api/resolve":
+                # what each pending stream would become under the current encode settings
+                encode = data.get("encode") or {}
+                err = self._check_encode(encode)
+                if err:
+                    return self._json({"error": err}, HTTPStatus.BAD_REQUEST)
+                plans = []
+                for st in data.get("streams") or []:
+                    enc = engine.resolve_encode(encode.get("target") or "ddp", int(encode.get("channels") or 0),
+                                                bool(encode.get("atmos", True)), int(encode.get("bitrate") or 0),
+                                                int(st.get("channels") or 2), st.get("atmos"), st.get("codec") or "")
+                    plans.append(enc.to_dict())
+                self._json({"plans": plans})
             elif url.path == "/api/settings":
                 self._json(config.save_settings(data))
             elif url.path == "/api/suggest":
@@ -183,6 +207,33 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
         # -- api bodies --------------------------------------------------- #
 
         @staticmethod
+        def _encode_options() -> dict:
+            return {
+                "targets": list(engine.TARGETS),
+                "channels": list(engine.TARGET_CHANNELS),
+                "layouts": {str(k): v for k, v in engine.LAYOUT_NAMES.items()},
+                "bitrates": {fmt: {str(ch): engine.BITRATES[(fmt, ch)] for ch in (1, 2, 6, 8) if (fmt, ch) in engine.BITRATES}
+                             for fmt in engine.TARGETS},
+                "atmos_bitrates": engine.ATMOS_BITRATES,
+                "defaults": {f"{fmt}_{ch}": kbps for (fmt, ch), kbps in engine.DEFAULT_BITRATE.items()},
+                "drc": list(engine.DRC_PROFILES),
+            }
+
+        @staticmethod
+        def _check_encode(encode: dict) -> str:
+            if (encode.get("target") or "ddp") not in engine.TARGETS:
+                return f"unknown target {encode.get('target')!r}"
+            try:
+                ch = int(encode.get("channels") or 0)
+            except (TypeError, ValueError):
+                return "channels must be 0, 1, 2, 6 or 8"
+            if ch not in engine.TARGET_CHANNELS:
+                return "channels must be 0, 1, 2, 6 or 8"
+            if (encode.get("drc") or "film_light") not in engine.DRC_PROFILES:
+                return f"unknown DRC profile {encode.get('drc')!r}"
+            return ""
+
+        @staticmethod
         def _pick(kind: str, start: str) -> dict:
             """Native picker: pywebview window → Windows PowerShell dialog → none."""
             paths = window.pick(kind, start)
@@ -228,6 +279,7 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
             for s in info["streams"]:
                 s["engine"] = ("ffmpeg aac" if s["codec"] == "aac"
                                else f"ffmpeg wav → deew {engine.DEE_CODEC_MAP.get(s['codec'], ('', 'ddp', ''))[1]}")
+                s["engine_encode"] = "truehdd → DEE Atmos (deezy)" if s["atmos"] else "ffmpeg wav → deew"
             return {
                 "path": path, "name": os.path.basename(path),
                 "duration": engine.fmt_time(info["duration"]), "duration_s": info["duration"],
@@ -263,7 +315,7 @@ def _powershell_pick(kind: str, start: str) -> list[str] | None:
     else:
         script = ("Add-Type -AssemblyName System.Windows.Forms; " + owner +
                   "$d = New-Object System.Windows.Forms.OpenFileDialog; $d.Multiselect = $true; "
-                  "$d.Filter = 'Audio / video|*.mka;*.mkv;*.mp4;*.m4a;*.mov;*.ts;*.m2ts;*.webm;*.ac3;*.ec3;*.eac3;*.thd;*.truehd;*.aac;*.wav;*.flac;*.ogg;*.opus|All files|*.*'; "
+                  "$d.Filter = 'Audio / video|*.mka;*.mkv;*.mp4;*.m4a;*.mov;*.ts;*.m2ts;*.webm;*.ac3;*.ec3;*.eac3;*.eb3;*.thd;*.truehd;*.mlp;*.dts;*.dtshd;*.aac;*.wav;*.w64;*.flac;*.ogg;*.opus|All files|*.*'; "
                   f"if ('{start_ps}') {{ $d.InitialDirectory = '{start_ps}' }}; "
                   "if ($d.ShowDialog($o) -eq 'OK') { $d.FileNames }")
     try:

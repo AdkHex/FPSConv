@@ -69,26 +69,35 @@ class JobQueue:
     # -- control ---------------------------------------------------------- #
 
     def add(self, items: list[dict], conv_type: str, out_dir: str, *,
-            bitrate: int = 0, overwrite: str = "overwrite") -> list[Job]:
-        """``items`` are ``{"path": ..., "stream_index": ..., "conv_type": ...}``."""
+            bitrate: int = 0, overwrite: str = "overwrite",
+            task: str = engine.TASK_FPS, encode: dict | None = None) -> list[Job]:
+        """``items`` are ``{"path": ..., "stream_index": ..., "conv_type": ...}``.
+
+        For the encode task ``conv_type`` is ignored and ``encode`` carries
+        ``{"target", "channels", "bitrate", "atmos", "drc"}``.
+        """
+        encode = encode or {}
         added: list[Job] = []
         with self._lock:
+            live = {self._jobs[i].key() for i in self._order if self._jobs[i].state in ("queued", "running")}
             for item in items:
                 src = os.path.abspath(item["path"])
                 stream = int(item.get("stream_index", 0))
-                mode = item.get("conv_type") or conv_type
-                dup = next(
-                    (self._jobs[i] for i in self._order
-                     if self._jobs[i].source == src and self._jobs[i].conv_type == mode
-                     and self._jobs[i].stream_index == stream
-                     and self._jobs[i].state in ("queued", "running")),
-                    None,
-                )
-                if dup:
+                if task == engine.TASK_ENCODE:
+                    job = Job(source=src, conv_type=engine.ENCODE_CONV, out_dir=os.path.abspath(out_dir),
+                              stream_index=stream, bitrate_override=int(encode.get("bitrate") or 0),
+                              overwrite=overwrite, task=task,
+                              target=encode.get("target") or "ddp",
+                              target_channels=int(encode.get("channels") or 0),
+                              atmos=bool(encode.get("atmos", True)),
+                              drc=encode.get("drc") or "film_light")
+                else:
+                    job = Job(source=src, conv_type=item.get("conv_type") or conv_type,
+                              out_dir=os.path.abspath(out_dir), stream_index=stream,
+                              bitrate_override=int(bitrate or 0), overwrite=overwrite)
+                if job.key() in live:
                     continue
-                job = Job(source=src, conv_type=mode, out_dir=os.path.abspath(out_dir),
-                          stream_index=stream, bitrate_override=int(bitrate or 0),
-                          overwrite=overwrite)
+                live.add(job.key())
                 self._jobs[job.id] = job
                 self._order.append(job.id)
                 added.append(job)
@@ -124,7 +133,8 @@ class JobQueue:
                 return None
             job = Job(source=old.source, conv_type=old.conv_type, out_dir=old.out_dir,
                       stream_index=old.stream_index, bitrate_override=old.bitrate_override,
-                      overwrite=old.overwrite)
+                      overwrite=old.overwrite, task=old.task, target=old.target,
+                      target_channels=old.target_channels, atmos=old.atmos, drc=old.drc)
             pos = self._order.index(job_id)
             self._order[pos] = job.id
             del self._jobs[job_id]

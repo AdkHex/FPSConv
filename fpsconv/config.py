@@ -25,8 +25,19 @@ DEFAULTS: dict[str, Any] = {
     "overwrite": "overwrite",  # overwrite | skip | rename
     "auto_update": True,       # install new releases automatically when the queue is idle
     "native_window": True,     # open in a desktop window (pywebview) instead of the browser
-    "tools": {"ffmpeg": "", "ffprobe": "", "deew_python": ""},
+    "task": "fps",             # fps | encode
+    "encode": {                # the audio-only encode task
+        "target": "ddp",       # ddp | dd
+        "channels": 0,         # 0 = same as source, else 1 / 2 / 6 / 8
+        "bitrate": 0,          # 0 = DEE default for the layout
+        "atmos": True,         # keep Atmos when the source has it (TrueHD Atmos -> DDP Atmos)
+        "drc": "film_light",
+    },
+    "tools": {"ffmpeg": "", "ffprobe": "", "deew_python": "",
+              "mediainfo": "", "deezy_python": "", "truehdd": ""},
 }
+
+_NESTED = ("tools", "encode")
 
 _lock = threading.Lock()
 
@@ -63,19 +74,38 @@ def load_settings() -> dict[str, Any]:
     merged = json.loads(json.dumps(DEFAULTS))
     if isinstance(data, dict):
         for key, value in data.items():
-            if key == "tools" and isinstance(value, dict):
-                merged["tools"].update({k: str(v or "") for k, v in value.items()})
-            elif key in merged:
+            if key in _NESTED and isinstance(value, dict):
+                merged[key].update(_clean(key, value))
+            elif key in merged and key not in _NESTED:
                 merged[key] = value
     return merged
+
+
+def _clean(section: str, value: dict) -> dict:
+    """Only known keys of a nested section, coerced to the type of the default."""
+    out = {}
+    for k, v in value.items():
+        if k not in DEFAULTS[section]:
+            continue
+        default = DEFAULTS[section][k]
+        if isinstance(default, bool):
+            out[k] = bool(v)
+        elif isinstance(default, int):
+            try:
+                out[k] = int(v or 0)
+            except (TypeError, ValueError):
+                out[k] = default
+        else:
+            out[k] = str(v or "").strip()
+    return out
 
 
 def save_settings(update: dict[str, Any]) -> dict[str, Any]:
     current = load_settings()
     for key, value in update.items():
-        if key == "tools" and isinstance(value, dict):
-            current["tools"].update({k: str(v or "").strip() for k, v in value.items()})
-        elif key in DEFAULTS:
+        if key in _NESTED and isinstance(value, dict):
+            current[key].update(_clean(key, value))
+        elif key in DEFAULTS and key not in _NESTED:
             current[key] = value
     with _lock:
         _write("settings.json", current)

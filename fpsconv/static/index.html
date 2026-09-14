@@ -75,7 +75,7 @@
   .total i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s}
 
   .grid{flex:1;min-height:0;display:flex;flex-direction:column}
-  .th,.tr{display:grid;grid-template-columns:30px minmax(220px,1fr) 150px 112px minmax(190px,.9fr) 118px 90px 96px 84px;gap:10px;align-items:center;padding:0 12px 0 14px}
+  .th,.tr{display:grid;grid-template-columns:30px minmax(220px,1fr) 150px 150px minmax(190px,.9fr) 118px 90px 96px 84px;gap:10px;align-items:center;padding:0 12px 0 14px}
   .th{height:36px;flex:none;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3);border-bottom:1px solid var(--line);background:var(--panel)}
   .tb{flex:1;overflow:auto}
   .tr{min-height:54px;border-bottom:1px solid var(--line);padding-top:8px;padding-bottom:8px}
@@ -99,6 +99,10 @@
   .fps.hit{background:#1f3a2a;color:#9be3b0}
   .tr select.mini.suggested{border-color:#3f8a5a}
   .why{font:11px var(--mono);color:var(--text-3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .plan{font:12px var(--mono);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .plan .why{color:var(--warn)}
+  .f .note{font-size:12px;color:var(--text-3);line-height:1.45;margin-top:2px}
+  .f .note b{color:var(--warn);font-weight:500}
   .cb{width:15px;height:15px;border:1px solid #4a4a4a;border-radius:3px;background:var(--panel);appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;flex:none;vertical-align:middle;position:relative}
   .cb:hover{border-color:#6a6a6a}
   .cb:checked{background:var(--accent);border-color:var(--accent)}
@@ -181,9 +185,23 @@
 <div class="app">
   <aside class="side">
     <div class="f">
+      <label>Task</label>
+      <div class="seg"><button id="task-fps" onclick="setTask('fps')">FPS change</button><button id="task-encode" onclick="setTask('encode')">Audio encode</button></div>
+    </div>
+    <div class="f" id="fps-conv">
       <label>Conversion</label>
       <select class="in" id="mode" onchange="onConv()"></select>
       <div class="help" id="ratio"></div>
+    </div>
+    <div id="enc-fields" style="display:none;flex-direction:column;gap:18px">
+      <div class="row" style="align-items:flex-start">
+        <div class="f" style="flex:1"><label>Format</label><select class="in" id="enc-target" onchange="onEncode()"><option value="ddp">DDP (E-AC-3)</option><option value="dd">DD (AC-3)</option></select></div>
+        <div class="f" style="flex:1"><label>Channels</label><select class="in" id="enc-channels" onchange="onEncode()"><option value="0">Same as source</option><option value="8">7.1</option><option value="6">5.1</option><option value="2">2.0</option><option value="1">1.0</option></select></div>
+      </div>
+      <div class="f"><label>Bitrate</label><select class="in" id="enc-bitrate" onchange="onEncode()"></select><div class="help" id="enc-hint"></div></div>
+      <div class="f"><label class="tg" style="margin:0"><input type="checkbox" class="cb" id="enc-atmos" onchange="onEncode()">Keep Atmos (TrueHD Atmos → DDP Atmos)</label></div>
+      <div class="f"><label>DRC profile</label><select class="in" id="enc-drc" onchange="onEncode()"></select></div>
+      <div class="f"><div class="note">No speed change. TrueHD / DTS-HD MA decode losslessly; anything lossy (AAC, DD+) is re-encoded — <b>quality can only stay the same, never improve</b>. Never upmixes: a 2.0 source stays 2.0. DDP 5.1 tops out at 1024 kbps; 1536 kbps is 7.1 only. Atmos needs a TrueHD Atmos source, truehdd and DEE 5.2.</div></div>
     </div>
     <div class="f">
       <label>Output folder</label>
@@ -191,9 +209,9 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
         <span class="txt empty" id="outtxt">Choose…</span>
       </button>
-      <div class="help">Converted files are written here as <code>name_mode.ext</code>.</div>
+      <div class="help" id="outhelp">Converted files are written here as <code>name_mode.ext</code>.</div>
     </div>
-    <div class="f">
+    <div class="f" id="fps-ref">
       <label>Target video <span style="color:var(--text-3)">(optional)</span></label>
       <button class="in" id="refbtn" onclick="chooseRef()" title="The video this audio has to fit. FPSConv reads its frame rate, compares durations and suggests the conversion for every file.">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></svg>
@@ -214,7 +232,7 @@
     <details id="adv">
       <summary><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg>Advanced</summary>
       <div class="body">
-        <div class="f">
+        <div class="f" id="br-f">
           <label>Output bitrate</label>
           <div class="row"><select class="in" id="br-mode" onchange="onBitrate()"><option value="auto">Same as source</option><option value="custom">Custom</option></select><input class="in" type="number" id="br" min="32" max="6144" step="8" placeholder="kbps" style="width:100px;display:none" onchange="onBitrate()"></div>
         </div>
@@ -260,6 +278,7 @@
     <div class="status">
       <span id="st-ffmpeg"><i class="dot"></i>ffmpeg</span>
       <span id="st-dee"><i class="dot"></i>DEE</span>
+      <span id="st-atmos" style="display:none"><i class="dot"></i>Atmos</span>
       <span id="st-upd"></span>
       <div class="grow"></div>
       <span id="st-out" class="m"></span>
@@ -288,6 +307,9 @@
           <span>ffmpeg</span><div class="row"><input class="in" id="t-ffmpeg" placeholder="ffmpeg.exe"><button class="btn sm" onclick="browseFor('t-ffmpeg')">Browse</button></div>
           <span>ffprobe</span><div class="row"><input class="in" id="t-ffprobe" placeholder="ffprobe.exe"><button class="btn sm" onclick="browseFor('t-ffprobe')">Browse</button></div>
           <span>python for deew</span><div class="row"><input class="in" id="t-deew" placeholder="only to use an external deew"><button class="btn sm" onclick="browseFor('t-deew')">Browse</button></div>
+          <span>mediainfo</span><div class="row"><input class="in" id="t-mediainfo" placeholder="mediainfo.exe (detects Atmos; bundled pymediainfo otherwise)"><button class="btn sm" onclick="browseFor('t-mediainfo')">Browse</button></div>
+          <span>truehdd</span><div class="row"><input class="in" id="t-truehdd" placeholder="truehdd.exe (DDP Atmos)"><button class="btn sm" onclick="browseFor('t-truehdd')">Browse</button></div>
+          <span>python for deezy</span><div class="row"><input class="in" id="t-deezy" placeholder="only to use an external deezy"><button class="btn sm" onclick="browseFor('t-deezy')">Browse</button></div>
         </div>
       </div>
       <div class="sec"><h3>Updates &amp; window</h3>
@@ -325,7 +347,7 @@ const I={x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
   open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
   folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
   file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3h6l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/></svg>'};
-let S={}, modes=[], ratios={}, pending=[], jobs=[], checked=new Set(), selected=null, lastVersion=-1, wasBusy=false, tab='job', appLog=[], logSeq=0, doctor={};
+let S={}, modes=[], ratios={}, ENC={}, pending=[], jobs=[], checked=new Set(), selected=null, lastVersion=-1, wasBusy=false, tab='job', appLog=[], logSeq=0, doctor={};
 const sessionStart=Date.now()/1000-1;
 
 async function get(u){return (await fetch(u)).json()}
@@ -354,11 +376,15 @@ function fpsChip(f){if(!f.fps)return `<span class="fps unknown" title="No video 
 let saveT;function save(u){Object.assign(S,u);clearTimeout(saveT);saveT=setTimeout(()=>post('/api/settings',u),250)}
 
 async function init(){
-  const m=await get('/api/modes');modes=m.modes;ratios=m.ratios;
+  const m=await get('/api/modes');modes=m.modes;ratios=m.ratios;ENC=m.encode||{};
   $('ver').textContent=m.version+(m.frozen?'':' · source');$('verline').textContent=m.version;
   $('mode').innerHTML=modes.map(k=>`<option value="${k}">${k.replace('-',' → ')} fps</option>`).join('');
+  $('enc-drc').innerHTML=(ENC.drc||[]).map(d=>`<option value="${d}">${d.replace('_',' ')}</option>`).join('');
   S=await get('/api/settings');
+  S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,drc:'film_light'},S.encode||{});
   $('mode').value=modes.includes(S.conv_type)?S.conv_type:'23.976-25';updateRatio();
+  $('enc-target').value=S.encode.target;$('enc-channels').value=String(S.encode.channels);$('enc-atmos').checked=!!S.encode.atmos;$('enc-drc').value=S.encode.drc;
+  fillBitrates();setTask(S.task||'fps',false);
   setOut(S.out_dir||'',false);setMode(S.mode||'single',false);
   $('workers').value=S.workers||2;$('overwrite').value=S.overwrite||'overwrite';
   $('br-mode').value=S.bitrate?'custom':'auto';$('br').value=S.bitrate||'';$('br').style.display=S.bitrate?'':'none';
@@ -372,16 +398,22 @@ async function loadDoctor(){
   const rows=[['ffmpeg',d.ffmpeg?'ok':'bad',d.ffmpeg||'not found — download below or set a path'],
     ['ffprobe',d.ffprobe?'ok':'bad',d.ffprobe||'not found'],
     ['deew',d.deew?'ok':'bad',d.deew?(d.deew_via==='bundled'?'bundled':'via '+d.deew_via):(d.frozen?'bundled deew failed to start — see App log':'not installed (pip install deew)')],
-    ['DEE',d.dee?'ok':'bad',d.dee||(d.dee_path?'not found at '+d.dee_path:'not configured')]];
+    ['DEE',d.dee?'ok':'bad',d.dee||(d.dee_path?'not found at '+d.dee_path:'not configured')],
+    ['mediainfo',d.mediainfo||d.pymediainfo?'ok':'warn',d.mediainfo||(d.pymediainfo?'pymediainfo (bundled)':'not found — Atmos cannot be detected, TrueHD encodes as bed only')],
+    ['deezy',d.deezy?'ok':'warn',d.deezy?(d.deezy_via==='bundled'?'bundled':'via '+d.deezy_via):'not available — DDP Atmos needs it (pip install deezy, or the installed build)'],
+    ['truehdd',d.truehdd?'ok':'warn',d.truehdd||'not found — DDP Atmos needs it: github.com/truehdd/truehdd, set the path below']];
   $('tools').innerHTML=rows.map(([n,c,t])=>`<span><i class="dot ${c}"></i>${n}</span><span class="v" title="${esc(t)}">${esc(t)}</span>`).join('');
   $('t-ffmpeg').value=S.tools?.ffmpeg||'';$('t-ffprobe').value=S.tools?.ffprobe||'';$('t-deew').value=S.tools?.deew_python||'';
+  $('t-mediainfo').value=S.tools?.mediainfo||'';$('t-truehdd').value=S.tools?.truehdd||'';$('t-deezy').value=S.tools?.deezy_python||'';
+  const atmosOk=d.dee&&d.deezy&&d.truehdd;$('st-atmos').style.display=S.task==='encode'?'':'none';
+  $('st-atmos').innerHTML=`<i class="dot ${atmosOk?'ok':'warn'}"></i>Atmos ${atmosOk?'ready':(d.dee?(d.deezy?'needs truehdd':'needs deezy'):'needs DEE')}`;
   $('t-dee').value=d.dee_path||'';$('t-auto').checked=S.auto_update!==false;$('t-win').checked=S.native_window!==false;
   $('ffdl').style.display=(d.can_download_ffmpeg&&!(d.ffmpeg&&d.ffprobe))?'flex':'none';
   $('cfgdir').textContent=d.config_dir;
   $('st-ffmpeg').innerHTML=`<i class="dot ${d.ffmpeg&&d.ffprobe?'ok':'bad'}"></i>ffmpeg ${d.ffmpeg&&d.ffprobe?'ready':'missing'}`;
   $('st-dee').innerHTML=`<i class="dot ${d.dee?'ok':(d.deew?'warn':'bad')}"></i>DEE ${d.dee?'ready':(d.deew?'not configured':'unavailable')}`;
 }
-async function saveTools(){S=await post('/api/settings',{tools:{ffmpeg:$('t-ffmpeg').value,ffprobe:$('t-ffprobe').value,deew_python:$('t-deew').value}});await loadDoctor();toast('Saved')}
+async function saveTools(){S=await post('/api/settings',{tools:{ffmpeg:$('t-ffmpeg').value,ffprobe:$('t-ffprobe').value,deew_python:$('t-deew').value,mediainfo:$('t-mediainfo').value,truehdd:$('t-truehdd').value,deezy_python:$('t-deezy').value}});S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,drc:'film_light'},S.encode||{});await loadDoctor();toast('Saved')}
 async function saveDee(){const r=await post('/api/dee',{dee_path:$('t-dee').value});if(r.ok){toast('DEE configured — deew config written');await loadDoctor()}}
 async function browseFor(id){const r=await post('/api/pick',{kind:'files',start:''});if(r.native){if(r.paths[0])$(id).value=r.paths[0]}else{fbOpen('file',p=>{$(id).value=p[0]})}}
 async function downloadFfmpeg(){await post('/api/ffmpeg/download',{});$('ffdl-btn').disabled=true;const t=setInterval(async()=>{const st=await get('/api/ffmpeg/status');$('ffdl-st').textContent=st.state==='running'?`${st.step} ${st.percent}%`:st.state==='error'?'failed: '+st.error:'installed';if(st.state!=='running'){clearInterval(t);$('ffdl-btn').disabled=false;loadDoctor()}},800)}
@@ -390,6 +422,43 @@ function closeSettings(){$('settings').classList.remove('open')}
 async function quitApp(){if(!confirm('Quit FPSConv? Running jobs will be cancelled.'))return;await post('/api/quit',{});document.body.innerHTML='<div class="empty"><b>FPSConv has been closed.</b><span>You can close this window.</span></div>'}
 
 function onConv(){save({conv_type:$('mode').value});updateRatio();pending.forEach(f=>{f.conv_type=$('mode').value;f.suggest=null});suggestAll()}
+/* audio-encode task */
+function setTask(t,persist=true){
+  S.task=t;if(persist)save({task:t});const enc=t==='encode';
+  $('task-fps').classList.toggle('on',!enc);$('task-encode').classList.toggle('on',enc);
+  $('fps-conv').style.display=enc?'none':'';$('fps-ref').style.display=enc?'none':'';$('enc-fields').style.display=enc?'flex':'none';$('br-f').style.display=enc?'none':'';
+  $('outhelp').innerHTML=enc?'Encodes are written here as <code>name_DDP7.1Atmos_1536k.ec3</code> (raw stream — mux it with mkvmerge).':'Converted files are written here as <code>name_mode.ext</code>.';
+  $('st-atmos').style.display=enc?'':'none';
+  if(enc)refreshPlans();else render();
+}
+function encSettings(){return{target:$('enc-target').value,channels:+$('enc-channels').value,bitrate:+$('enc-bitrate').value||0,atmos:$('enc-atmos').checked,drc:$('enc-drc').value}}
+function fillBitrates(){
+  const e=S.encode,fmt=$('enc-target').value,ch=+$('enc-channels').value;
+  // an explicit layout shows its own list (DD has no 7.1: a 7.1 request becomes 5.1);
+  // "same as source" shows the union so any file in a batch can be served
+  let list;
+  if(ch)list=(ENC.bitrates?.[fmt]?.[String(fmt==='dd'&&ch===8?6:ch)]||[]).slice();
+  else list=[...new Set([].concat(...Object.values(ENC.bitrates?.[fmt]||{})))].sort((a,b)=>a-b);
+  if(fmt==='ddp'&&$('enc-atmos').checked)list=[...new Set(list.concat(ENC.atmos_bitrates?.streaming||[],ENC.atmos_bitrates?.bluray||[]))].sort((a,b)=>a-b);
+  const sel=$('enc-bitrate');
+  sel.innerHTML='<option value="0">Auto (DEE default for the layout)</option>'+list.map(b=>`<option value="${b}">${b} kbps</option>`).join('');
+  sel.value=list.includes(+e.bitrate)?String(e.bitrate):'0';
+  const d=ENC.defaults||{};
+  $('enc-hint').textContent=fmt==='dd'?`defaults: 2.0 ${d.dd_2} · 5.1 ${d.dd_6} kbps (max 640)`:`defaults: 2.0 ${d.ddp_2} · 5.1 ${d.ddp_6} · 7.1 ${d.ddp_8} · Atmos 5.1 ${d.atmos_6} / 7.1 ${d.atmos_8} kbps`;
+}
+function onEncode(){
+  const before=S.encode;S.encode=encSettings();
+  if(before.target!==S.encode.target||before.channels!==S.encode.channels||before.atmos!==S.encode.atmos){fillBitrates();S.encode=encSettings()}
+  save({encode:S.encode});refreshPlans();
+}
+let planT;
+function refreshPlans(){clearTimeout(planT);planT=setTimeout(async()=>{
+  if(S.task!=='encode'||!pending.length){render();return}
+  const streams=pending.map(f=>f.streams.find(s=>s.index===f.stream_index)||f.streams[0]);
+  const r=await post('/api/resolve',{streams:streams.map(s=>({channels:s.channels,atmos:s.atmos,codec:s.codec})),encode:S.encode});
+  if(r.plans)pending.forEach((f,i)=>f.plan=r.plans[i]);
+  render();
+},120)}
 function updateRatio(){const k=$('mode').value;$('ratio').innerHTML=`speed ×${ratios[k]} — <code>${atempo(ratios[k])}</code>`}
 function atempo(r){const p=[];if(Math.abs(r-1)<1e-4)return'anull';while(r>2){p.push('atempo=2.0');r/=2}while(r<0.5){p.push('atempo=0.5');r*=2}p.push('atempo='+r.toFixed(6));return p.join(',')}
 function setOut(p,persist=true){S.out_dir=p;if(persist)save({out_dir:p});$('outtxt').textContent=p||'Choose…';$('outtxt').classList.toggle('empty',!p);$('outbtn').title=p;$('st-out').textContent=p?'→ '+p:'';render()}
@@ -410,17 +479,17 @@ async function addPaths(paths){
     if(S.mode==='single')pending=[];
     pending.push(info);S.last_dir=p.replace(/[\\/][^\\/]*$/,'');
   }
-  await suggestAll();
+  if(S.task==='encode')refreshPlans();else await suggestAll();
 }
 function removePending(i){pending.splice(i,1);render()}
-function setPendingStream(i,v){pending[i].stream_index=+v;render()}
+function setPendingStream(i,v){pending[i].stream_index=+v;if(S.task==='encode')refreshPlans();else render()}
 function setPendingMode(i,v){pending[i].conv_type=v;pending[i].suggest=null;render()}
 
 async function start(){
   if(!pending.length)return;
   if(!S.out_dir){toast('Choose an output folder first',true);chooseOut();return}
   if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
-  const r=await post('/api/jobs',{items:pending.map(f=>({path:f.path,stream_index:f.stream_index,conv_type:f.conv_type})),conv_type:$('mode').value,out_dir:S.out_dir,workers:S.mode==='batch'?+$('workers').value:1,bitrate:S.bitrate||0,overwrite:S.overwrite||'overwrite'});
+  const r=await post('/api/jobs',{items:pending.map(f=>({path:f.path,stream_index:f.stream_index,conv_type:f.conv_type})),conv_type:$('mode').value,out_dir:S.out_dir,workers:S.mode==='batch'?+$('workers').value:1,bitrate:S.bitrate||0,overwrite:S.overwrite||'overwrite',task:S.task||'fps',encode:S.encode});
   if(r.added){pending=[];checked.clear();if(r.added[0]){selected=r.added[0];setTab('job');$('act').classList.remove('closed')}render()}
 }
 function toggleAll(on){checked=new Set(on?[...pending.map(f=>'p:'+f.path),...jobs.map(j=>j.id)]:[]);render()}
@@ -435,11 +504,16 @@ function render(){
   const rows=[];
   pending.forEach((f,i)=>{
     const id='p:'+f.path, st=f.streams.find(s=>s.index===f.stream_index)||f.streams[0];
-    const track=f.streams.length>1?`<select class="mini" onchange="setPendingStream(${i},this.value)">${f.streams.map(s=>`<option value="${s.index}" ${s.index===f.stream_index?'selected':''}>#${s.index} ${s.codec_name} ${s.channels}ch${s.language?' '+s.language:''}</option>`).join('')}</select>`:`<span class="m">#${st.index} ${st.codec_name} ${st.channels}ch${st.language?' '+st.language:''}</span>`;
+    const enc=S.task==='encode';
+    const track=f.streams.length>1?`<select class="mini" onchange="setPendingStream(${i},this.value)">${f.streams.map(s=>`<option value="${s.index}" ${s.index===f.stream_index?'selected':''}>#${s.index} ${esc(enc?(s.pretty||s.codec_name):s.codec_name)} ${s.channels}ch${s.language?' '+s.language:''}</option>`).join('')}</select>`:`<span class="m">#${st.index} ${esc(enc?(st.pretty||st.codec_name):st.codec_name)} ${st.channels}ch${st.language?' '+st.language:''}</span>`;
+    const unknown=enc&&st.atmos===null&&st.codec==='truehd'?' · <span style="color:var(--warn)">Atmos: unknown (no mediainfo)</span>':'';
+    const sub=enc?`<b>${esc(st.pretty||st.codec.toUpperCase())}</b> · ${st.channels} ch · ${(st.sample_rate/1000).toFixed(st.sample_rate%1000?1:0)} kHz · ${f.duration} · ${f.size} · ${esc(st.engine_encode||'')}${unknown}`
+                 :`${fpsChip(f)}<b>${st.codec.toUpperCase()}</b> · ${st.bitrate} kbps · ${f.duration} · ${f.size} · ${esc(st.engine)}`;
+    const plan=f.plan?`<div class="plan" title="${esc((f.plan.notes||[]).join('\n'))}">${esc(f.plan.label)}${f.plan.notes?.length?`<div class="why">${esc(f.plan.notes[0])}</div>`:''}</div>`:'<span class="m">…</span>';
     rows.push(`<div class="tr"><input type="checkbox" class="cb" ${checked.has(id)?'checked':''} onchange="toggleCheck(${esc(JSON.stringify(id))},this.checked)">
-      <div><div class="n" title="${esc(f.path)}">${esc(f.name)}</div><div class="s">${fpsChip(f)}<b>${st.codec.toUpperCase()}</b> · ${st.bitrate} kbps · ${f.duration} · ${f.size} · ${esc(st.engine)}</div></div>
+      <div><div class="n" title="${esc(f.path)}">${esc(f.name)}</div><div class="s">${sub}</div></div>
       <div>${track}</div>
-      <div><select class="mini ${f.suggest&&f.suggest.conv_type?'suggested':''}" title="${esc(f.suggest?f.suggest.reason:'')}" onchange="setPendingMode(${i},this.value)">${modes.map(k=>`<option ${k===f.conv_type?'selected':''}>${k}</option>`).join('')}</select>${f.suggest?`<div class="why" title="${esc(f.suggest.reason)}">${f.suggest.conv_type?'suggested':'no change needed'}${f.suggest.delta?` · Δ ${f.suggest.delta}s`:''}</div>`:''}</div>
+      <div>${enc?plan:`<select class="mini ${f.suggest&&f.suggest.conv_type?'suggested':''}" title="${esc(f.suggest?f.suggest.reason:'')}" onchange="setPendingMode(${i},this.value)">${modes.map(k=>`<option ${k===f.conv_type?'selected':''}>${k}</option>`).join('')}</select>${f.suggest?`<div class="why" title="${esc(f.suggest.reason)}">${f.suggest.conv_type?'suggested':'no change needed'}${f.suggest.delta?` · Δ ${f.suggest.delta}s`:''}</div>`:''}`}</div>
       <div><div class="bar2"><i></i></div><div class="det">waiting for Start</div></div>
       <div class="m">—</div><div class="m"></div><div class="st"><i></i>Ready</div>
       <div class="acts"><button class="ib" title="Remove" onclick="removePending(${i})">${I.x}</button></div></div>`);
@@ -450,14 +524,14 @@ function render(){
       :`${['done','skipped'].includes(j.state)?`<button class="ib" title="Open output folder" onclick="event.stopPropagation();post('/api/open',{path:${esc(JSON.stringify(j.out_dir))}})">${I.open}</button>`:`<button class="ib" title="Retry" onclick="event.stopPropagation();post('/api/retry',{id:'${j.id}'})">${I.retry}</button>`}<button class="ib" title="Remove from list" onclick="event.stopPropagation();post('/api/remove',{id:'${j.id}'})">${I.x}</button>`;
     const det=j.state==='running'?(j.detail||j.step):j.state==='failed'?j.error:j.state==='done'?'→ '+j.out_name:j.state==='skipped'?'skipped — '+j.error:j.state==='cancelled'?'cancelled':'queued';
     rows.push(`<div class="tr ${selected===j.id?'sel':''}" onclick="select('${j.id}')"><input type="checkbox" class="cb" ${checked.has(j.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleCheck('${j.id}',this.checked)">
-      <div><div class="n" title="${esc(j.source)}">${esc(j.name)}</div><div class="s"><b>${(j.codec||'').toUpperCase()}</b>${j.codec?' · '+j.bitrate+' kbps · '+j.channels+' ch':''}${j.out_name?' → '+esc(j.out_name):''}</div></div>
-      <div class="m">#${j.stream_index}</div><div class="m">${j.conv_type}</div>
+      <div><div class="n" title="${esc(j.source)}">${esc(j.name)}</div><div class="s"><b>${esc(j.task==='encode'?(j.pretty||j.codec.toUpperCase()):(j.codec||'').toUpperCase())}</b>${j.codec&&j.task!=='encode'?' · '+j.bitrate+' kbps · '+j.channels+' ch':''}${j.out_name?' → '+esc(j.out_name):''}</div></div>
+      <div class="m">#${j.stream_index}</div><div class="m" title="${esc(j.label||j.conv_type)}">${esc(j.task==='encode'?j.label:j.conv_type)}</div>
       <div><div class="bar2 ${j.state}"><i style="width:${['done','skipped'].includes(j.state)?100:j.percent}%"></i></div><div class="det" title="${esc(det)}">${j.state==='running'?j.percent+'% · ':''}${esc(det)}</div></div>
       <div class="m">${j.elapsed}${j.state==='running'&&j.eta?'<br><span style="color:var(--text-3)">eta '+j.eta+'</span>':''}</div>
       <div class="m">${j.out_size||''}</div><div class="st ${j.state}"><i></i>${ST[j.state]||j.state}</div>
       <div class="acts">${acts}</div></div>`);
   }
-  $('tb').innerHTML=rows.length?rows.join(''):`<div class="empty"><b>No files in the queue</b><span>Add files or a folder, choose the conversion on the left, then press Start.</span><div class="row"><button class="btn" onclick="addFiles()">Add files</button><button class="btn" onclick="addFolder()">Add folder</button></div></div>`;
+  $('tb').innerHTML=rows.length?rows.join(''):`<div class="empty"><b>No files in the queue</b><span>${S.task==='encode'?'Add files or a folder, choose the format, channels and bitrate on the left, then press Start. Each row shows what it will really become.':'Add files or a folder, choose the conversion on the left, then press Start.'}</span><div class="row"><button class="btn" onclick="addFiles()">Add files</button><button class="btn" onclick="addFolder()">Add folder</button></div></div>`;
   const run=jobs.filter(j=>j.state==='running'), q=jobs.filter(j=>j.state==='queued').length, n=pending.length+jobs.length;
   const parts=[];if(pending.length)parts.push(pending.length+' ready');if(run.length)parts.push(run.length+' running');if(q)parts.push(q+' queued');const fin=jobs.length-run.length-q;if(fin)parts.push(fin+' finished');
   $('sum').textContent=n?parts.join(' · '):'empty';

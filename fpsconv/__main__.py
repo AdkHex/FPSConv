@@ -1,7 +1,8 @@
 """``FPSConv`` / ``python -m fpsconv``   → GUI
-``… convert …``                        → command line (single file or batch)
+``… convert …``                        → command line fps change (single file or batch)
+``… encode …``                         → command line audio-only encode to DD / DDP / DDP Atmos
 ``… doctor``                           → what is installed
-``… deew …``                           → run the bundled deew (used by the installed build)
+``… deew …`` / ``… deezy …``           → run the bundled deew / deezy (used by the installed build)
 """
 
 from __future__ import annotations
@@ -36,12 +37,12 @@ def _hide_child_windows() -> None:
     subprocess.Popen.__init__ = patched  # type: ignore[method-assign]
 
 
-def _run_bundled_deew(argv: list[str]) -> int:
-    """The installed Windows build carries deew inside the exe; this runs it."""
+def _run_bundled(module: str, argv: list[str]) -> int:
+    """The installed Windows build carries deew and deezy inside the exe; this runs one."""
     _hide_child_windows()
-    sys.argv = ["deew", *argv]
+    sys.argv = [module, *argv]
     try:
-        runpy.run_module("deew", run_name="__main__", alter_sys=True)
+        runpy.run_module(module, run_name="__main__", alter_sys=True)
     except SystemExit as exc:
         code = exc.code
         return code if isinstance(code, int) else (0 if code is None else 1)
@@ -67,8 +68,14 @@ def _cli_convert(args: argparse.Namespace) -> int:
         return 1
 
     queue = JobQueue(workers=args.jobs, history=False)
-    queue.add([{"path": s, "stream_index": args.stream} for s in sources], args.mode,
-              args.output, bitrate=args.bitrate, overwrite=args.overwrite)
+    if args.cmd == "encode":
+        queue.add([{"path": s, "stream_index": args.stream} for s in sources], "", args.output,
+                  overwrite=args.overwrite, task=engine.TASK_ENCODE,
+                  encode={"target": args.format, "channels": args.channels, "bitrate": args.bitrate,
+                          "atmos": not args.no_atmos, "drc": args.drc})
+    else:
+        queue.add([{"path": s, "stream_index": args.stream} for s in sources], args.mode,
+                  args.output, bitrate=args.bitrate, overwrite=args.overwrite)
     last = ""
     try:
         while True:
@@ -91,7 +98,8 @@ def _cli_convert(args: argparse.Namespace) -> int:
     rc = 0
     for j in queue.snapshot()["jobs"]:
         mark = {"done": "done   ", "failed": "FAILED ", "cancelled": "cancel ", "skipped": "skipped"}[j["state"]]
-        print(f"{mark} {j['name']} -> {j['out_name'] or '-'} {j['out_size']} {j['error']}")
+        what = f" [{j['pretty']} -> {j['label']}]" if j.get("task") == engine.TASK_ENCODE and j.get("label") else ""
+        print(f"{mark} {j['name']}{what} -> {j['out_name'] or '-'} {j['out_size']} {j['error']}")
         if j["state"] not in ("done", "skipped"):
             rc = 1
     return rc
@@ -119,8 +127,9 @@ def _cli_probe(args) -> int:
         fps = f"{info['fps']} fps ({info['fps_source']})" if info["fps"] else "fps unknown (audio only – use --target)"
         print(f"{os.path.basename(path)}  {engine.fmt_time(info['duration'])}  {fps}")
         for st in info["streams"]:
-            print(f"    #{st['index']} {st['codec_name']} {st['bitrate']} kbps {st['channels']} ch"
-                  f"{' ' + st['language'] if st['language'] else ''}{' – ' + st['title'] if st['title'] else ''}")
+            atmos = "" if st["atmos"] is not None else "  (Atmos: unknown, mediainfo missing)" if st["codec"] == "truehd" else ""
+            print(f"    #{st['index']} {st['pretty']} {st['bitrate']} kbps {st['channels']} ch {st['sample_rate']} Hz"
+                  f"{' ' + st['language'] if st['language'] else ''}{' – ' + st['title'] if st['title'] else ''}{atmos}")
         if ref:
             sg = engine.suggest_conversion(info["fps"], info["duration"], ref["fps"], ref["duration_s"])
             if sg is None:
@@ -141,18 +150,22 @@ def _cli_doctor() -> int:
     print(f"deew        : {'ok (' + d['deew_via'] + ')' if d['deew'] else 'NOT AVAILABLE (pip install deew, or use the installed build)'}")
     print(f"deew config : {d['deew_config'] or 'not written yet (set the DEE path in Settings, or: dee <path>)'}")
     print(f"DEE         : {d['dee'] or 'not found' + (' at ' + d['dee_path'] if d['dee_path'] else '')}")
+    print(f"mediainfo   : {d['mediainfo'] or ('pymediainfo (bundled)' if d['pymediainfo'] else 'NOT FOUND (needed to detect Atmos)')}")
+    print(f"deezy       : {'ok (' + d['deezy_via'] + ')' if d['deezy'] else 'NOT AVAILABLE (pip install deezy) — needed for DDP Atmos'}")
+    print(f"truehdd     : {d['truehdd'] or 'NOT FOUND — needed for DDP Atmos (github.com/truehdd/truehdd)'}")
     print(f"settings    : {d['config_dir']}")
     ok = d["ffmpeg"] and d["ffprobe"]
     print()
     print("AAC sources need ffmpeg only." if ok else "ffmpeg/ffprobe missing: nothing will work.")
     print("AC-3 / E-AC-3 / TrueHD sources additionally need deew + Dolby Encoding Engine.")
+    print("Audio encode to DD / DDP needs DEE; DDP Atmos additionally needs truehdd + deezy + DEE 5.2.x.")
     return 0 if ok else 1
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    if argv and argv[0] == "deew":
-        return _run_bundled_deew(argv[1:])
+    if argv and argv[0] in ("deew", "deezy"):
+        return _run_bundled(argv[0], argv[1:])
 
     parser = argparse.ArgumentParser(prog="fpsconv", description=f"{APP_NAME} {__version__}")
     parser.add_argument("--version", action="version", version=f"{APP_NAME} {__version__}")
@@ -174,6 +187,20 @@ def main(argv: list[str] | None = None) -> int:
     conv.add_argument("--bitrate", "-b", type=int, default=0, help="kbps; 0 = keep the source bitrate")
     conv.add_argument("--overwrite", choices=["overwrite", "skip", "rename"], default="overwrite")
 
+    enc = sub.add_parser("encode", help="audio-only encode to DD / DDP / DDP Atmos (no fps change)")
+    enc.add_argument("inputs", nargs="+", help="files and/or folders")
+    enc.add_argument("--format", "-f", choices=list(engine.TARGETS), default="ddp")
+    enc.add_argument("--channels", "-c", type=int, choices=list(engine.TARGET_CHANNELS), default=0,
+                     help="0 = same as source, else 1 / 2 / 6 (5.1) / 8 (7.1); never upmixes")
+    enc.add_argument("--bitrate", "-b", type=int, default=0, help="kbps; 0 = DEE default for the layout")
+    enc.add_argument("--no-atmos", action="store_true", help="encode the bed only, even for TrueHD Atmos sources")
+    enc.add_argument("--drc", choices=list(engine.DRC_PROFILES), default="film_light")
+    enc.add_argument("--output", "-o", default="output")
+    enc.add_argument("--jobs", "-j", type=int, default=1)
+    enc.add_argument("--recursive", "-r", action="store_true")
+    enc.add_argument("--stream", "-s", type=int, default=0, help="audio stream index (0 = first)")
+    enc.add_argument("--overwrite", choices=["overwrite", "skip", "rename"], default="overwrite")
+
     probe = sub.add_parser("probe", help="show audio streams and the frame rate a file is tied to")
     probe.add_argument("inputs", nargs="+", help="audio / video files")
     probe.add_argument("--target", "-t", help="video the audio must fit; suggests the conversion")
@@ -184,7 +211,7 @@ def main(argv: list[str] | None = None) -> int:
     dee.add_argument("path", help=r"path to dee.exe, e.g. C:\Dolby\DEE\dee.exe")
 
     args = parser.parse_args(argv)
-    if args.cmd == "convert":
+    if args.cmd in ("convert", "encode"):
         return _cli_convert(args)
     if args.cmd == "probe":
         return _cli_probe(args)

@@ -4,8 +4,9 @@
 * FPSConv.exe      — windowed (no console); opens the desktop window
 * fpsconv-cli.exe  — console build of the same program for `convert`, `doctor`, `dee`
 
-deew and its dependencies are collected so the installed app can run
-`FPSConv.exe deew …` without a Python install on the machine.
+deew / deezy and their dependencies are collected so the installed app can run
+`FPSConv.exe deew …` and `FPSConv.exe deezy …` without a Python install on the
+machine (deezy = DDP Atmos through truehdd + DEE; pymediainfo = Atmos detection).
 """
 
 import os
@@ -17,7 +18,8 @@ datas = [(os.path.join(ROOT, "fpsconv", "static"), os.path.join("fpsconv", "stat
 binaries = []
 hiddenimports = ["fpsconv", "fpsconv.server", "fpsconv.window", "fpsconv.updater"]
 
-for pkg in ("deew", "rich", "toml", "platformdirs", "xmltodict", "unidecode", "packaging", "requests"):
+for pkg in ("deew", "rich", "toml", "platformdirs", "xmltodict", "unidecode", "packaging", "requests",
+            "deezy", "pymediainfo", "tomlkit", "guessit", "rebulk", "babelfish", "oslex2", "typing_extensions"):
     try:
         d, b, h = collect_all(pkg)
         datas += d; binaries += b; hiddenimports += h
