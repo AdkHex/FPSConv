@@ -253,17 +253,19 @@ def _powershell_pick(kind: str, start: str) -> list[str] | None:
     import subprocess
 
     start_ps = start.replace("'", "''")
+    # An invisible always-on-top owner form keeps the dialog in front of everything.
+    owner = "$o = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false; Opacity=0}; "
     if kind == "folder":
-        script = ("Add-Type -AssemblyName System.Windows.Forms; "
+        script = ("Add-Type -AssemblyName System.Windows.Forms; " + owner +
                   "$d = New-Object System.Windows.Forms.FolderBrowserDialog; "
                   f"if ('{start_ps}') {{ $d.SelectedPath = '{start_ps}' }}; "
-                  "if ($d.ShowDialog() -eq 'OK') { $d.SelectedPath }")
+                  "if ($d.ShowDialog($o) -eq 'OK') { $d.SelectedPath }")
     else:
-        script = ("Add-Type -AssemblyName System.Windows.Forms; "
+        script = ("Add-Type -AssemblyName System.Windows.Forms; " + owner +
                   "$d = New-Object System.Windows.Forms.OpenFileDialog; $d.Multiselect = $true; "
                   "$d.Filter = 'Audio / video|*.mka;*.mkv;*.mp4;*.m4a;*.mov;*.ts;*.m2ts;*.webm;*.ac3;*.ec3;*.eac3;*.thd;*.truehd;*.aac;*.wav;*.flac;*.ogg;*.opus|All files|*.*'; "
                   f"if ('{start_ps}') {{ $d.InitialDirectory = '{start_ps}' }}; "
-                  "if ($d.ShowDialog() -eq 'OK') { $d.FileNames }")
+                  "if ($d.ShowDialog($o) -eq 'OK') { $d.FileNames }")
     try:
         out = subprocess.run(["powershell", "-NoProfile", "-STA", "-Command", script],
                              capture_output=True, text=True, timeout=600,

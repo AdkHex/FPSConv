@@ -21,6 +21,42 @@ def has_window() -> bool:
     return _window is not None
 
 
+def _on_ui_thread(fn):
+    """Run ``fn`` on the window's UI thread (Windows / WinForms).
+
+    pywebview shows its file dialogs with the window as owner, but does not
+    marshal the call: opened from our HTTP handler thread the dialog ends up
+    *behind* the app window. Invoking on the form's thread makes it a proper
+    modal child that stays in front, exactly like pywebview's own load_url etc.
+    """
+    import sys
+
+    if sys.platform != "win32" or _window is None:
+        return fn()
+    try:
+        from webview.platforms.winforms import BrowserView  # type: ignore[import-not-found]
+        from System import Func, Type  # type: ignore[import-not-found]  (pythonnet)
+
+        form = BrowserView.instances.get(_window.uid)
+        if form is None:
+            return fn()
+        box: dict = {}
+
+        def run():
+            try:
+                box["r"] = fn()
+            except Exception as exc:  # noqa: BLE001
+                box["e"] = exc
+            return None
+
+        form.Invoke(Func[Type](run))
+        if "e" in box:
+            raise box["e"]
+        return box.get("r")
+    except ImportError:
+        return fn()
+
+
 def pick(kind: str, start: str = "") -> Optional[list[str]]:
     """Native OS dialog through pywebview. ``None`` when there is no window."""
     if _window is None:
@@ -31,11 +67,11 @@ def pick(kind: str, start: str = "") -> Optional[list[str]]:
         FD = getattr(webview, "FileDialog", None)
         if kind == "folder":
             dtype = FD.FOLDER if FD else webview.FOLDER_DIALOG
-            res = _window.create_file_dialog(dtype, directory=start or "")
+            res = _on_ui_thread(lambda: _window.create_file_dialog(dtype, directory=start or ""))
         else:
             dtype = FD.OPEN if FD else webview.OPEN_DIALOG
-            res = _window.create_file_dialog(dtype, directory=start or "", allow_multiple=True,
-                                             file_types=AUDIO_FILTER)
+            res = _on_ui_thread(lambda: _window.create_file_dialog(
+                dtype, directory=start or "", allow_multiple=True, file_types=AUDIO_FILTER))
     except Exception:  # noqa: BLE001
         return None
     if not res:
