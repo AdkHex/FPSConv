@@ -1,437 +1,403 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>FPSConv</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
-    --radius:.625rem;
-    --background:oklch(14.5% 0 0);--foreground:oklch(98.5% 0 0);
-    --card:oklch(20.5% 0 0);--secondary:oklch(26.9% 0 0);--muted-foreground:oklch(70.8% 0 0);
-    --primary:oklch(92.2% 0 0);--primary-foreground:oklch(20.5% 0 0);
-    --border:oklch(100% 0 0/.1);--input:oklch(100% 0 0/.15);--ring:oklch(55.6% 0 0);
-    --info:#5cb8ff;--success:#4ad968;--warning:#ffa056;--danger:#ff6165;
-    --font:-apple-system,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
-    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --bg:#141414;--panel:#1a1a1a;--panel-2:#202020;--line:#2a2a2a;--line-2:#333;
+    --text:#e8e8e8;--text-2:#a3a3a3;--text-3:#737373;
+    --accent:#5cb8ff;--ok:#4ad968;--warn:#ffa056;--bad:#ff6165;
+    --r:8px;
+    --sans:-apple-system,"Segoe UI",system-ui,Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{margin:0;background:var(--background);color:var(--foreground);font:14px/1.45 var(--font);display:flex;flex-direction:column;overflow:hidden}
-  button{font:inherit;color:inherit}
-  svg{flex:none}
+  body{margin:0;background:var(--bg);color:var(--text);font:13.5px/1.45 var(--sans);display:flex;flex-direction:column;overflow:hidden}
+  button,input,select{font:inherit;color:inherit}
+  button{cursor:pointer}
+  svg{flex:none;width:16px;height:16px}
+  ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#333;border-radius:5px;border:2px solid var(--bg)}
 
-  .titlebar{height:52px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:1px solid var(--border);flex:none}
-  .titlebar .t{font-size:17px;font-weight:600}
-  .titlebar .t span{font-size:13px;font-weight:400;color:var(--muted-foreground);margin-left:8px}
-  .titlebar .right{position:absolute;right:16px;top:0;height:100%;display:flex;align-items:center;gap:4px}
-  .titlebar .left{position:absolute;left:16px;top:0;height:100%;display:flex;align-items:center;gap:10px;color:var(--muted-foreground);font-size:13px}
-  .icon-btn{background:none;border:0;width:36px;height:36px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted-foreground);cursor:pointer}
-  .icon-btn:hover,.menu.open>.icon-btn{background:var(--secondary);color:var(--foreground)}
-  .icon-btn svg{width:18px;height:18px}
+  /* top bar */
+  .top{height:44px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .top .brand{font-weight:600;font-size:14px}
+  .top .ver{font:12px var(--mono);color:var(--text-3);padding:2px 7px;border:1px solid var(--line-2);border-radius:999px}
+  .top .grow{flex:1}
+  .tbtn{height:30px;padding:0 10px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--text-2);display:inline-flex;align-items:center;gap:7px}
+  .tbtn:hover{background:var(--panel-2);color:var(--text)}
+  .tbtn.on{background:var(--panel-2);color:var(--text);border-color:var(--line-2)}
 
+  /* layout */
   .app{flex:1;display:flex;min-height:0}
-  .sidebar{width:340px;flex:none;border-right:1px solid var(--border);padding:24px;display:flex;flex-direction:column;gap:20px;overflow:auto}
-  .main{flex:1;min-width:0;display:flex;flex-direction:column;padding:20px 24px 24px}
+  .side{width:300px;flex:none;border-right:1px solid var(--line);overflow:auto;padding:18px 18px 24px;display:flex;flex-direction:column;gap:18px}
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
 
-  .lbl{font-size:13px;color:var(--muted-foreground);margin-bottom:8px;display:block}
-  .field{display:flex;flex-direction:column}
-  .control{height:44px;width:100%;background:transparent;border:1px solid var(--input);border-radius:var(--radius);padding:0 12px;color:var(--foreground);font-size:15px;display:flex;align-items:center;gap:8px}
-  .control:focus{outline:none;border-color:var(--ring)}
-  .control.sm{height:38px;font-size:14px}
-  select.control{appearance:none;-webkit-appearance:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23a3a3a3' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E") no-repeat right 12px center;padding-right:36px}
-  select.control option{background:var(--card)}
-  .control.dashed{border-style:dashed;cursor:pointer;color:var(--muted-foreground);text-align:left}
-  .control.dashed.set{color:var(--foreground);border-style:solid}
-  .control.dashed svg{width:18px;height:18px}
-  .control.dashed .txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .hint{font-family:var(--mono);font-size:12px;color:var(--muted-foreground);margin-top:8px}
-  .sep{height:1px;background:var(--border)}
-  .seg{display:flex;border:1px solid var(--input);border-radius:var(--radius);padding:3px;gap:3px}
-  .seg button{flex:1;height:32px;border:0;background:transparent;border-radius:7px;color:var(--muted-foreground);cursor:pointer;font-size:14px}
-  .seg button.on{background:var(--secondary);color:var(--foreground)}
+  .f label{display:block;font-size:12px;color:var(--text-2);margin-bottom:6px}
+  .f .help{font-size:12px;color:var(--text-3);margin-top:6px;line-height:1.4}
+  .f .help code{font-family:var(--mono);font-size:11.5px;color:var(--text-2)}
+  .in{height:34px;width:100%;background:var(--panel);border:1px solid var(--line-2);border-radius:var(--r);padding:0 10px;color:var(--text);display:flex;align-items:center;gap:8px;text-align:left}
+  .in:focus{outline:none;border-color:#555}
+  .in:hover{border-color:#444}
+  select.in{appearance:none;-webkit-appearance:none;background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m3 5 4 4 4-4'/%3E%3C/svg%3E") no-repeat right 10px center;padding-right:30px}
+  select.in option{background:var(--panel)}
+  .in .txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+  .in .txt.empty{color:var(--text-3)}
+  .in svg{color:var(--text-2)}
+  .seg{display:flex;border:1px solid var(--line-2);border-radius:var(--r);padding:2px;background:var(--panel)}
+  .seg button{flex:1;height:28px;border:0;background:transparent;border-radius:6px;color:var(--text-2)}
+  .seg button.on{background:var(--panel-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-2)}
   .row{display:flex;gap:8px;align-items:center}
-  details{border:1px solid var(--border);border-radius:var(--radius)}
-  details summary{cursor:pointer;padding:10px 12px;color:var(--muted-foreground);font-size:13px;list-style:none;display:flex;align-items:center;gap:8px}
-  details summary::-webkit-details-marker{display:none}
-  details summary svg{width:14px;height:14px;transition:transform .15s}
+  .hr{height:1px;background:var(--line)}
+  details{border-top:1px solid var(--line);padding-top:6px}
+  summary{cursor:pointer;list-style:none;font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px;padding:6px 0}
+  summary::-webkit-details-marker{display:none}
+  summary svg{width:12px;height:12px;transition:transform .12s}
   details[open] summary svg{transform:rotate(90deg)}
-  details .inner{padding:4px 12px 12px;display:flex;flex-direction:column;gap:14px}
+  details .body{display:flex;flex-direction:column;gap:14px;padding:6px 0 4px}
 
-  .tools{display:flex;flex-direction:column;gap:8px;font-size:13px}
-  .tools div{display:flex;align-items:center;gap:10px;color:var(--muted-foreground)}
-  .tools b{font-weight:500;color:var(--foreground);width:88px;flex:none}
-  .tools span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted-foreground);flex:none}
-  .dot.ok{background:var(--success)} .dot.bad{background:var(--danger)} .dot.warn{background:var(--warning)}
-
-  .mh{display:flex;align-items:center;gap:10px;margin-bottom:14px;height:44px}
-  .mh h1{font-size:19px;font-weight:600;margin:0}
-  .mh .count{color:var(--muted-foreground);font-size:15px}
-  .mh .spacer{flex:1}
-  .btn{height:44px;padding:0 16px;border-radius:var(--radius);border:1px solid var(--input);background:transparent;display:inline-flex;align-items:center;gap:8px;font-size:15px;cursor:pointer;white-space:nowrap}
-  .btn:hover{background:var(--secondary)}
-  .btn:disabled{opacity:.45;cursor:default;background:transparent}
-  .btn.primary{background:var(--secondary);border-color:transparent}
-  .btn.primary:not(:disabled):hover{background:oklch(32% 0 0)}
-  .btn.solid{background:var(--primary);color:var(--primary-foreground);border-color:transparent}
-  .btn.solid:not(:disabled):hover{background:oklch(85% 0 0)}
-  .btn.sm{height:36px;padding:0 12px;font-size:13.5px}
-  .btn svg{width:18px;height:18px}
-  .menu{position:relative}
-  .menu .dd{position:absolute;right:0;top:48px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);min-width:200px;padding:4px;display:none;z-index:5;box-shadow:0 10px 30px rgba(0,0,0,.5)}
-  .menu.open .dd{display:block}
-  .menu .dd>button{display:flex;width:100%;gap:10px;align-items:center;border:0;background:none;padding:9px 10px;border-radius:7px;cursor:pointer;font-size:14px;text-align:left}
-  .menu .dd>button:hover{background:var(--secondary)}
-  .settings-dd{top:42px;width:min(440px,calc(100vw - 32px));padding:14px 16px;cursor:default;display:none;flex-direction:column;gap:14px}
-  .menu.open .settings-dd{display:flex}
-  .settings-dd h4{margin:0;font-size:13px;color:var(--muted-foreground);font-weight:500}
-  .settings-dd .k{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;font-size:13px}
-  .settings-dd .k input{height:34px;font-size:13px;font-family:var(--mono)}
-  .settings-dd .actions{display:flex;gap:8px;justify-content:flex-end}
-
-  .banner{display:none;align-items:center;gap:12px;padding:10px 14px;margin-bottom:14px;border:1px solid var(--border);border-radius:var(--radius);background:oklch(20.5% 0 0);font-size:13.5px}
-  .banner.on{display:flex}
-  .banner .grow{flex:1}
-  .banner .bar{width:140px}
-  .settings-dd .k.wide{grid-template-columns:1fr}
-  .settings-dd label.tg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted-foreground);cursor:pointer}
-  .total{height:3px;background:var(--secondary);border-radius:2px;margin:-8px 0 12px;overflow:hidden;opacity:0;transition:opacity .2s}
+  /* toolbar + table */
+  .bar{height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid var(--line)}
+  .bar h1{font-size:15px;font-weight:600;margin:0 6px 0 0}
+  .bar .sum{color:var(--text-3);font-size:12.5px}
+  .bar .grow{flex:1}
+  .btn{height:32px;padding:0 12px;border-radius:var(--r);border:1px solid var(--line-2);background:var(--panel);display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+  .btn:hover{background:var(--panel-2);border-color:#444}
+  .btn:disabled{opacity:.4;cursor:default;background:var(--panel);border-color:var(--line-2)}
+  .btn.go{background:#e6e6e6;color:#111;border-color:#e6e6e6;font-weight:600}
+  .btn.go:not(:disabled):hover{background:#fff}
+  .btn.danger{color:var(--bad)}
+  .btn.sm{height:26px;padding:0 9px;font-size:12.5px}
+  .total{height:2px;background:var(--line);flex:none;opacity:0;transition:opacity .2s}
   .total.on{opacity:1}
-  .total i{display:block;height:100%;background:var(--info);width:0;transition:width .4s}
+  .total i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s}
 
-  .card{flex:1;min-height:0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;overflow:hidden}
-  .thead,.tr{display:grid;grid-template-columns:32px minmax(140px,2fr) 118px minmax(130px,1fr) 88px 84px 76px 70px 64px;align-items:center;gap:12px;padding:0 12px}
-  .thead{height:48px;border-bottom:1px solid var(--border);color:var(--muted-foreground);font-size:14px;flex:none}
-  .tbody{flex:1;overflow-y:auto;overflow-x:hidden}
-  .tr{height:56px;border-bottom:1px solid var(--border);cursor:default;font-size:14px}
-  .tr:hover{background:oklch(100% 0 0/.03)}
-  .tr.sel{background:oklch(100% 0 0/.06)}
-  .tr .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .tr .sub{color:var(--muted-foreground);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;gap:6px;align-items:center}
-  .tr .fps{display:inline-flex;align-items:center;gap:4px;padding:0 6px;height:18px;border-radius:5px;font-family:var(--mono);font-size:11px;background:var(--secondary);color:var(--foreground);white-space:nowrap}
-  .tr .fps.unknown{color:var(--muted-foreground);background:transparent;border:1px dashed var(--border)}
-  .tr .fps.hit{background:oklch(35% .09 150);color:oklch(92% .05 150)}
-  .tr .mode.suggested{border-color:oklch(55% .12 150)}
-  .tr .why{font-size:11px;color:var(--muted-foreground);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ref{display:flex;align-items:center;gap:8px}
-  .ref .txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .ref .ck{color:var(--muted-foreground);font-family:var(--mono);font-size:12px}
-  .tr .sub select{background:transparent;border:1px solid var(--input);color:var(--muted-foreground);border-radius:5px;font-size:11.5px;padding:1px 4px;max-width:200px}
-  .tr .mono{font-family:var(--mono);font-size:12.5px;color:var(--muted-foreground)}
-  .tr select.mode{background:transparent;border:1px solid var(--input);color:var(--foreground);border-radius:6px;font:12.5px var(--mono);padding:4px 6px;width:100%}
-  .tr select option{background:var(--card)}
-  .cb{width:16px;height:16px;border:1px solid var(--input);border-radius:4px;background:transparent;appearance:none;cursor:pointer;margin:0;flex:none}
-  .cb:checked{background:var(--primary);border-color:var(--primary)}
-  .bar{height:6px;border-radius:3px;background:var(--secondary);overflow:hidden}
-  .bar i{display:block;height:100%;width:0;background:var(--info);transition:width .3s}
-  .bar.done i,.bar.skipped i{background:var(--success)} .bar.failed i{background:var(--danger)} .bar.cancelled i{background:var(--warning)}
-  .pct{font-size:11.5px;color:var(--muted-foreground);margin-top:3px;font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .status{font-size:13.5px}
-  .status.running{color:var(--info)} .status.done{color:var(--success)} .status.skipped{color:var(--muted-foreground)} .status.failed{color:var(--danger)} .status.cancelled{color:var(--warning)} .status.ready,.status.queued{color:var(--muted-foreground)}
-  .acts{display:flex;gap:2px;justify-content:flex-end}
-  .x{background:none;border:0;color:var(--muted-foreground);cursor:pointer;width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center}
-  .x:hover{background:var(--secondary);color:var(--foreground)}
-  .x svg{width:15px;height:15px}
+  .grid{flex:1;min-height:0;display:flex;flex-direction:column}
+  .th,.tr{display:grid;grid-template-columns:30px minmax(220px,1fr) 150px 112px minmax(190px,.9fr) 118px 90px 96px 84px;gap:10px;align-items:center;padding:0 12px 0 14px}
+  .th{height:36px;flex:none;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3);border-bottom:1px solid var(--line);background:var(--panel)}
+  .tb{flex:1;overflow:auto}
+  .tr{min-height:54px;border-bottom:1px solid var(--line);padding-top:8px;padding-bottom:8px}
+  .tr:hover{background:#1c1c1c}
+  .tr.sel{background:#1f2328}
+  .tr .n{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tr .s{font-size:12px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+  .tr .s b{font-weight:500;color:var(--text-2)}
+  .tr select.mini{height:26px;background:var(--panel);border:1px solid var(--line-2);border-radius:6px;color:var(--text);font:12px var(--mono);padding:0 6px;width:100%}
+  .tr select.mini option{background:var(--panel)}
+  .m{font:12px var(--mono);color:var(--text-2)}
+  .bar2{height:5px;border-radius:3px;background:var(--line-2);overflow:hidden}
+  .bar2 i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+  .bar2.done i,.bar2.skipped i{background:var(--ok)} .bar2.failed i{background:var(--bad)} .bar2.cancelled i{background:var(--warn)}
+  .det{font:11.5px var(--mono);color:var(--text-3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .st{font-size:12.5px;display:inline-flex;align-items:center;gap:6px}
+  .st i{width:7px;height:7px;border-radius:50%;background:var(--text-3)}
+  .st.running i{background:var(--accent);box-shadow:0 0 0 3px rgba(92,184,255,.18)} .st.done i,.st.skipped i{background:var(--ok)} .st.failed i{background:var(--bad)} .st.cancelled i{background:var(--warn)}
+  .fps{display:inline-flex;align-items:center;padding:0 6px;height:17px;border-radius:4px;font:11px var(--mono);background:var(--line-2);color:var(--text);white-space:nowrap;margin-right:6px;vertical-align:middle}
+  .fps.unknown{background:transparent;border:1px dashed var(--line-2);color:var(--text-3)}
+  .fps.hit{background:#1f3a2a;color:#9be3b0}
+  .tr select.mini.suggested{border-color:#3f8a5a}
+  .why{font:11px var(--mono);color:var(--text-3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cb{width:14px;height:14px;border:1px solid var(--line-2);border-radius:3px;background:var(--panel);appearance:none;cursor:pointer;margin:0}
+  .cb:checked{background:#e6e6e6;border-color:#e6e6e6}
+  .acts{display:flex;gap:2px;justify-content:flex-end;opacity:.55}
+  .tr:hover .acts,.tr.sel .acts{opacity:1}
+  .ib{width:26px;height:26px;border:0;background:transparent;border-radius:6px;color:var(--text-2);display:inline-flex;align-items:center;justify-content:center}
+  .ib:hover{background:var(--line-2);color:var(--text)}
+  .ib svg{width:14px;height:14px}
+  .empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-3);text-align:center;padding:40px}
+  .empty b{color:var(--text-2);font-weight:500;font-size:14px}
+  .empty .row{margin-top:10px}
 
-  .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:40px}
-  .empty .ring{width:76px;height:76px;border-radius:50%;background:var(--secondary);display:flex;align-items:center;justify-content:center;margin-bottom:8px}
-  .empty .ring svg{width:34px;height:34px;color:var(--muted-foreground)}
-  .empty h3{margin:0;font-size:18px;font-weight:500}
-  .empty p{margin:0;color:var(--muted-foreground);max-width:480px}
-  .empty .row{margin-top:14px}
+  /* activity panel */
+  .act{flex:none;height:240px;min-height:0;border-top:1px solid var(--line);display:flex;flex-direction:column;background:#111}
+  .act.closed{height:0;overflow:hidden;border:0}
+  .drag{height:5px;cursor:ns-resize;flex:none;background:transparent}
+  .drag:hover{background:var(--line-2)}
+  .act .hd{height:34px;flex:none;display:flex;align-items:center;gap:6px;padding:0 10px 0 12px;border-bottom:1px solid var(--line)}
+  .tab{height:26px;padding:0 10px;border-radius:6px;border:0;background:transparent;color:var(--text-2);font-size:12.5px}
+  .tab.on{background:var(--panel-2);color:var(--text)}
+  .act .hd .grow{flex:1}
+  .act .hd input{height:26px;width:200px;background:var(--panel);border:1px solid var(--line-2);border-radius:6px;padding:0 8px;font-size:12.5px;color:var(--text)}
+  .act .hd label{font-size:12px;color:var(--text-3);display:flex;align-items:center;gap:5px}
+  .logv{flex:1;overflow:auto;padding:6px 12px 10px;font:12px/1.55 var(--mono);color:#c9c9c9}
+  .logv .l{white-space:pre-wrap;word-break:break-all}
+  .logv .t{color:var(--text-3)}
+  .logv .WARNING{color:var(--warn)} .logv .ERROR{color:var(--bad)} .logv .src{color:var(--text-3)}
+  .logv .hl{background:#3a3212}
 
-  .log{flex:none;height:0;overflow:hidden;transition:height .2s;border-top:1px solid var(--border);background:oklch(12% 0 0);position:relative}
-  .log.open{height:170px}
-  .log .lh{position:sticky;top:0;display:flex;gap:6px;justify-content:flex-end;padding:6px 8px 0;background:oklch(12% 0 0)}
-  .log pre{margin:0;padding:4px 14px 12px;font:12px/1.5 var(--mono);color:var(--muted-foreground);white-space:pre-wrap;word-break:break-all;overflow:auto;height:calc(100% - 34px)}
-  .log .err{color:var(--danger)}
+  /* status bar */
+  .status{height:28px;flex:none;display:flex;align-items:center;gap:18px;padding:0 14px;border-top:1px solid var(--line);background:var(--panel);font-size:12px;color:var(--text-2)}
+  .status .grow{flex:1}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--text-3);display:inline-block;margin-right:6px}
+  .dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}.dot.warn{background:var(--warn)}
+  .status a{color:var(--text-2);cursor:pointer;text-decoration:underline dotted}
+  .status a:hover{color:var(--text)}
 
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:20}
-  .overlay.open{display:flex}
-  .dlg{width:680px;max-height:78vh;background:var(--card);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
-  .dlg .hd{padding:16px 20px 8px;font-size:17px;font-weight:600}
-  .dlg .path{display:flex;gap:8px;padding:8px 20px}
-  .dlg .path .control{height:40px;flex:1;font-family:var(--mono);font-size:13px}
-  .dlg .list{flex:1;overflow:auto;margin:6px 20px;border:1px solid var(--border);border-radius:var(--radius);min-height:200px}
-  .dlg .e{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border)}
-  .dlg .e:last-child{border-bottom:0}
-  .dlg .e:hover{background:var(--secondary)}
-  .dlg .e svg{width:17px;height:17px;color:var(--muted-foreground)}
-  .dlg .ft{display:flex;gap:8px;padding:14px 20px;justify-content:flex-end;align-items:center}
-  .dlg .ft .muted{flex:1;color:var(--muted-foreground);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  @media (max-width:900px){.titlebar .left{display:none}.sidebar{width:280px;padding:16px}}
-  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);padding:10px 16px;border-radius:10px;display:none;z-index:30;font-size:13.5px}
-  .toast.bad{border-color:var(--danger)}
+  /* modals */
+  .ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:20}
+  .ov.open{display:flex}
+  .dlg{width:720px;max-height:82vh;background:var(--panel);border:1px solid var(--line-2);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .dlg .h{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:600;display:flex;align-items:center}
+  .dlg .h .grow{flex:1}
+  .dlg .c{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:18px}
+  .dlg .ft{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;align-items:center}
+  .dlg .ft .note{flex:1;color:var(--text-3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sec h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3);font-weight:600}
+  .kv{display:grid;grid-template-columns:150px 1fr;gap:10px 12px;align-items:center;font-size:13px}
+  .kv .v{color:var(--text-2);font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .kv input.in{height:32px;font-family:var(--mono);font-size:12px}
+  .kv .row .in{flex:1}
+  .tg{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+  .tg .cb{width:15px;height:15px}
+  .list{border:1px solid var(--line-2);border-radius:var(--r);overflow:auto;min-height:220px;max-height:44vh}
+  .e{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
+  .e:last-child{border-bottom:0}.e:hover{background:var(--panel-2)}.e svg{color:var(--text-2)}
+  .toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--line-2);padding:9px 14px;border-radius:8px;display:none;z-index:30;font-size:13px}
+  .toast.bad{border-color:var(--bad)}
+  .banner{display:none;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--line);background:#1b2430;font-size:13px}
+  .banner.on{display:flex}.banner .grow{flex:1}
 </style>
 </head>
 <body>
 
-<div class="titlebar">
-  <div class="left" id="ver"></div>
-  <div class="t">FPSConv <span>ffmpeg · deew</span></div>
-  <div class="right">
-    <button class="icon-btn" title="Clear finished" onclick="post('/api/clear',{})">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
-    </button>
-    <button class="icon-btn" title="Show / hide log" onclick="toggleLog()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15h18"/></svg>
-    </button>
-    <div class="menu" id="settingsmenu">
-      <button class="icon-btn" title="Settings & tools" onclick="event.stopPropagation();toggleSettings()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-      </button>
-      <div class="dd settings-dd" onclick="event.stopPropagation()">
-        <h4>Tools</h4>
-        <div class="tools" id="tools"></div>
-        <div id="ffdl" style="display:none"><button class="btn sm" id="ffdl-btn" onclick="downloadFfmpeg()">Download ffmpeg for Windows</button> <span class="muted" id="ffdl-st" style="font-size:12.5px"></span></div>
-        <h4>Dolby Encoding Engine</h4>
-        <div class="k"><span>dee.exe path</span><input class="control sm" id="t-dee" placeholder="C:\Dolby\DEE\dee.exe"></div>
-        <div class="actions"><button class="btn sm" onclick="saveDee()">Save DEE path (writes deew's config)</button></div>
-        <h4>Paths (leave empty to use PATH / the bundled tools)</h4>
-        <div class="k"><span>ffmpeg</span><input class="control sm" id="t-ffmpeg" placeholder="C:\ffmpeg\bin\ffmpeg.exe"></div>
-        <div class="k"><span>ffprobe</span><input class="control sm" id="t-ffprobe" placeholder="C:\ffmpeg\bin\ffprobe.exe"></div>
-        <div class="k"><span>python (deew)</span><input class="control sm" id="t-deew" placeholder="only if you want an external deew"></div>
-        <h4>Updates</h4>
-        <label class="tg"><input type="checkbox" class="cb" id="t-auto" onchange="save({auto_update:this.checked})">Install updates automatically when idle</label>
-        <label class="tg"><input type="checkbox" class="cb" id="t-win" onchange="save({native_window:this.checked})">Open in a desktop window (needs restart)</label>
-        <div class="k wide"><span class="muted" id="upd-line" style="font-size:12.5px"></span></div>
-        <div class="actions">
-          <button class="btn sm" onclick="post('/api/update/check',{}).then(pollUpdate)">Check for updates</button>
-          <button class="btn sm" onclick="post('/api/open',{path:S.out_dir})">Open output folder</button>
-          <button class="btn sm" style="color:var(--danger)" onclick="quitApp()">Quit app</button>
-          <button class="btn sm solid" onclick="saveTools()">Save</button>
-        </div>
-      </div>
-    </div>
-  </div>
+<div class="top">
+  <span class="brand">FPSConv</span><span class="ver" id="ver">…</span>
+  <div class="grow"></div>
+  <button class="tbtn" id="tb-log" onclick="toggleAct()" title="Show or hide the activity panel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15h18"/></svg>Activity
+  </button>
+  <button class="tbtn" onclick="openSettings()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings
+  </button>
 </div>
 
+<div class="banner" id="banner"><span class="grow" id="banner-text"></span><button class="btn sm" id="banner-btn" onclick="installUpdate()">Restart to update</button><button class="ib" onclick="$('banner').classList.remove('on')">✕</button></div>
+
 <div class="app">
-  <aside class="sidebar">
-    <div class="field">
-      <span class="lbl">Conversion</span>
-      <select class="control" id="mode" onchange="onConv()"></select>
-      <div class="hint" id="ratio"></div>
+  <aside class="side">
+    <div class="f">
+      <label>Conversion</label>
+      <select class="in" id="mode" onchange="onConv()"></select>
+      <div class="help" id="ratio"></div>
     </div>
-
-    <div class="field">
-      <span class="lbl">Target video <span style="color:var(--muted-foreground);font-weight:400">(optional)</span></span>
-      <button class="control dashed" id="refbtn" onclick="openBrowser('ref')" title="Pick the video this audio has to fit. FPSConv reads its frame rate, compares durations and picks the conversion for every file.">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M3 15h18M8 5v14M16 5v14"/></svg>
-        <span class="txt" id="reftxt">Pick the video to match…</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-      </button>
-      <div class="hint" id="refhint" style="display:none"></div>
-    </div>
-
-    <div class="field">
-      <span class="lbl">Output folder</span>
-      <button class="control dashed" id="outbtn" onclick="openBrowser('folder')">
+    <div class="f">
+      <label>Output folder</label>
+      <button class="in" id="outbtn" onclick="chooseOut()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        <span class="txt" id="outtxt">Choose a folder</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        <span class="txt empty" id="outtxt">Choose…</span>
       </button>
+      <div class="help">Converted files are written here as <code>name_mode.ext</code>.</div>
     </div>
-
-    <div class="sep"></div>
-
-    <div class="field">
-      <span class="lbl">Mode</span>
-      <div class="seg">
-        <button id="seg-single" onclick="setMode('single')">Single file</button>
-        <button id="seg-batch" onclick="setMode('batch')">Batch</button>
-      </div>
+    <div class="f">
+      <label>Target video <span style="color:var(--text-3)">(optional)</span></label>
+      <button class="in" id="refbtn" onclick="chooseRef()" title="The video this audio has to fit. FPSConv reads its frame rate, compares durations and suggests the conversion for every file.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></svg>
+        <span class="txt empty" id="reftxt">None</span>
+      </button>
+      <div class="help" id="refhelp">Audio has no fps of its own — pick the video it belongs to and the conversion is worked out per file.</div>
     </div>
-
-    <div class="field" id="workers-field">
-      <span class="lbl">Parallel jobs</span>
-      <input class="control" type="number" id="workers" min="1" max="8" value="2" style="width:100px" onchange="save({workers:+this.value})">
+    <div class="f">
+      <label>Mode</label>
+      <div class="seg"><button id="seg-single" onclick="setMode('single')">Single file</button><button id="seg-batch" onclick="setMode('batch')">Batch</button></div>
+      <div class="help" id="mode-help"></div>
     </div>
-
+    <div class="f" id="workers-f">
+      <label>Parallel jobs</label>
+      <input class="in" type="number" id="workers" min="1" max="8" value="2" style="width:90px" onchange="save({workers:+this.value})">
+      <div class="help">DEE encodes are CPU-heavy; 2 is a good default.</div>
+    </div>
     <details id="adv">
-      <summary><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>Advanced</summary>
-      <div class="inner">
-        <div class="field">
-          <span class="lbl">Output bitrate</span>
-          <div class="row">
-            <select class="control sm" id="br-mode" onchange="onBitrate()"><option value="auto">Same as source</option><option value="custom">Custom</option></select>
-            <input class="control sm" type="number" id="br" min="32" max="6144" step="8" placeholder="kbps" style="width:110px;display:none" onchange="onBitrate()">
-          </div>
+      <summary><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg>Advanced</summary>
+      <div class="body">
+        <div class="f">
+          <label>Output bitrate</label>
+          <div class="row"><select class="in" id="br-mode" onchange="onBitrate()"><option value="auto">Same as source</option><option value="custom">Custom</option></select><input class="in" type="number" id="br" min="32" max="6144" step="8" placeholder="kbps" style="width:100px;display:none" onchange="onBitrate()"></div>
         </div>
-        <div class="field">
-          <span class="lbl">If the output already exists</span>
-          <select class="control sm" id="overwrite" onchange="save({overwrite:this.value})">
-            <option value="overwrite">Overwrite it</option>
-            <option value="skip">Skip the file</option>
-            <option value="rename">Write a numbered copy</option>
-          </select>
+        <div class="f">
+          <label>If the output already exists</label>
+          <select class="in" id="overwrite" onchange="save({overwrite:this.value})"><option value="overwrite">Overwrite it</option><option value="skip">Skip the file</option><option value="rename">Write a numbered copy</option></select>
         </div>
       </div>
     </details>
   </aside>
 
   <section class="main">
-    <div class="mh">
-      <h1>Queue</h1><span class="count" id="count">Empty</span>
-      <div class="spacer"></div>
-      <div class="menu" id="addmenu">
-        <button class="btn" onclick="event.stopPropagation();$('addmenu').classList.toggle('open')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add
-        </button>
-        <div class="dd">
-          <button onclick="closeMenus();openBrowser('files')">Add Files…</button>
-          <button onclick="closeMenus();openBrowser('folder-add')">Add Folder…</button>
-          <button onclick="closeMenus();addByPath()">Paste a path…</button>
-        </div>
-      </div>
-      <button class="btn" id="cancelbtn" onclick="cancelSelected()" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>Cancel
-      </button>
-      <button class="btn primary" id="startbtn" onclick="start()" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 5v14l11-7z"/></svg><span id="startlbl">Start</span>
-      </button>
+    <div class="bar">
+      <h1>Queue</h1><span class="sum" id="sum">empty</span>
+      <div class="grow"></div>
+      <button class="btn" onclick="addFiles()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 12v6M9 15h6"/></svg>Add files</button>
+      <button class="btn" onclick="addFolder()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></svg>Add folder</button>
+      <button class="btn" id="cancelbtn" onclick="cancelSelected()" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>Cancel</button>
+      <button class="btn go" id="startbtn" onclick="start()" disabled><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg><span id="startlbl">Start</span></button>
     </div>
-    <div class="banner" id="banner"><span id="banner-text" class="grow"></span><div class="bar" id="banner-bar" style="display:none"><i></i></div><button class="btn sm" id="banner-btn" onclick="installUpdate()">Restart to update</button><button class="x" onclick="$('banner').classList.remove('on')">✕</button></div>
     <div class="total" id="total"><i></i></div>
 
-    <div class="card">
-      <div class="thead"><input type="checkbox" class="cb" id="all" onchange="toggleAll(this.checked)"><div>Name</div><div>Mode</div><div>Progress</div><div>Status</div><div>Size</div><div>Elapsed</div><div>ETA</div><div></div></div>
-      <div class="tbody" id="tbody"></div>
-      <div class="log" id="log">
-        <div class="lh"><button class="btn sm" onclick="copyLog()">Copy</button><button class="btn sm" onclick="$('log').classList.remove('open')">Close</button></div>
-        <pre id="logpre"></pre>
+    <div class="grid">
+      <div class="th"><input type="checkbox" class="cb" id="all" onchange="toggleAll(this.checked)"><div>File</div><div>Track</div><div>Mode</div><div>Progress</div><div>Time</div><div>Size</div><div>Status</div><div></div></div>
+      <div class="tb" id="tb"></div>
+    </div>
+
+    <div class="act" id="act">
+      <div class="drag" id="drag"></div>
+      <div class="hd">
+        <button class="tab on" id="tab-job" onclick="setTab('job')">Job log</button>
+        <button class="tab" id="tab-app" onclick="setTab('app')">App log</button>
+        <span class="sum" id="act-sub" style="margin-left:8px;color:var(--text-3);font-size:12px"></span>
+        <div class="grow"></div>
+        <input id="flt" placeholder="filter…" oninput="renderLog()">
+        <label><input type="checkbox" class="cb" id="follow" checked>follow</label>
+        <button class="btn sm" onclick="copyLog()">Copy</button>
+        <button class="btn sm" onclick="post('/api/logs/open',{})">Open log folder</button>
       </div>
+      <div class="logv" id="logv"></div>
+    </div>
+
+    <div class="status">
+      <span id="st-ffmpeg"><i class="dot"></i>ffmpeg</span>
+      <span id="st-dee"><i class="dot"></i>DEE</span>
+      <span id="st-upd"></span>
+      <div class="grow"></div>
+      <span id="st-out" class="m"></span>
+      <a onclick="openSettings()">Settings</a>
     </div>
   </section>
 </div>
 
-<div class="overlay" id="overlay" onclick="if(event.target===this)closeBrowser()">
+<!-- settings -->
+<div class="ov" id="settings" onclick="if(event.target===this)closeSettings()">
   <div class="dlg">
-    <div class="hd" id="dlg-title">Choose files</div>
-    <div class="path">
-      <input class="control" id="dlg-path" onkeydown="if(event.key==='Enter')browse(this.value)">
-      <button class="btn" style="height:40px" onclick="browseUp()">Up</button>
-      <button class="btn" style="height:40px" onclick="browse('~')">Home</button>
+    <div class="h">Settings<div class="grow"></div><button class="ib" onclick="closeSettings()">✕</button></div>
+    <div class="c">
+      <div class="sec"><h3>Tools</h3>
+        <div class="kv" id="tools"></div>
+        <div id="ffdl" style="display:none;margin-top:10px" class="row"><button class="btn sm" id="ffdl-btn" onclick="downloadFfmpeg()">Download ffmpeg (Windows static build)</button><span class="m" id="ffdl-st"></span></div>
+      </div>
+      <div class="sec"><h3>Dolby Encoding Engine</h3>
+        <div class="kv">
+          <span>dee.exe</span><div class="row"><input class="in" id="t-dee" placeholder="C:\Dolby\DEE\dee.exe"><button class="btn sm" onclick="browseFor('t-dee')">Browse</button><button class="btn sm" onclick="saveDee()">Apply</button></div>
+        </div>
+        <div class="help" style="font-size:12px;color:var(--text-3);margin-top:8px">FPSConv writes deew's <code>config.toml</code> from this path. deew itself is bundled — nothing else to install.</div>
+      </div>
+      <div class="sec"><h3>Paths (empty = PATH / bundled)</h3>
+        <div class="kv">
+          <span>ffmpeg</span><div class="row"><input class="in" id="t-ffmpeg" placeholder="ffmpeg.exe"><button class="btn sm" onclick="browseFor('t-ffmpeg')">Browse</button></div>
+          <span>ffprobe</span><div class="row"><input class="in" id="t-ffprobe" placeholder="ffprobe.exe"><button class="btn sm" onclick="browseFor('t-ffprobe')">Browse</button></div>
+          <span>python for deew</span><div class="row"><input class="in" id="t-deew" placeholder="only to use an external deew"><button class="btn sm" onclick="browseFor('t-deew')">Browse</button></div>
+        </div>
+      </div>
+      <div class="sec"><h3>Updates &amp; window</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <label class="tg"><input type="checkbox" class="cb" id="t-auto" onchange="save({auto_update:this.checked})">Install updates automatically when no job is running</label>
+          <label class="tg"><input type="checkbox" class="cb" id="t-win" onchange="save({native_window:this.checked})">Open in a desktop window (takes effect on next start)</label>
+          <div class="row"><span class="m" id="upd-line" style="flex:1"></span><button class="btn sm" onclick="post('/api/update/check',{}).then(pollUpdate)">Check now</button></div>
+        </div>
+      </div>
+      <div class="sec"><h3>App</h3>
+        <div class="kv"><span>Settings folder</span><span class="v" id="cfgdir"></span><span>Version</span><span class="v" id="verline"></span></div>
+      </div>
     </div>
-    <div class="list" id="dlg-list"></div>
-    <div class="ft">
-      <span class="muted" id="dlg-note"></span>
-      <label class="row" id="dlg-rec" style="display:none;gap:6px;font-size:13px;color:var(--muted-foreground)"><input type="checkbox" class="cb" id="recursive">sub-folders</label>
-      <button class="btn" style="height:40px" onclick="closeBrowser()">Cancel</button>
-      <button class="btn solid" style="height:40px" id="dlg-ok" onclick="dlgOk()">Add</button>
+    <div class="ft"><span class="note" id="settings-note"></span><button class="btn danger" onclick="quitApp()">Quit FPSConv</button><button class="btn" onclick="closeSettings()">Close</button><button class="btn go" onclick="saveTools()">Save</button></div>
+  </div>
+</div>
+
+<!-- fallback file browser (only when no native dialog is available) -->
+<div class="ov" id="fb" onclick="if(event.target===this)closeFb()">
+  <div class="dlg" style="width:640px">
+    <div class="h" id="fb-title">Choose</div>
+    <div class="c" style="gap:10px">
+      <div class="row"><input class="in" id="fb-path" style="font-family:var(--mono);font-size:12px" onkeydown="if(event.key==='Enter')fbGo(this.value)"><button class="btn sm" onclick="fbUp()">Up</button><button class="btn sm" onclick="fbGo('~')">Home</button></div>
+      <div class="list" id="fb-list"></div>
     </div>
+    <div class="ft"><span class="note" id="fb-note"></span><label class="tg" id="fb-rec" style="display:none"><input type="checkbox" class="cb" id="recursive">sub-folders</label><button class="btn" onclick="closeFb()">Cancel</button><button class="btn go" id="fb-ok" onclick="fbOk()">Select</button></div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
 const $=id=>document.getElementById(id);
-const I={
-  folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
-  file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3h6l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M9 13h6M9 17h6"/></svg>',
-  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+const I={x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>',
   retry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
-  open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14l3 3 3-3"/></svg>',
-};
-let S={}, modes=[], ratios={}, pending=[], jobs=[], checked=new Set(), selected=null, lastVersion=-1, wasBusy=false;
-let browseKind='files', curDir='', dlgChecked=new Set(), ref=null;
+  open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3h6l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/></svg>'};
+let S={}, modes=[], ratios={}, pending=[], jobs=[], checked=new Set(), selected=null, lastVersion=-1, wasBusy=false, tab='job', appLog=[], logSeq=0, doctor={};
 const sessionStart=Date.now()/1000-1;
 
 async function get(u){return (await fetch(u)).json()}
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json();if(j.error)toast(j.error,true);return j}
 function toast(m,bad){const t=$('toast');t.textContent=m;t.className='toast'+(bad?' bad':'');t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',3500)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function closeMenus(){document.querySelectorAll('.menu.open').forEach(m=>m.classList.remove('open'))}
-let saveT;function save(u){Object.assign(S,u);clearTimeout(saveT);saveT=setTimeout(()=>post('/api/settings',u),250)}
-
-async function init(){
-  const m=await get('/api/modes');modes=m.modes;ratios=m.ratios;$('ver').textContent='v'+m.version+(m.frozen?'':' · source');
-  $('mode').innerHTML=modes.map(k=>`<option value="${k}">${k.replace('-',' → ')} fps</option>`).join('');
-  S=await get('/api/settings');
-  $('mode').value=modes.includes(S.conv_type)?S.conv_type:'23.976-25';updateRatio();
-  setOut(S.out_dir||'',false);
-  setMode(S.mode||'single',false);
-  $('workers').value=S.workers||2;
-  $('overwrite').value=S.overwrite||'overwrite';
-  $('br-mode').value=S.bitrate?'custom':'auto';$('br').value=S.bitrate||'';$('br').style.display=S.bitrate?'':'none';
-  if(S.bitrate||S.overwrite!=='overwrite')$('adv').open=true;
-  document.addEventListener('click',closeMenus);
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeBrowser();closeMenus()}if(e.key==='Delete'&&document.activeElement.tagName!=='INPUT')removeChecked()});
-  loadDoctor();render();poll();pollUpdate();setInterval(pollUpdate,4000);
-}
-async function loadDoctor(){
-  const d=await get('/api/doctor');
-  const rows=[
-    ['ffmpeg',d.ffmpeg?'ok':'bad',d.ffmpeg||'not found — install ffmpeg or set the path below'],
-    ['ffprobe',d.ffprobe?'ok':'bad',d.ffprobe||'not found'],
-    ['deew',d.deew?'ok':'bad',d.deew?(d.deew_via==='bundled'?'bundled with the app':'ok via '+d.deew_via):(d.frozen?'bundled deew failed to start — see the log':'not installed: pip install deew')],
-    ['DEE',d.dee?'ok':'bad',d.dee?d.dee:(d.dee_path?'not found at '+d.dee_path:'set the dee.exe path below')],
-  ];
-  $('tools').innerHTML=rows.map(([n,c,t])=>`<div><i class="dot ${c}"></i><b>${n}</b><span title="${esc(t)}">${esc(t)}</span></div>`).join('');
-  $('t-ffmpeg').value=S.tools?.ffmpeg||'';$('t-ffprobe').value=S.tools?.ffprobe||'';$('t-deew').value=S.tools?.deew_python||'';
-  $('t-dee').value=d.dee_path||'';$('t-auto').checked=S.auto_update!==false;$('t-win').checked=S.native_window!==false;
-  $('ffdl').style.display=(d.can_download_ffmpeg&&!(d.ffmpeg&&d.ffprobe))?'':'none';
-}
-async function saveTools(){
-  S=await post('/api/settings',{tools:{ffmpeg:$('t-ffmpeg').value,ffprobe:$('t-ffprobe').value,deew_python:$('t-deew').value}});
-  await loadDoctor();toast('Saved');
-}
-async function saveDee(){const r=await post('/api/dee',{dee_path:$('t-dee').value});if(r.ok){toast('deew config written: '+r.config);loadDoctor()}}
-async function downloadFfmpeg(){
-  await post('/api/ffmpeg/download',{});$('ffdl-btn').disabled=true;
-  const t=setInterval(async()=>{const st=await get('/api/ffmpeg/status');$('ffdl-st').textContent=st.state==='running'?`${st.step} ${st.percent}%`:st.state==='error'?'failed: '+st.error:'installed';if(st.state!=='running'){clearInterval(t);$('ffdl-btn').disabled=false;loadDoctor()}},800);
-}
-async function pollUpdate(){
-  let u;try{u=await get('/api/update')}catch(e){return}
-  const line=$('upd-line'), b=$('banner');
-  const when=u.checked_at?new Date(u.checked_at*1000).toLocaleTimeString():'';
-  if(u.state==='disabled'){line.textContent='Updates apply to the installed Windows build (this is the source version).';return}
-  const txt={idle:'Not checked yet',checking:'Checking…','up-to-date':`v${u.current} is up to date${when?' · checked '+when:''}`,available:`v${u.latest} is available`,downloading:`Downloading v${u.latest}… ${u.progress}%`,ready:`v${u.latest} downloaded — ${u.auto?'installs when the queue is idle':'restart to install'}`,installing:'Installing update… the app will restart',error:'Update check failed: '+u.error}[u.state]||u.state;
-  line.textContent=txt;
-  if(['ready','downloading','installing'].includes(u.state)){b.classList.add('on');$('banner-text').textContent=txt;$('banner-btn').style.display=u.state==='ready'?'':'none';$('banner-bar').style.display=u.state==='downloading'?'':'none';$('banner-bar').firstElementChild.style.width=u.progress+'%'}
-  else b.classList.remove('on');
-  if(u.state==='installing')setTimeout(()=>{document.body.innerHTML='<div class="empty"><h3>Updating to v'+esc(u.latest)+'…</h3><p>FPSConv will reopen by itself in a few seconds.</p></div>'},1500);
-}
-async function installUpdate(){await post('/api/update/install',{});pollUpdate()}
-function toggleSettings(){const m=$('settingsmenu');const open=!m.classList.contains('open');closeMenus();if(open){m.classList.add('open');loadDoctor()}}
-async function quitApp(){if(!confirm('Quit FPS Converter? Running jobs will be cancelled.'))return;await post('/api/quit',{});document.body.innerHTML='<div class="empty"><h3>FPS Converter has been closed.</h3><p>You can close this tab.</p></div>'}
-
-function onConv(){save({conv_type:$('mode').value});updateRatio();pending.forEach(f=>{f.conv_type=$('mode').value;f.suggest=null});suggestAll()}
-/* "23.976-25" → ["23.976","25"] */
-function parts(k){return k.split('-')}
-/* Conversion for one file without a target video: keep the chosen target fps, swap the source for the detected one */
-function autoMode(f){
-  if(!f.fps)return null;
-  const to=parts($('mode').value)[1];
-  if(f.fps===to)return{conv_type:null,reason:`already ${to} fps`};
-  const k=`${f.fps}-${to}`;
-  return modes.includes(k)?{conv_type:k,reason:`audio is ${f.fps} fps (${f.fps_source}) → ${to} fps`}:null;
-}
+let ref=null;
+const FPS_SRC={video:'from the video track in this file',tag:'from a frame-rate tag in the container',name:'from the file name'};
+const parts=k=>k.split('-');
+function autoMode(f){const to=parts($('mode').value)[1];if(!f.fps)return null;if(f.fps===to)return{conv_type:null,reason:`already ${to} fps`};const k=`${f.fps}-${to}`;return modes.includes(k)?{conv_type:k,reason:`audio is ${f.fps} fps (${f.fps_source}) → ${to} fps`}:null}
 async function suggestAll(){
-  if(ref){
-    const r=await post('/api/suggest',{reference:ref,items:pending.map(f=>({fps:f.fps,duration_s:f.duration_s}))});
-    (r.suggestions||[]).forEach((sg,i)=>{pending[i].suggest=sg;if(sg&&sg.conv_type)pending[i].conv_type=sg.conv_type});
-  }else pending.forEach(f=>{f.suggest=autoMode(f);if(f.suggest&&f.suggest.conv_type)f.conv_type=f.suggest.conv_type});
+  if(ref){const r=await post('/api/suggest',{reference:ref,items:pending.map(f=>({fps:f.fps,duration_s:f.duration_s}))});(r.suggestions||[]).forEach((sg,i)=>{pending[i].suggest=sg;if(sg&&sg.conv_type)pending[i].conv_type=sg.conv_type})}
+  else pending.forEach(f=>{f.suggest=autoMode(f);if(f.suggest&&f.suggest.conv_type)f.conv_type=f.suggest.conv_type});
   render();
 }
+async function chooseRef(){const r=await post('/api/pick',{kind:'files',start:S.last_dir||''});if(r.native){if(r.paths[0])await setRefPath(r.paths[0])}else fbOpen('file',p=>setRefPath(p[0]))}
+async function setRefPath(p){const r=await get('/api/reference?path='+encodeURIComponent(p));if(r.error){toast(r.error,true);return}setRef(r)}
 function setRef(r){
-  ref=r;
-  $('reftxt').textContent=r?r.name:'Pick the video to match…';$('refbtn').classList.toggle('set',!!r);$('refbtn').title=r?r.path:'';
-  const h=$('refhint');h.style.display=r?'':'none';
-  if(r){h.innerHTML=`${r.fps?`<b>${r.fps} fps</b> (${r.fps_source})`:'<span style="color:var(--danger)">frame rate unknown</span>'} · ${r.duration} <a href="#" style="color:var(--muted-foreground);margin-left:6px" onclick="setRef(null);return false">clear</a>`;
+  ref=r;const h=$('refhelp'),t=$('reftxt');
+  if(!r){t.textContent='None';t.classList.add('empty');h.textContent='Audio has no fps of its own — pick the video it belongs to and the conversion is worked out per file.';}
+  else{t.textContent=r.name||r.path;t.classList.remove('empty');h.innerHTML=`${r.fps?`<b>${r.fps} fps</b> (${esc(FPS_SRC[r.fps_source]||r.fps_source)})`:'<span style="color:var(--bad)">frame rate unknown</span>'} · ${r.duration} — <a href="#" style="color:var(--text-2)" onclick="setRef(null);return false">clear</a>`;
     if(r.fps){const to=parts($('mode').value)[1];if(to!==r.fps){const k=modes.find(m=>parts(m)[1]===r.fps&&parts(m)[0]===parts($('mode').value)[0])||modes.find(m=>parts(m)[1]===r.fps);if(k){$('mode').value=k;save({conv_type:k});updateRatio()}}}}
   suggestAll();
 }
-function updateRatio(){const k=$('mode').value;$('ratio').textContent=`speed ×${ratios[k]} · ${atempo(ratios[k])}`}
-function atempo(r){const p=[];if(Math.abs(r-1)<1e-4)return'anull';while(r>2){p.push('atempo=2.0');r/=2}while(r<0.5){p.push('atempo=0.5');r*=2}p.push('atempo='+r.toFixed(6));return p.join(',')}
-function setOut(p,persist=true){S.out_dir=p;if(persist)save({out_dir:p});$('outtxt').textContent=p||'Choose a folder';$('outbtn').classList.toggle('set',!!p);$('outbtn').title=p;render()}
-function setMode(m,persist=true){S.mode=m;if(persist)save({mode:m});$('seg-single').classList.toggle('on',m==='single');$('seg-batch').classList.toggle('on',m==='batch');$('workers-field').style.display=m==='batch'?'':'none';if(m==='single'&&pending.length>1)pending=pending.slice(-1);render()}
-function onBitrate(){const custom=$('br-mode').value==='custom';$('br').style.display=custom?'':'none';save({bitrate:custom?(+$('br').value||0):0})}
-function toggleLog(){$('log').classList.toggle('open')}
-function copyLog(){navigator.clipboard?.writeText($('logpre').innerText).then(()=>toast('Log copied'))}
+function fpsChip(f){if(!f.fps)return `<span class="fps unknown" title="No video track, fps tag or fps in the file name. Pick a Target video to work it out from the durations.">fps ?</span>`;const hit=ref&&ref.fps&&f.fps===ref.fps;return `<span class="fps ${hit?'hit':''}" title="${esc(FPS_SRC[f.fps_source]||f.fps_source)}">${f.fps} fps${f.fps_source!=='video'?' ~':''}</span>`}
+let saveT;function save(u){Object.assign(S,u);clearTimeout(saveT);saveT=setTimeout(()=>post('/api/settings',u),250)}
 
-/* adding files */
+async function init(){
+  const m=await get('/api/modes');modes=m.modes;ratios=m.ratios;
+  $('ver').textContent=m.version+(m.frozen?'':' · source');$('verline').textContent=m.version;
+  $('mode').innerHTML=modes.map(k=>`<option value="${k}">${k.replace('-',' → ')} fps</option>`).join('');
+  S=await get('/api/settings');
+  $('mode').value=modes.includes(S.conv_type)?S.conv_type:'23.976-25';updateRatio();
+  setOut(S.out_dir||'',false);setMode(S.mode||'single',false);
+  $('workers').value=S.workers||2;$('overwrite').value=S.overwrite||'overwrite';
+  $('br-mode').value=S.bitrate?'custom':'auto';$('br').value=S.bitrate||'';$('br').style.display=S.bitrate?'':'none';
+  if(S.bitrate||S.overwrite!=='overwrite')$('adv').open=true;
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFb();closeSettings()}if(e.key==='Delete'&&!['INPUT','SELECT'].includes(document.activeElement.tagName))removeChecked()});
+  initDrag();
+  await loadDoctor();render();poll();pollUpdate();pollLog();setInterval(pollUpdate,5000);setInterval(pollLog,1200);
+}
+async function loadDoctor(){
+  const d=doctor=await get('/api/doctor');
+  const rows=[['ffmpeg',d.ffmpeg?'ok':'bad',d.ffmpeg||'not found — download below or set a path'],
+    ['ffprobe',d.ffprobe?'ok':'bad',d.ffprobe||'not found'],
+    ['deew',d.deew?'ok':'bad',d.deew?(d.deew_via==='bundled'?'bundled':'via '+d.deew_via):(d.frozen?'bundled deew failed to start — see App log':'not installed (pip install deew)')],
+    ['DEE',d.dee?'ok':'bad',d.dee||(d.dee_path?'not found at '+d.dee_path:'not configured')]];
+  $('tools').innerHTML=rows.map(([n,c,t])=>`<span><i class="dot ${c}"></i>${n}</span><span class="v" title="${esc(t)}">${esc(t)}</span>`).join('');
+  $('t-ffmpeg').value=S.tools?.ffmpeg||'';$('t-ffprobe').value=S.tools?.ffprobe||'';$('t-deew').value=S.tools?.deew_python||'';
+  $('t-dee').value=d.dee_path||'';$('t-auto').checked=S.auto_update!==false;$('t-win').checked=S.native_window!==false;
+  $('ffdl').style.display=(d.can_download_ffmpeg&&!(d.ffmpeg&&d.ffprobe))?'flex':'none';
+  $('cfgdir').textContent=d.config_dir;
+  $('st-ffmpeg').innerHTML=`<i class="dot ${d.ffmpeg&&d.ffprobe?'ok':'bad'}"></i>ffmpeg ${d.ffmpeg&&d.ffprobe?'ready':'missing'}`;
+  $('st-dee').innerHTML=`<i class="dot ${d.dee?'ok':(d.deew?'warn':'bad')}"></i>DEE ${d.dee?'ready':(d.deew?'not configured':'unavailable')}`;
+}
+async function saveTools(){S=await post('/api/settings',{tools:{ffmpeg:$('t-ffmpeg').value,ffprobe:$('t-ffprobe').value,deew_python:$('t-deew').value}});await loadDoctor();toast('Saved')}
+async function saveDee(){const r=await post('/api/dee',{dee_path:$('t-dee').value});if(r.ok){toast('DEE configured — deew config written');await loadDoctor()}}
+async function browseFor(id){const r=await post('/api/pick',{kind:'files',start:''});if(r.native){if(r.paths[0])$(id).value=r.paths[0]}else{fbOpen('file',p=>{$(id).value=p[0]})}}
+async function downloadFfmpeg(){await post('/api/ffmpeg/download',{});$('ffdl-btn').disabled=true;const t=setInterval(async()=>{const st=await get('/api/ffmpeg/status');$('ffdl-st').textContent=st.state==='running'?`${st.step} ${st.percent}%`:st.state==='error'?'failed: '+st.error:'installed';if(st.state!=='running'){clearInterval(t);$('ffdl-btn').disabled=false;loadDoctor()}},800)}
+function openSettings(){loadDoctor();$('settings').classList.add('open')}
+function closeSettings(){$('settings').classList.remove('open')}
+async function quitApp(){if(!confirm('Quit FPSConv? Running jobs will be cancelled.'))return;await post('/api/quit',{});document.body.innerHTML='<div class="empty"><b>FPSConv has been closed.</b><span>You can close this window.</span></div>'}
+
+function onConv(){save({conv_type:$('mode').value});updateRatio();pending.forEach(f=>{f.conv_type=$('mode').value;f.suggest=null});suggestAll()}
+function updateRatio(){const k=$('mode').value;$('ratio').innerHTML=`speed ×${ratios[k]} — <code>${atempo(ratios[k])}</code>`}
+function atempo(r){const p=[];if(Math.abs(r-1)<1e-4)return'anull';while(r>2){p.push('atempo=2.0');r/=2}while(r<0.5){p.push('atempo=0.5');r*=2}p.push('atempo='+r.toFixed(6));return p.join(',')}
+function setOut(p,persist=true){S.out_dir=p;if(persist)save({out_dir:p});$('outtxt').textContent=p||'Choose…';$('outtxt').classList.toggle('empty',!p);$('outbtn').title=p;$('st-out').textContent=p?'→ '+p:'';render()}
+function setMode(m,persist=true){S.mode=m;if(persist)save({mode:m});$('seg-single').classList.toggle('on',m==='single');$('seg-batch').classList.toggle('on',m==='batch');$('workers-f').style.display=m==='batch'?'':'none';$('mode-help').textContent=m==='single'?'One file at a time. Adding a file replaces the previous one.':'Add as many files or folders as you like; they run N at a time.';if(m==='single'&&pending.length>1)pending=pending.slice(-1);render()}
+function onBitrate(){const c=$('br-mode').value==='custom';$('br').style.display=c?'':'none';save({bitrate:c?(+$('br').value||0):0})}
+
+/* picking */
+async function chooseOut(){const r=await post('/api/pick',{kind:'folder',start:S.out_dir||''});if(r.native){if(r.paths[0])setOut(r.paths[0])}else fbOpen('folder',p=>setOut(p[0]))}
+async function addFiles(){const r=await post('/api/pick',{kind:'files',start:S.last_dir||''});if(r.native){if(r.paths.length)await addPaths(S.mode==='single'?r.paths.slice(0,1):r.paths)}else fbOpen('files',addPaths)}
+async function addFolder(){const r=await post('/api/pick',{kind:'folder',start:S.last_dir||''});if(r.native){if(r.paths[0])await addFolderPath(r.paths[0])}else fbOpen('folder-add',p=>addFolderPath(p[0]))}
+async function addFolderPath(folder){const r=await post('/api/expand',{path:folder,recursive:$('recursive').checked});if(r.files){if(!r.files.length)toast('No audio files in that folder',true);await addPaths(S.mode==='single'?r.files.slice(0,1):r.files)}}
 async function addPaths(paths){
   for(const p of paths){
     if(pending.some(f=>f.path===p))continue;
@@ -439,19 +405,9 @@ async function addPaths(paths){
     if(info.error){toast(info.error+': '+p,true);continue}
     info.stream_index=0;info.conv_type=$('mode').value;
     if(S.mode==='single')pending=[];
-    pending.push(info);
+    pending.push(info);S.last_dir=p.replace(/[\\/][^\\/]*$/,'');
   }
   await suggestAll();
-}
-async function addFolder(folder){
-  const r=await post('/api/expand',{path:folder,recursive:$('recursive').checked});
-  if(r.files){if(!r.files.length)toast('No audio files in that folder',true);await addPaths(S.mode==='single'?r.files.slice(0,1):r.files)}
-}
-async function addByPath(){
-  const p=prompt('File or folder path:');if(!p)return;
-  const clean=p.trim().replace(/^"|"$/g,'');
-  const r=await fetch('/api/expand',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:clean})}).then(r=>r.json());
-  if(r.files)await addPaths(S.mode==='single'?r.files.slice(0,1):r.files);else await addPaths([clean]);
 }
 function removePending(i){pending.splice(i,1);render()}
 function setPendingStream(i,v){pending[i].stream_index=+v;render()}
@@ -459,118 +415,104 @@ function setPendingMode(i,v){pending[i].conv_type=v;pending[i].suggest=null;rend
 
 async function start(){
   if(!pending.length)return;
-  if(!S.out_dir){toast('Choose an output folder first',true);openBrowser('folder');return}
+  if(!S.out_dir){toast('Choose an output folder first',true);chooseOut();return}
   if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
   const r=await post('/api/jobs',{items:pending.map(f=>({path:f.path,stream_index:f.stream_index,conv_type:f.conv_type})),conv_type:$('mode').value,out_dir:S.out_dir,workers:S.mode==='batch'?+$('workers').value:1,bitrate:S.bitrate||0,overwrite:S.overwrite||'overwrite'});
-  if(r.added){pending=[];checked.clear();render()}
+  if(r.added){pending=[];checked.clear();if(r.added[0]){selected=r.added[0];setTab('job');$('act').classList.remove('closed')}render()}
 }
 function toggleAll(on){checked=new Set(on?[...pending.map(f=>'p:'+f.path),...jobs.map(j=>j.id)]:[]);render()}
 function toggleCheck(id,on){on?checked.add(id):checked.delete(id);render()}
-async function cancelSelected(){
-  const ids=jobs.filter(j=>checked.has(j.id)&&(j.state==='queued'||j.state==='running')).map(j=>j.id);
-  if(!ids.length){await post('/api/cancel_all',{});return}
-  for(const id of ids)await post('/api/cancel',{id});
-}
-async function removeChecked(){
-  pending=pending.filter(f=>!checked.has('p:'+f.path));
-  for(const j of jobs)if(checked.has(j.id)&&!['queued','running'].includes(j.state))await post('/api/remove',{id:j.id});
-  checked.clear();render();
-}
+async function cancelSelected(){const ids=jobs.filter(j=>checked.has(j.id)&&(j.state==='queued'||j.state==='running')).map(j=>j.id);if(!ids.length){await post('/api/cancel_all',{});return}for(const id of ids)await post('/api/cancel',{id})}
+async function removeChecked(){pending=pending.filter(f=>!checked.has('p:'+f.path));for(const j of jobs)if(checked.has(j.id)&&!['queued','running'].includes(j.state))await post('/api/remove',{id:j.id});checked.clear();render()}
 
 /* polling + render */
 async function poll(){try{const s=await get('/api/status');if(s.version!==lastVersion){lastVersion=s.version;jobs=s.jobs;render()}}catch(e){}setTimeout(poll,600)}
-const FPS_SRC={video:'from the video track in this file',tag:'from a frame-rate tag in the container',name:'from the file name'};
-function fpsChip(f){
-  if(!f.fps)return `<span class="fps unknown" title="Audio has no frame rate of its own: this file has no video track, fps tag or fps in its name. Pick a Target video and FPSConv will work it out from the durations.">fps ?</span>`;
-  const hit=ref&&ref.fps&&f.fps===ref.fps;
-  return `<span class="fps ${hit?'hit':''}" title="${esc(FPS_SRC[f.fps_source]||f.fps_source)}">${f.fps} fps${f.fps_source!=='video'?' ~':''}</span>`;
-}
-function statusText(s){return{done:'Done',failed:'Failed',cancelled:'Cancelled',running:'Running',queued:'Queued',skipped:'Skipped'}[s]||s}
+const ST={done:'Done',failed:'Failed',cancelled:'Cancelled',running:'Running',queued:'Queued',skipped:'Skipped'};
 function render(){
   const rows=[];
   pending.forEach((f,i)=>{
     const id='p:'+f.path, st=f.streams.find(s=>s.index===f.stream_index)||f.streams[0];
-    const streamSel=f.streams.length>1?`<select onchange="setPendingStream(${i},this.value)">${f.streams.map(s=>`<option value="${s.index}" ${s.index===f.stream_index?'selected':''}>#${s.index} ${s.codec_name} ${s.channels}ch${s.language?' '+s.language:''}${s.title?' – '+esc(s.title):''}</option>`).join('')}</select>`:'';
-    rows.push(`<div class="tr">
-      <input type="checkbox" class="cb" ${checked.has(id)?'checked':''} onchange="toggleCheck(${JSON.stringify(id).replace(/"/g,'&quot;')},this.checked)">
-      <div><div class="name" title="${esc(f.path)}">${esc(f.name)}</div><div class="sub">${fpsChip(f)}${streamSel}<span>${st.codec.toUpperCase()} · ${st.bitrate} kbps · ${st.channels} ch · ${f.duration} · ${esc(st.engine)}</span></div></div>
-      <div><select class="mode ${f.suggest&&f.suggest.conv_type?'suggested':''}" onchange="setPendingMode(${i},this.value)" title="${esc(f.suggest?f.suggest.reason:'')}">${modes.map(k=>`<option ${k===f.conv_type?'selected':''}>${k}</option>`).join('')}</select>${f.suggest?`<div class="why" title="${esc(f.suggest.reason)}">${f.suggest.conv_type?'suggested':'no change needed'}${f.suggest.delta?` · Δ ${f.suggest.delta}s`:''}</div>`:''}</div>
-      <div><div class="bar"><i></i></div></div>
-      <div class="status ready">Ready</div>
-      <div class="mono">${f.size}</div><div class="mono">—</div><div class="mono">—</div>
-      <div class="acts"><button class="x" title="Remove" onclick="removePending(${i})">${I.x}</button></div></div>`);
+    const track=f.streams.length>1?`<select class="mini" onchange="setPendingStream(${i},this.value)">${f.streams.map(s=>`<option value="${s.index}" ${s.index===f.stream_index?'selected':''}>#${s.index} ${s.codec_name} ${s.channels}ch${s.language?' '+s.language:''}</option>`).join('')}</select>`:`<span class="m">#${st.index} ${st.codec_name} ${st.channels}ch${st.language?' '+st.language:''}</span>`;
+    rows.push(`<div class="tr"><input type="checkbox" class="cb" ${checked.has(id)?'checked':''} onchange="toggleCheck(${esc(JSON.stringify(id))},this.checked)">
+      <div><div class="n" title="${esc(f.path)}">${esc(f.name)}</div><div class="s">${fpsChip(f)}<b>${st.codec.toUpperCase()}</b> · ${st.bitrate} kbps · ${f.duration} · ${f.size} · ${esc(st.engine)}</div></div>
+      <div>${track}</div>
+      <div><select class="mini ${f.suggest&&f.suggest.conv_type?'suggested':''}" title="${esc(f.suggest?f.suggest.reason:'')}" onchange="setPendingMode(${i},this.value)">${modes.map(k=>`<option ${k===f.conv_type?'selected':''}>${k}</option>`).join('')}</select>${f.suggest?`<div class="why" title="${esc(f.suggest.reason)}">${f.suggest.conv_type?'suggested':'no change needed'}${f.suggest.delta?` · Δ ${f.suggest.delta}s`:''}</div>`:''}</div>
+      <div><div class="bar2"><i></i></div><div class="det">waiting for Start</div></div>
+      <div class="m">—</div><div class="m"></div><div class="st"><i></i>Ready</div>
+      <div class="acts"><button class="ib" title="Remove" onclick="removePending(${i})">${I.x}</button></div></div>`);
   });
   for(const j of jobs){
     const live=j.state==='queued'||j.state==='running';
-    const acts=live?`<button class="x" title="Cancel" onclick="event.stopPropagation();post('/api/cancel',{id:'${j.id}'})">${I.x}</button>`
-      :`${j.state==='done'||j.state==='skipped'?`<button class="x" title="Open output folder" onclick="event.stopPropagation();post('/api/open',{path:${esc(JSON.stringify(j.out_dir))}})">${I.open}</button>`:`<button class="x" title="Retry" onclick="event.stopPropagation();post('/api/retry',{id:'${j.id}'})">${I.retry}</button>`}<button class="x" title="Remove" onclick="event.stopPropagation();post('/api/remove',{id:'${j.id}'})">${I.x}</button>`;
-    rows.push(`<div class="tr ${selected===j.id?'sel':''}" onclick="select('${j.id}')">
-      <input type="checkbox" class="cb" ${checked.has(j.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleCheck('${j.id}',this.checked)">
-      <div><div class="name" title="${esc(j.source)}">${esc(j.name)}</div><div class="sub"><span>${j.codec?j.codec.toUpperCase()+' · '+j.bitrate+' kbps · '+j.channels+' ch':''}${j.stream_index?' · #'+j.stream_index:''}${j.out_name?' → '+esc(j.out_name):''}</span></div></div>
-      <div class="mono">${j.conv_type}</div>
-      <div><div class="bar ${j.state}"><i style="width:${['done','skipped'].includes(j.state)?100:j.percent}%"></i></div><div class="pct">${j.state==='running'?esc(j.step)+' · ':''}${j.percent}%</div></div>
-      <div class="status ${j.state}" title="${esc(j.error)}">${statusText(j.state)}</div>
-      <div class="mono">${j.out_size||''}</div><div class="mono">${j.elapsed}</div><div class="mono">${j.state==='running'?j.eta:'—'}</div>
+    const acts=live?`<button class="ib" title="Cancel" onclick="event.stopPropagation();post('/api/cancel',{id:'${j.id}'})">${I.x}</button>`
+      :`${['done','skipped'].includes(j.state)?`<button class="ib" title="Open output folder" onclick="event.stopPropagation();post('/api/open',{path:${esc(JSON.stringify(j.out_dir))}})">${I.open}</button>`:`<button class="ib" title="Retry" onclick="event.stopPropagation();post('/api/retry',{id:'${j.id}'})">${I.retry}</button>`}<button class="ib" title="Remove from list" onclick="event.stopPropagation();post('/api/remove',{id:'${j.id}'})">${I.x}</button>`;
+    const det=j.state==='running'?(j.detail||j.step):j.state==='failed'?j.error:j.state==='done'?'→ '+j.out_name:j.state==='skipped'?'skipped — '+j.error:j.state==='cancelled'?'cancelled':'queued';
+    rows.push(`<div class="tr ${selected===j.id?'sel':''}" onclick="select('${j.id}')"><input type="checkbox" class="cb" ${checked.has(j.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleCheck('${j.id}',this.checked)">
+      <div><div class="n" title="${esc(j.source)}">${esc(j.name)}</div><div class="s"><b>${(j.codec||'').toUpperCase()}</b>${j.codec?' · '+j.bitrate+' kbps · '+j.channels+' ch':''}${j.out_name?' → '+esc(j.out_name):''}</div></div>
+      <div class="m">#${j.stream_index}</div><div class="m">${j.conv_type}</div>
+      <div><div class="bar2 ${j.state}"><i style="width:${['done','skipped'].includes(j.state)?100:j.percent}%"></i></div><div class="det" title="${esc(det)}">${j.state==='running'?j.percent+'% · ':''}${esc(det)}</div></div>
+      <div class="m">${j.elapsed}${j.state==='running'&&j.eta?'<br><span style="color:var(--text-3)">eta '+j.eta+'</span>':''}</div>
+      <div class="m">${j.out_size||''}</div><div class="st ${j.state}"><i></i>${ST[j.state]||j.state}</div>
       <div class="acts">${acts}</div></div>`);
   }
-  const tb=$('tbody');
-  if(!rows.length){
-    tb.innerHTML=`<div class="empty"><div class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-      <h3>Add audio files to convert</h3><p>Anything you add is queued until you press Start. AAC sources go through ffmpeg; AC-3, E-AC-3 and TrueHD go through deew and Dolby Encoding Engine.</p>
-      <div class="row"><button class="btn" onclick="openBrowser('files')">${I.file.replace('<svg','<svg width=18 height=18')}Add Files…</button><button class="btn" onclick="openBrowser('folder-add')">${I.folder.replace('<svg','<svg width=18 height=18')}Add Folder…</button></div></div>`;
-  } else tb.innerHTML=rows.join('');
-  const n=pending.length+jobs.length, run=jobs.filter(j=>j.state==='running'), q=jobs.filter(j=>j.state==='queued').length;
-  $('count').textContent=n?`${n} item${n>1?'s':''}${run.length?` · ${run.length} running`:''}${q?` · ${q} queued`:''}${pending.length?` · ${pending.length} ready`:''}`:'Empty';
-  $('startbtn').disabled=!pending.length;$('startlbl').textContent='Start'+(pending.length>1?` ${pending.length}`:'');
+  $('tb').innerHTML=rows.length?rows.join(''):`<div class="empty"><b>No files in the queue</b><span>Add files or a folder, choose the conversion on the left, then press Start.</span><div class="row"><button class="btn" onclick="addFiles()">Add files</button><button class="btn" onclick="addFolder()">Add folder</button></div></div>`;
+  const run=jobs.filter(j=>j.state==='running'), q=jobs.filter(j=>j.state==='queued').length, n=pending.length+jobs.length;
+  const parts=[];if(pending.length)parts.push(pending.length+' ready');if(run.length)parts.push(run.length+' running');if(q)parts.push(q+' queued');const fin=jobs.length-run.length-q;if(fin)parts.push(fin+' finished');
+  $('sum').textContent=n?parts.join(' · '):'empty';
+  $('startbtn').disabled=!pending.length;$('startlbl').textContent='Start'+(pending.length>1?' '+pending.length:'');
   $('cancelbtn').disabled=!(run.length+q);
-  const busy=run.length+q>0;
-  const session=jobs.filter(j=>['running','queued'].includes(j.state)||j.finished_at>=sessionStart);
-  const tot=$('total');tot.classList.toggle('on',busy);
-  if(busy){const done=session.filter(j=>!['running','queued'].includes(j.state)).length+run.reduce((a,j)=>a+j.percent/100,0);tot.firstElementChild.style.width=(session.length?done/session.length*100:0)+'%'}
-  if(wasBusy&&!busy){const ok=session.filter(j=>['done','skipped'].includes(j.state)).length,bad=session.filter(j=>j.state==='failed').length;const msg=`Finished: ${ok} done${bad?`, ${bad} failed`:''}`;toast(msg);if('Notification' in window&&Notification.permission==='granted')new Notification('FPS Converter',{body:msg})}
+  const busy=run.length+q>0, session=jobs.filter(j=>['running','queued'].includes(j.state)||j.finished_at>=sessionStart);
+  $('total').classList.toggle('on',busy);
+  if(busy){const done=session.filter(j=>!['running','queued'].includes(j.state)).length+run.reduce((a,j)=>a+j.percent/100,0);$('total').firstElementChild.style.width=(session.length?done/session.length*100:0)+'%'}
+  if(wasBusy&&!busy){const ok=session.filter(j=>['done','skipped'].includes(j.state)).length,bad=session.filter(j=>j.state==='failed').length;const msg=`Finished: ${ok} done${bad?`, ${bad} failed`:''}`;toast(msg);if('Notification' in window&&Notification.permission==='granted')new Notification('FPSConv',{body:msg})}
   wasBusy=busy;
-  if(selected){const j=jobs.find(x=>x.id===selected);if(j){$('logpre').innerHTML=(j.log.map(esc).join('\n')||'(no output yet)')+(j.error?'\n<span class="err">'+esc(j.error)+'</span>':'')}}
+  if(tab==='job')renderLog();
 }
-function select(id){selected=id;$('log').classList.add('open');render()}
+function select(id){selected=id;setTab('job');$('act').classList.remove('closed');render()}
 
-/* browser dialog */
-function openBrowser(kind){
-  browseKind=kind;dlgChecked=new Set();
-  $('dlg-title').textContent={folder:'Choose output folder',files:'Add files',ref:'Pick the target video'}[kind]||'Add folder';
-  $('dlg-ok').textContent={folder:'Use this folder',files:'Add selected',ref:'Use this video'}[kind]||'Add this folder';
-  $('dlg-rec').style.display=kind==='folder-add'?'':'none';
-  $('overlay').classList.add('open');browse(curDir||S.out_dir||'~');
+/* activity panel */
+function setTab(t){tab=t;$('tab-job').classList.toggle('on',t==='job');$('tab-app').classList.toggle('on',t==='app');renderLog()}
+function toggleAct(){$('act').classList.toggle('closed')}
+async function pollLog(){try{const r=await get('/api/logs?since='+logSeq);if(r.records.length){appLog.push(...r.records);appLog=appLog.slice(-3000);logSeq=r.seq;if(tab==='app')renderLog()}}catch(e){}}
+function renderLog(){
+  const v=$('logv'), f=$('flt').value.toLowerCase(), atBottom=v.scrollHeight-v.scrollTop-v.clientHeight<40;
+  let html='';
+  if(tab==='job'){
+    const j=jobs.find(x=>x.id===selected);
+    $('act-sub').textContent=j?j.name:'select a job';
+    const lines=j?j.log:[];
+    html=lines.filter(l=>!f||l.toLowerCase().includes(f)).map(l=>{const m=l.match(/^(\d\d:\d\d:\d\d)\s\s(.*)$/s);const body=m?m[2]:l;const cls=/failed|error|exited with code [1-9]|not found|cancelled/i.test(body)?'ERROR':/warn/i.test(body)?'WARNING':'';return `<div class="l ${cls}"><span class="t">${m?m[1]:''}</span>  ${esc(body)}</div>`}).join('')||'<div class="l t">'+(j?'no output yet':'Click a row to see its log; the App log tab shows everything else.')+'</div>';
+  }else{
+    $('act-sub').textContent=appLog.length+' lines';
+    html=appLog.filter(r=>!f||r.msg.toLowerCase().includes(f)||r.logger.includes(f)).map(r=>`<div class="l ${r.level}"><span class="t">${new Date(r.t*1000).toLocaleTimeString([],{hour12:false})}</span>  <span class="src">${esc(r.logger.padEnd(8))}</span> ${esc(r.msg)}</div>`).join('')||'<div class="l t">nothing logged yet</div>';
+  }
+  v.innerHTML=html;
+  if($('follow').checked||atBottom)v.scrollTop=v.scrollHeight;
 }
-function closeBrowser(){$('overlay').classList.remove('open')}
-async function browse(p){
-  const r=await get('/api/browse?path='+encodeURIComponent(p||'')+(browseKind==='ref'?'&kind=video':''));
-  if(r.error)toast(r.error,true);
-  curDir=r.path;$('dlg-path').value=r.path;
-  const entries=r.entries.filter(e=>e.dir||browseKind==='files'||browseKind==='ref');
-  const a=v=>esc(JSON.stringify(v));
-  $('dlg-list').innerHTML=(r.drives||[]).map(d=>`<div class="e" onclick='browse(${a(d)})'>${I.folder}<span>${esc(d)}</span></div>`).join('')+
-    entries.map(e=>e.dir?`<div class="e" onclick='browse(${a(e.path)})'>${I.folder}<span>${esc(e.name)}</span></div>`
-      :`<div class="e" data-p='${a(e.path)}' onclick='toggleDlg(${a(e.path)})'><input type="checkbox" class="cb" ${dlgChecked.has(e.path)?'checked':''} onclick="event.stopPropagation()" onchange='toggleDlg(${a(e.path)},this.checked)'>${I.file}<span>${esc(e.name)}</span></div>`).join('')
-    ||'<div class="e" style="color:var(--muted-foreground);cursor:default">Empty</div>';
-  updateNote();
+function copyLog(){navigator.clipboard?.writeText($('logv').innerText).then(()=>toast('Copied'))}
+function initDrag(){const d=$('drag'),a=$('act');let y0,h0;d.onmousedown=e=>{y0=e.clientY;h0=a.offsetHeight;document.onmousemove=ev=>{a.style.height=Math.max(80,Math.min(window.innerHeight-260,h0+(y0-ev.clientY)))+'px'};document.onmouseup=()=>{document.onmousemove=document.onmouseup=null}}}
+
+/* updates */
+async function pollUpdate(){
+  let u;try{u=await get('/api/update')}catch(e){return}
+  const b=$('banner');
+  if(u.state==='disabled'){$('upd-line').textContent='Auto-update applies to the installed Windows build.';$('st-upd').textContent='';return}
+  const txt={idle:'update check pending',checking:'checking for updates…','up-to-date':`up to date`,available:`v${u.latest} available`,downloading:`downloading v${u.latest} ${u.progress}%`,ready:`v${u.latest} ready — ${u.auto?'installs when idle':'restart to install'}`,installing:'installing update…',error:'update check failed'}[u.state]||u.state;
+  $('st-upd').innerHTML=`<i class="dot ${u.state==='up-to-date'?'ok':u.state==='error'?'bad':'warn'}"></i>${txt}`;
+  $('upd-line').textContent=u.state==='error'?u.error:txt+(u.checked_at?' · checked '+new Date(u.checked_at*1000).toLocaleTimeString():'');
+  if(['ready','downloading','installing'].includes(u.state)){b.classList.add('on');$('banner-text').textContent=(u.state==='ready'?`Update v${u.latest} is downloaded. `:'')+txt;$('banner-btn').style.display=u.state==='ready'?'':'none'}else b.classList.remove('on');
+  if(u.state==='installing')setTimeout(()=>{document.body.innerHTML='<div class="empty"><b>Updating to v'+esc(u.latest)+'…</b><span>FPSConv reopens by itself in a few seconds.</span></div>'},1500);
 }
-function browseUp(){browse(curDir.replace(/[\\/][^\\/]*$/,'')||curDir)}
-function toggleDlg(p,force){
-  const on=force!==undefined?force:!dlgChecked.has(p);
-  if(S.mode==='single'||browseKind==='ref')dlgChecked.clear();
-  on?dlgChecked.add(p):dlgChecked.delete(p);
-  document.querySelectorAll('#dlg-list .e[data-p]').forEach(x=>{x.querySelector('.cb').checked=dlgChecked.has(JSON.parse(x.dataset.p))});
-  updateNote();
-}
-function updateNote(){$('dlg-note').textContent=browseKind==='ref'?(dlgChecked.size?[...dlgChecked][0]:'Pick the video the audio has to fit'):browseKind==='files'?(dlgChecked.size?`${dlgChecked.size} selected`:(S.mode==='single'?'Pick one file':'Tick the files to add')):curDir}
-async function dlgOk(){
-  if(browseKind==='folder'){setOut(curDir);closeBrowser();return}
-  if(browseKind==='folder-add'){closeBrowser();await addFolder(curDir);return}
-  if(!dlgChecked.size){toast('Nothing selected',true);return}
-  closeBrowser();
-  if(browseKind==='ref'){const r=await get('/api/reference?path='+encodeURIComponent([...dlgChecked][0]));if(r.error){toast(r.error,true);return}setRef(r);return}
-  await addPaths([...dlgChecked]);
-}
+async function installUpdate(){await post('/api/update/install',{});pollUpdate()}
+
+/* fallback browser (no native dialog available) */
+let fbKind='files', fbCb=null, fbDir='', fbSel=new Set();
+function fbOpen(kind,cb){fbKind=kind;fbCb=cb;fbSel=new Set();$('fb-title').textContent={folder:'Choose output folder',files:'Add files',file:'Choose a file','folder-add':'Add folder'}[kind];$('fb-ok').textContent=kind.startsWith('folder')?'Use this folder':'Add';$('fb-rec').style.display=kind==='folder-add'?'flex':'none';$('fb').classList.add('open');fbGo(fbDir||S.out_dir||'~')}
+function closeFb(){$('fb').classList.remove('open')}
+async function fbGo(p){const r=await get('/api/browse?path='+encodeURIComponent(p||''));if(r.error)toast(r.error,true);fbDir=r.path;$('fb-path').value=r.path;const a=v=>esc(JSON.stringify(v));const files=fbKind==='files'||fbKind==='file';
+  $('fb-list').innerHTML=(r.drives||[]).map(d=>`<div class="e" onclick='fbGo(${a(d)})'>${I.folder}<span>${esc(d)}</span></div>`).join('')+r.entries.filter(e=>e.dir||files).map(e=>e.dir?`<div class="e" onclick='fbGo(${a(e.path)})'>${I.folder}<span>${esc(e.name)}</span></div>`:`<div class="e" data-p='${a(e.path)}' onclick='fbToggle(${a(e.path)})'><input type="checkbox" class="cb" onclick="event.stopPropagation()" onchange='fbToggle(${a(e.path)},this.checked)'>${I.file}<span>${esc(e.name)}</span></div>`).join('')||'<div class="e" style="color:var(--text-3)">empty</div>';$('fb-note').textContent=r.path}
+function fbUp(){fbGo(fbDir.replace(/[\\/][^\\/]*$/,'')||fbDir)}
+function fbToggle(p,force){const on=force!==undefined?force:!fbSel.has(p);if(fbKind==='file'||S.mode==='single')fbSel.clear();on?fbSel.add(p):fbSel.delete(p);document.querySelectorAll('#fb-list .e[data-p]').forEach(x=>x.querySelector('.cb').checked=fbSel.has(JSON.parse(x.dataset.p)));$('fb-note').textContent=fbSel.size+' selected'}
+async function fbOk(){closeFb();if(fbKind.startsWith('folder'))await fbCb([fbDir]);else if(fbSel.size)await fbCb([...fbSel])}
 init();
 </script>
 </body>

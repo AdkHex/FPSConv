@@ -642,6 +642,9 @@ def _pick_error(lines: list[str]) -> str:
     return lines[-1].strip() if lines else ""
 
 
+_FFMPEG_NOISE = re.compile(r"^(ffmpeg version|built with|configuration:|lib(avutil|avcodec|avformat|avdevice|avfilter|swscale|swresample|postproc)\s)")
+
+
 def run_ffmpeg_progress(cmd: list[str], job: Job, step_name: str,
                         total_dur: float, notify: ProgressFn) -> bool:
     if "-progress" not in cmd:
@@ -672,10 +675,10 @@ def run_ffmpeg_progress(cmd: list[str], job: Job, step_name: str,
                                                     "drop_frames", "dup_frames", "stream_0_0_q"):
             key, value = line.split("=", 1)
             state[key] = value.strip()
-            if key != "out_time_us":
+            if key != "progress":            # "progress=" closes each block; speed/bitrate are in by then
                 continue
             try:
-                cur = int(value) / 1_000_000.0
+                cur = int(state.get("out_time_us", "0")) / 1_000_000.0
             except ValueError:
                 continue
             job.percent = min(100.0, cur / total_dur * 100) if total_dur > 0 else 0.0
@@ -692,6 +695,8 @@ def run_ffmpeg_progress(cmd: list[str], job: Job, step_name: str,
             continue
         tail.append(line)
         tail = tail[-30:]
+        if _FFMPEG_NOISE.match(line):
+            continue                          # version banner / build config: not useful in a job log
         job.say(f"ffmpeg: {line}", "warning" if _ERR_RE.search(line) else "info")
     proc.wait()
     job.elapsed = time.time() - start
