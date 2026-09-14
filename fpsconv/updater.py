@@ -49,10 +49,18 @@ def is_newer(candidate: str, current: str = __version__) -> bool:
     return parse_version(candidate) > parse_version(current)
 
 
-def fetch_latest(url: str = LATEST_URL, timeout: float = 15) -> dict:
+def fetch_latest(url: str = LATEST_URL, timeout: float = 15, attempts: int = 3) -> dict:
+    """GitHub's download redirector occasionally answers 5xx; try a few times."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    last: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            time.sleep(2 * (attempt + 1))
+    raise last  # type: ignore[misc]
 
 
 def download(url: str, dest: Path, sha256: str, progress: Optional[Callable[[float], None]] = None) -> Path:
