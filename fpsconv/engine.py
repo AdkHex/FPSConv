@@ -1257,14 +1257,18 @@ def deew_cmd_encode(temp_wav: str, enc: Encode, drc: str, out_dir: str) -> list[
 def deezy_cmd_atmos(src: str, stream_index: int, enc: Encode, drc: str, work_dir: str, out_path: str,
                     tools: Optional[dict] = None) -> list[str]:
     """``deezy encode atmos …``; tool paths are passed explicitly so nobody has to
-    write DeeZy's own config (``tools`` = {"ffmpeg", "dee", "truehdd"}, empty = its default)."""
-    cmd = deezy_cmd() + ["--no-progress-bars"]
+    write DeeZy's own config (``tools`` = {"ffmpeg", "dee", "truehdd"}, empty = its default).
+
+    Only ``--no-progress-bars`` is a top-level DeeZy option; ``--ffmpeg`` /
+    ``--dee`` / ``--truehdd`` belong to the ``encode atmos`` sub-parser.
+    """
+    cmd = deezy_cmd() + ["--no-progress-bars", "encode", "atmos"]
     for flag in ("ffmpeg", "dee", "truehdd"):
         value = (tools or {}).get(flag) or ""
         if value:
             cmd += [f"--{flag}", value]
     return cmd + [
-        "encode", "atmos", "--atmos-mode", enc.atmos_mode, "--bitrate", str(enc.bitrate),
+        "--atmos-mode", enc.atmos_mode, "--bitrate", str(enc.bitrate),
         "--track-index", f"a:{stream_index}",
         "--drc-line-mode", drc if drc in DRC_PROFILES else "film_light",
         "--temp-dir", work_dir, "--output", out_path, "--overwrite", src,

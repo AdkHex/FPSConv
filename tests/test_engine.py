@@ -169,9 +169,9 @@ class CommandBuilders(unittest.TestCase):
         e = engine.resolve_encode("ddp", 0, True, 0, 8, True, "truehd")
         cmd = engine.deezy_cmd_atmos("/in/m.mkv", 1, e, "film_standard", "/w", "/o/m.ec3",
                                      {"ffmpeg": "/bin/ffmpeg", "dee": r"C:\DEE\dee.exe", "truehdd": ""})
-        self.assertEqual(cmd, [r"C:\Tools\deezy.exe", "--no-progress-bars",
+        self.assertEqual(cmd, [r"C:\Tools\deezy.exe", "--no-progress-bars", "encode", "atmos",
                                "--ffmpeg", "/bin/ffmpeg", "--dee", r"C:\DEE\dee.exe",
-                               "encode", "atmos", "--atmos-mode", "bluray", "--bitrate", "1536",
+                               "--atmos-mode", "bluray", "--bitrate", "1536",
                                "--track-index", "a:1", "--drc-line-mode", "film_standard",
                                "--temp-dir", "/w", "--output", "/o/m.ec3", "--overwrite", "/in/m.mkv"])
 
