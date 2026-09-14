@@ -2,6 +2,7 @@
 
 import hashlib
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -50,13 +51,39 @@ class StateMachine(unittest.TestCase):
             with mock.patch.object(updater, "is_installed_build", return_value=True), \
                  mock.patch.object(updater, "fetch_latest", return_value=latest), \
                  mock.patch.object(updater.config, "config_dir", return_value=Path(tmp) / "cfg"):
-                u = updater.Updater(is_busy=lambda: False, on_install=lambda: None)
-                self.assertEqual(u.state, "idle")
-                self.assertEqual(u.check()["state"], "available")
-                self.assertEqual(u.download_update()["state"], "ready")
-                self.assertTrue(u.installer.exists())
-                # a second check must not re-download
-                self.assertEqual(u.check()["state"], "ready")
+                installed = []
+                with mock.patch.object(updater, "launch_installer", side_effect=installed.append):
+                    u = updater.Updater(is_busy=lambda: False, on_install=lambda: None)
+                    self.assertEqual(u.state, "idle")
+                    # check() kicks off the download at once (manual "Check now" included)
+                    self.assertIn(u.check()["state"], ("available", "downloading", "ready", "installing"))
+                    for _ in range(100):
+                        if u.state in ("ready", "installing"):
+                            break
+                        time.sleep(0.05)
+                    self.assertTrue(u.installer and u.installer.exists())
+                    for _ in range(100):          # auto_update defaults to on → installs when idle
+                        if installed:
+                            break
+                        time.sleep(0.05)
+                    self.assertEqual(installed, [u.installer])
+
+    def test_manual_install_downloads_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "FPSConv-Setup-9.9.9.exe"
+            src.write_bytes(b"y" * 100)
+            latest = {"version": "9.9.9", "url": src.as_uri(),
+                      "sha256": hashlib.sha256(src.read_bytes()).hexdigest()}
+            launched = []
+            with mock.patch.object(updater, "is_installed_build", return_value=True), \
+                 mock.patch.object(updater.config, "config_dir", return_value=Path(tmp) / "cfg"), \
+                 mock.patch.object(updater, "launch_installer", side_effect=launched.append), \
+                 mock.patch.object(updater.threading, "Timer") as timer:
+                u = updater.Updater(is_busy=lambda: True, on_install=lambda: None)
+                u._set(state="available", latest=latest)
+                self.assertEqual(u.install()["state"], "installing")
+                self.assertEqual(len(launched), 1)
+                timer.assert_called()
 
     def test_up_to_date_and_errors(self):
         with mock.patch.object(updater, "is_installed_build", return_value=True), \

@@ -151,17 +151,21 @@ class Updater:
         while True:
             try:
                 self.check()
-                if self.state == "available":
-                    self.download_update()
-                if self.state == "ready" and config.load_settings().get("auto_update", True):
-                    # Wait for the queue to drain, then install without asking.
-                    while self._busy():
-                        time.sleep(10)
-                    self.install()
-                    return
             except Exception as exc:  # noqa: BLE001 - never take the app down
                 self._set(state="error", error=str(exc))
             time.sleep(CHECK_INTERVAL_S)
+
+    def _fetch_and_maybe_install(self) -> None:
+        """Runs in its own thread whenever a newer version is seen."""
+        try:
+            if self.state == "available":
+                self.download_update()
+            if self.state == "ready" and config.load_settings().get("auto_update", True):
+                while self._busy():          # never interrupt a running conversion
+                    time.sleep(10)
+                self.install()
+        except Exception as exc:  # noqa: BLE001
+            self._set(state="error", error=str(exc))
 
     def check(self) -> dict:
         if self.state == "disabled":
@@ -180,6 +184,9 @@ class Updater:
                 self._set(state="ready")
             else:
                 self._set(state="available")
+                # Start fetching right away (manual "Check now" included), so the
+                # state never sits at "available" waiting for the next scheduled pass.
+                threading.Thread(target=self._fetch_and_maybe_install, daemon=True).start()
         else:
             self._set(state="up-to-date")
         return self.snapshot()
@@ -206,6 +213,9 @@ class Updater:
         return self.snapshot()
 
     def install(self) -> dict:
+        """Manual install: download first if needed, then run the installer."""
+        if self.state in ("available", "error") and self.latest.get("url") and is_newer(self.latest.get("version", ""), self.current):
+            self.download_update()
         if self.state != "ready" or not self.installer:
             return self.snapshot()
         self._set(state="installing")

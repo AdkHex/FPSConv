@@ -99,8 +99,11 @@
   .fps.hit{background:#1f3a2a;color:#9be3b0}
   .tr select.mini.suggested{border-color:#3f8a5a}
   .why{font:11px var(--mono);color:var(--text-3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cb{width:14px;height:14px;border:1px solid var(--line-2);border-radius:3px;background:var(--panel);appearance:none;cursor:pointer;margin:0}
-  .cb:checked{background:#e6e6e6;border-color:#e6e6e6}
+  .cb{width:15px;height:15px;border:1px solid #4a4a4a;border-radius:3px;background:var(--panel);appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;flex:none;vertical-align:middle;position:relative}
+  .cb:hover{border-color:#6a6a6a}
+  .cb:checked{background:var(--accent);border-color:var(--accent)}
+  .cb:checked::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #0b1a26;border-width:0 2px 2px 0;transform:rotate(45deg)}
+  .cb:focus-visible{outline:2px solid rgba(92,184,255,.4);outline-offset:1px}
   .acts{display:flex;gap:2px;justify-content:flex-end;opacity:.55}
   .tr:hover .acts,.tr.sel .acts{opacity:1}
   .ib{width:26px;height:26px;border:0;background:transparent;border-radius:6px;color:var(--text-2);display:inline-flex;align-items:center;justify-content:center}
@@ -150,7 +153,7 @@
   .kv input.in{height:32px;font-family:var(--mono);font-size:12px}
   .kv .row .in{flex:1}
   .tg{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
-  .tg .cb{width:15px;height:15px}
+  .tg .cb{width:16px;height:16px}
   .list{border:1px solid var(--line-2);border-radius:var(--r);overflow:auto;min-height:220px;max-height:44vh}
   .e{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
   .e:last-child{border-bottom:0}.e:hover{background:var(--panel-2)}.e svg{color:var(--text-2)}
@@ -291,7 +294,7 @@
         <div style="display:flex;flex-direction:column;gap:10px">
           <label class="tg"><input type="checkbox" class="cb" id="t-auto" onchange="save({auto_update:this.checked})">Install updates automatically when no job is running</label>
           <label class="tg"><input type="checkbox" class="cb" id="t-win" onchange="save({native_window:this.checked})">Open in a desktop window (takes effect on next start)</label>
-          <div class="row"><span class="m" id="upd-line" style="flex:1"></span><button class="btn sm" onclick="post('/api/update/check',{}).then(pollUpdate)">Check now</button></div>
+          <div class="row"><span class="m" id="upd-line" style="flex:1"></span><button class="btn sm go" id="upd-install" style="display:none" onclick="installUpdate()">Install</button><button class="btn sm" id="upd-check" onclick="checkUpdate()">Check now</button></div>
         </div>
       </div>
       <div class="sec"><h3>App</h3>
@@ -496,13 +499,17 @@ async function pollUpdate(){
   let u;try{u=await get('/api/update')}catch(e){return}
   const b=$('banner');
   if(u.state==='disabled'){$('upd-line').textContent='Auto-update applies to the installed Windows build.';$('st-upd').textContent='';return}
-  const txt={idle:'update check pending',checking:'checking for updates…','up-to-date':`up to date`,available:`v${u.latest} available`,downloading:`downloading v${u.latest} ${u.progress}%`,ready:`v${u.latest} ready — ${u.auto?'installs when idle':'restart to install'}`,installing:'installing update…',error:'update check failed'}[u.state]||u.state;
+  const txt={idle:'update check pending',checking:'checking for updates…','up-to-date':`v${u.current} is up to date`,available:`v${u.latest} available — downloading`,downloading:`downloading v${u.latest} ${u.progress}%`,ready:`v${u.latest} downloaded — ${u.auto?'installs when no job is running':'press Install'}`,installing:'installing update, the app will restart…',error:'update check failed'}[u.state]||u.state;
   $('st-upd').innerHTML=`<i class="dot ${u.state==='up-to-date'?'ok':u.state==='error'?'bad':'warn'}"></i>${txt}`;
-  $('upd-line').textContent=u.state==='error'?u.error:txt+(u.checked_at?' · checked '+new Date(u.checked_at*1000).toLocaleTimeString():'');
-  if(['ready','downloading','installing'].includes(u.state)){b.classList.add('on');$('banner-text').textContent=(u.state==='ready'?`Update v${u.latest} is downloaded. `:'')+txt;$('banner-btn').style.display=u.state==='ready'?'':'none'}else b.classList.remove('on');
+  $('upd-line').textContent=(u.state==='error'?u.error:txt)+(u.checked_at?' · checked '+new Date(u.checked_at*1000).toLocaleTimeString():'');
+  const canInstall=['available','ready'].includes(u.state)||(u.state==='error'&&u.latest);
+  $('upd-install').style.display=canInstall?'':'none';$('upd-install').textContent='Install v'+u.latest;$('upd-install').disabled=u.state==='downloading';
+  $('upd-check').disabled=['checking','downloading','installing'].includes(u.state);
+  if(['available','ready','downloading','installing'].includes(u.state)){b.classList.add('on');$('banner-text').textContent=(u.state==='ready'?`Update v${u.latest} is downloaded. `:'')+txt;$('banner-btn').style.display=u.state==='ready'?'':'none'}else b.classList.remove('on');
   if(u.state==='installing')setTimeout(()=>{document.body.innerHTML='<div class="empty"><b>Updating to v'+esc(u.latest)+'…</b><span>FPSConv reopens by itself in a few seconds.</span></div>'},1500);
 }
-async function installUpdate(){await post('/api/update/install',{});pollUpdate()}
+async function installUpdate(){$('upd-install').disabled=true;await post('/api/update/install',{});pollUpdate()}
+async function checkUpdate(){$('upd-check').disabled=true;$('upd-line').textContent='checking…';await post('/api/update/check',{});await pollUpdate()}
 
 /* fallback browser (no native dialog available) */
 let fbKind='files', fbCb=null, fbDir='', fbSel=new Set();
