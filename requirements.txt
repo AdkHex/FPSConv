@@ -1,0 +1,3 @@
+# Runtime. The GUI/server/queue/updater are standard library; these are the two extras.
+deew>=2.9          # drives Dolby Encoding Engine (DEE itself is proprietary, not included)
+pywebview>=5.0     # native desktop window (falls back to the browser if unavailable)
