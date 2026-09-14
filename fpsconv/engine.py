@@ -160,6 +160,10 @@ def write_deew_config(dee_path: str) -> Path:
     }
     ffmpeg = shutil.which(tool("ffmpeg")) or tool("ffmpeg")
     ffprobe = shutil.which(tool("ffprobe")) or tool("ffprobe")
+    # A temp folder we own. Left empty, the bundled deew would use "temp" next to
+    # FPSConv.exe inside Program Files / Programs, which is the wrong place.
+    temp_dir = config.config_dir() / "deew-temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
 
     def q(v: str) -> str:
         return json.dumps(str(v))  # a TOML basic string; escapes backslashes and quotes
@@ -168,7 +172,7 @@ def write_deew_config(dee_path: str) -> Path:
 ffmpeg_path = {q(ffmpeg)}
 ffprobe_path = {q(ffprobe)}
 dee_path = {q(dee_path)}
-temp_path = {q(current.get('temp_path', ''))}
+temp_path = {q(str(temp_dir))}
 logo = 0
 max_instances = {q(current.get('max_instances', '50%'))}
 
@@ -184,6 +188,21 @@ max_instances = {q(current.get('max_instances', '50%'))}
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
+
+
+def ensure_deew_config() -> None:
+    """Migrate a deew config written by an older FPSConv (no temp_path, logo on)."""
+    current = read_deew_config()
+    dee = str(current.get("dee_path") or "")
+    if not dee:
+        return
+    wanted = str(config.config_dir() / "deew-temp")
+    if current.get("temp_path") != wanted or current.get("logo") != 0:
+        try:
+            write_deew_config(dee)
+            LOG.info("updated deew config: temp folder %s", wanted)
+        except OSError as exc:
+            LOG.warning("could not update deew config: %s", exc)
 
 
 def download_ffmpeg(progress: Optional[Callable[[float, str], None]] = None) -> dict:
@@ -878,7 +897,10 @@ def convert(job: Job, notify: ProgressFn, work_root: str = ".temp_jobs") -> Job:
             success = run_ffmpeg_progress(ffmpeg_cmd, job, "Encoding AAC Engine",
                                           job.duration, notify)
         else:
-            temp_wav = os.path.join(work_dir, "temp_extract.wav")
+            # Unique name: deew writes its own wav/xml under ONE shared temp folder
+            # using this basename, so two parallel jobs called "temp_extract"
+            # would delete each other's files (FileNotFoundError in deew's cleanup).
+            temp_wav = os.path.join(work_dir, f"fpsconv_{job.id}.wav")
             wav_cmd = [
                 ffmpeg, "-y", "-nostdin", "-i", file_path,
                 "-map", a_map, "-vn", "-sn", "-dn",

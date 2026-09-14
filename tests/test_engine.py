@@ -59,6 +59,21 @@ class Settings(unittest.TestCase):
                 self.assertEqual(len(config.load_history()), 200)
 
 
+class DeewConfig(unittest.TestCase):
+    def test_config_uses_our_temp_dir_and_quotes_paths(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(config, "config_dir", return_value=Path(tmp)), \
+                 mock.patch.object(engine, "deew_config_path", return_value=Path(tmp) / "deew" / "config.toml"):
+                path = engine.write_deew_config(r"C:\Dolby\DEE\dee.exe")
+                data = engine.read_deew_config()
+                self.assertEqual(data["dee_path"], r"C:\Dolby\DEE\dee.exe")
+                self.assertEqual(data["temp_path"], str(Path(tmp) / "deew-temp"))
+                self.assertTrue((Path(tmp) / "deew-temp").is_dir())
+                self.assertEqual(data["logo"], 0)
+                self.assertTrue(path.exists())
+
+
 class OverwritePolicy(unittest.TestCase):
     def test_next_free_numbering(self):
         with tempfile.TemporaryDirectory() as tmp:

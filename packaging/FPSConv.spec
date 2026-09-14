@@ -51,7 +51,7 @@ exe_gui = EXE(
     name="FPSConv",
     icon=ICON,
     console=False,
-    disable_windowed_traceback=False,
+    disable_windowed_traceback=True,   # never show PyInstaller's "Unhandled exception" dialog
     upx=False,
 )
 exe_cli = EXE(

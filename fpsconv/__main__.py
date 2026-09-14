@@ -43,7 +43,13 @@ def _run_bundled_deew(argv: list[str]) -> int:
     try:
         runpy.run_module("deew", run_name="__main__", alter_sys=True)
     except SystemExit as exc:
-        return int(exc.code or 0)
+        code = exc.code
+        return code if isinstance(code, int) else (0 if code is None else 1)
+    except BaseException:  # noqa: BLE001 - report on stderr, never a Windows error dialog
+        import traceback
+        traceback.print_exc()
+        sys.stderr.flush()
+        return 1
     return 0
 
 

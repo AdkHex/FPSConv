@@ -302,6 +302,7 @@ def serve(port: int = 8765, open_browser: bool = True, workers: int | None = Non
     url = f"http://127.0.0.1:{port}/"
     print(f"{APP_NAME} {__version__} — GUI at {url}  (Ctrl-C to stop)", flush=True)
     applog.get("app").info("%s %s started · GUI at %s · settings in %s", APP_NAME, __version__, url, config.config_dir())
+    engine.ensure_deew_config()
     updater.start()
 
     server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
