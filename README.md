@@ -26,10 +26,11 @@ That's the whole setup. Updates arrive on their own (see below).
 
 | Component | Needed for | Comes with the installer? |
 | --- | --- | --- |
-| Python, pywebview, deew, deezy, pymediainfo | everything | **yes** — bundled in the exe |
+| Python, pywebview, deew, pymediainfo | everything | **yes** — bundled in the exe |
 | ffmpeg + ffprobe | probing, WAV extraction, AAC encoding | no — one click in ⚙ downloads a static build, or set a path |
 | Dolby Encoding Engine (`dee.exe`) | AC-3 / E-AC-3 / TrueHD; every DD / DDP encode | no — licensed from Dolby; point ⚙ at it (5.2.0 / 5.2.1 for Atmos) |
 | truehdd | DDP **Atmos** output (audio encode) | no — <https://github.com/truehdd/truehdd>; put it on PATH or set the path in ⚙ |
+| DeeZy (`deezy.exe`) | DDP **Atmos** output (audio encode) | no — standalone build from <https://github.com/jessielw/DeeZy/releases>; set the path in ⚙ (it cannot be bundled next to deew: the two need different `rich` versions) |
 | Edge WebView2 runtime | the desktop window | ships with Windows 10/11; otherwise the app opens in your browser |
 
 ## What it does
@@ -61,7 +62,7 @@ fpsconv-cli dee C:\Dolby\DEE\dee.exe   # write deew's config for this DEE
 The second task (**Task → Audio encode** in the sidebar). No `atempo`, no speed
 change: the chosen track is decoded — losslessly for TrueHD, DTS-HD MA, FLAC,
 PCM; as-is for AAC / DD+ — to 24-bit 48 kHz WAV and handed to DEE through
-deew, or, for Atmos, to truehdd + DEE through DeeZy. Both are bundled.
+deew (bundled), or, for Atmos, to truehdd + DEE through DeeZy (external, see the table above).
 
 | Source | What you can make | Pipeline |
 | --- | --- | --- |
@@ -157,7 +158,7 @@ major/minor, edit `VERSION`. Pull requests run `ci.yml` (tests on Linux + Window
 ## Run / build from source
 
 ```
-./run.sh                 # macOS/Linux: GUI (creates .venv, installs deew + deezy + pywebview; Python 3.10–3.13)
+./run.sh                 # macOS/Linux: GUI (creates .venv, installs deew + pymediainfo + pywebview; Python 3.10–3.13)
 run.bat                  # Windows: same
 python -m fpsconv doctor
 python -m unittest -v
@@ -176,7 +177,7 @@ fpsconv/            engine.py (fps.py pipeline + audio-encode task) · queue.py 
                     static/index.html (GUI)
 packaging/          FPSConv.spec (PyInstaller) · installer.iss (Inno Setup) · entry.py · make_icon.py
 .github/workflows/  release.yml (build + release on push) · ci.yml (tests on PRs)
-tests/              40 unit tests, no ffmpeg/deew/deezy needed
+tests/              41 unit tests, no ffmpeg/deew/deezy needed
 ```
 
 ## Known limits inherited from the fps.py engine

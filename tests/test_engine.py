@@ -150,7 +150,7 @@ class EncodeNaming(unittest.TestCase):
 class CommandBuilders(unittest.TestCase):
     def setUp(self):
         self.settings = {"tools": {"ffmpeg": "", "ffprobe": "", "deew_python": "/venv/python",
-                                   "deezy_python": "/venv/python", "mediainfo": "", "truehdd": ""}}
+                                   "deezy": r"C:\Tools\deezy.exe", "deezy_python": "", "mediainfo": "", "truehdd": ""}}
         patcher = mock.patch.object(config, "load_settings", return_value=self.settings)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -169,11 +169,17 @@ class CommandBuilders(unittest.TestCase):
         e = engine.resolve_encode("ddp", 0, True, 0, 8, True, "truehd")
         cmd = engine.deezy_cmd_atmos("/in/m.mkv", 1, e, "film_standard", "/w", "/o/m.ec3",
                                      {"ffmpeg": "/bin/ffmpeg", "dee": r"C:\DEE\dee.exe", "truehdd": ""})
-        self.assertEqual(cmd, ["/venv/python", "-m", "deezy", "--no-progress-bars",
+        self.assertEqual(cmd, [r"C:\Tools\deezy.exe", "--no-progress-bars",
                                "--ffmpeg", "/bin/ffmpeg", "--dee", r"C:\DEE\dee.exe",
                                "encode", "atmos", "--atmos-mode", "bluray", "--bitrate", "1536",
                                "--track-index", "a:1", "--drc-line-mode", "film_standard",
                                "--temp-dir", "/w", "--output", "/o/m.ec3", "--overwrite", "/in/m.mkv"])
+
+    def test_deezy_cmd_prefers_exe_then_python(self):
+        self.assertEqual(engine.deezy_cmd(), [r"C:\Tools\deezy.exe"])
+        self.settings["tools"]["deezy"] = ""
+        self.settings["tools"]["deezy_python"] = "/venv/python"
+        self.assertEqual(engine.deezy_cmd(), ["/venv/python", "-m", "deezy"])
 
     def test_wav_argv(self):
         e = engine.resolve_encode("ddp", 0, True, 0, 6, False)

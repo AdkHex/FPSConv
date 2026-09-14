@@ -34,7 +34,7 @@ DEFAULTS: dict[str, Any] = {
         "drc": "film_light",
     },
     "tools": {"ffmpeg": "", "ffprobe": "", "deew_python": "",
-              "mediainfo": "", "deezy_python": "", "truehdd": ""},
+              "mediainfo": "", "deezy": "", "deezy_python": "", "truehdd": ""},
 }
 
 _NESTED = ("tools", "encode")

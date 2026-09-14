@@ -151,7 +151,7 @@ def _cli_doctor() -> int:
     print(f"deew config : {d['deew_config'] or 'not written yet (set the DEE path in Settings, or: dee <path>)'}")
     print(f"DEE         : {d['dee'] or 'not found' + (' at ' + d['dee_path'] if d['dee_path'] else '')}")
     print(f"mediainfo   : {d['mediainfo'] or ('pymediainfo (bundled)' if d['pymediainfo'] else 'NOT FOUND (needed to detect Atmos)')}")
-    print(f"deezy       : {'ok (' + d['deezy_via'] + ')' if d['deezy'] else 'NOT AVAILABLE (pip install deezy) — needed for DDP Atmos'}")
+    print(f"deezy       : {'ok (' + d['deezy_via'] + ')' if d['deezy'] else 'NOT FOUND — needed for DDP Atmos: DeeZy standalone exe (github.com/jessielw/DeeZy), set its path in Settings'}")
     print(f"truehdd     : {d['truehdd'] or 'NOT FOUND — needed for DDP Atmos (github.com/truehdd/truehdd)'}")
     print(f"settings    : {d['config_dir']}")
     ok = d["ffmpeg"] and d["ffprobe"]

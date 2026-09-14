@@ -309,7 +309,7 @@
           <span>python for deew</span><div class="row"><input class="in" id="t-deew" placeholder="only to use an external deew"><button class="btn sm" onclick="browseFor('t-deew')">Browse</button></div>
           <span>mediainfo</span><div class="row"><input class="in" id="t-mediainfo" placeholder="mediainfo.exe (detects Atmos; bundled pymediainfo otherwise)"><button class="btn sm" onclick="browseFor('t-mediainfo')">Browse</button></div>
           <span>truehdd</span><div class="row"><input class="in" id="t-truehdd" placeholder="truehdd.exe (DDP Atmos)"><button class="btn sm" onclick="browseFor('t-truehdd')">Browse</button></div>
-          <span>python for deezy</span><div class="row"><input class="in" id="t-deezy" placeholder="only to use an external deezy"><button class="btn sm" onclick="browseFor('t-deezy')">Browse</button></div>
+          <span>deezy.exe</span><div class="row"><input class="in" id="t-deezy" placeholder="deezy.exe standalone build (DDP Atmos)"><button class="btn sm" onclick="browseFor('t-deezy')">Browse</button></div>
         </div>
       </div>
       <div class="sec"><h3>Updates &amp; window</h3>
@@ -400,11 +400,11 @@ async function loadDoctor(){
     ['deew',d.deew?'ok':'bad',d.deew?(d.deew_via==='bundled'?'bundled':'via '+d.deew_via):(d.frozen?'bundled deew failed to start — see App log':'not installed (pip install deew)')],
     ['DEE',d.dee?'ok':'bad',d.dee||(d.dee_path?'not found at '+d.dee_path:'not configured')],
     ['mediainfo',d.mediainfo||d.pymediainfo?'ok':'warn',d.mediainfo||(d.pymediainfo?'pymediainfo (bundled)':'not found — Atmos cannot be detected, TrueHD encodes as bed only')],
-    ['deezy',d.deezy?'ok':'warn',d.deezy?(d.deezy_via==='bundled'?'bundled':'via '+d.deezy_via):'not available — DDP Atmos needs it (pip install deezy, or the installed build)'],
+    ['deezy',d.deezy?'ok':'warn',d.deezy?(d.deezy_via==='bundled'?'bundled':'via '+d.deezy_via):'not found — DDP Atmos needs it: DeeZy standalone exe from github.com/jessielw/DeeZy, set the path below'],
     ['truehdd',d.truehdd?'ok':'warn',d.truehdd||'not found — DDP Atmos needs it: github.com/truehdd/truehdd, set the path below']];
   $('tools').innerHTML=rows.map(([n,c,t])=>`<span><i class="dot ${c}"></i>${n}</span><span class="v" title="${esc(t)}">${esc(t)}</span>`).join('');
   $('t-ffmpeg').value=S.tools?.ffmpeg||'';$('t-ffprobe').value=S.tools?.ffprobe||'';$('t-deew').value=S.tools?.deew_python||'';
-  $('t-mediainfo').value=S.tools?.mediainfo||'';$('t-truehdd').value=S.tools?.truehdd||'';$('t-deezy').value=S.tools?.deezy_python||'';
+  $('t-mediainfo').value=S.tools?.mediainfo||'';$('t-truehdd').value=S.tools?.truehdd||'';$('t-deezy').value=S.tools?.deezy||'';
   const atmosOk=d.dee&&d.deezy&&d.truehdd;$('st-atmos').style.display=S.task==='encode'?'':'none';
   $('st-atmos').innerHTML=`<i class="dot ${atmosOk?'ok':'warn'}"></i>Atmos ${atmosOk?'ready':(d.dee?(d.deezy?'needs truehdd':'needs deezy'):'needs DEE')}`;
   $('t-dee').value=d.dee_path||'';$('t-auto').checked=S.auto_update!==false;$('t-win').checked=S.native_window!==false;
@@ -413,7 +413,7 @@ async function loadDoctor(){
   $('st-ffmpeg').innerHTML=`<i class="dot ${d.ffmpeg&&d.ffprobe?'ok':'bad'}"></i>ffmpeg ${d.ffmpeg&&d.ffprobe?'ready':'missing'}`;
   $('st-dee').innerHTML=`<i class="dot ${d.dee?'ok':(d.deew?'warn':'bad')}"></i>DEE ${d.dee?'ready':(d.deew?'not configured':'unavailable')}`;
 }
-async function saveTools(){S=await post('/api/settings',{tools:{ffmpeg:$('t-ffmpeg').value,ffprobe:$('t-ffprobe').value,deew_python:$('t-deew').value,mediainfo:$('t-mediainfo').value,truehdd:$('t-truehdd').value,deezy_python:$('t-deezy').value}});S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,drc:'film_light'},S.encode||{});await loadDoctor();toast('Saved')}
+async function saveTools(){S=await post('/api/settings',{tools:{ffmpeg:$('t-ffmpeg').value,ffprobe:$('t-ffprobe').value,deew_python:$('t-deew').value,mediainfo:$('t-mediainfo').value,truehdd:$('t-truehdd').value,deezy:$('t-deezy').value}});S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,drc:'film_light'},S.encode||{});await loadDoctor();toast('Saved')}
 async function saveDee(){const r=await post('/api/dee',{dee_path:$('t-dee').value});if(r.ok){toast('DEE configured — deew config written');await loadDoctor()}}
 async function browseFor(id){const r=await post('/api/pick',{kind:'files',start:''});if(r.native){if(r.paths[0])$(id).value=r.paths[0]}else{fbOpen('file',p=>{$(id).value=p[0]})}}
 async function downloadFfmpeg(){await post('/api/ffmpeg/download',{});$('ffdl-btn').disabled=true;const t=setInterval(async()=>{const st=await get('/api/ffmpeg/status');$('ffdl-st').textContent=st.state==='running'?`${st.step} ${st.percent}%`:st.state==='error'?'failed: '+st.error:'installed';if(st.state!=='running'){clearInterval(t);$('ffdl-btn').disabled=false;loadDoctor()}},800)}

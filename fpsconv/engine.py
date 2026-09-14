@@ -286,15 +286,25 @@ def _deezy_importable() -> bool:
 
 
 def deezy_cmd() -> list[str]:
-    """How to run DeeZy (DDP Atmos), mirroring ``deew_cmd``.
+    """How to run DeeZy (DDP Atmos).
 
-    * A Python configured in Settings → ``python -m deezy``
-    * The installed Windows build bundles deezy → ``fpsconv-cli.exe deezy``
-    * From source → this interpreter's ``-m deezy``
+    DeeZy cannot be bundled next to deew (it needs rich >= 14, deew rich < 14),
+    so it is an external tool like truehdd:
+
+    * ``deezy`` path from Settings (its standalone exe) → that
+    * a Python configured in Settings (``deezy_python``) → ``python -m deezy``
+    * ``deezy`` on PATH → that
+    * otherwise this interpreter's ``-m deezy`` (source installs with deezy in the venv)
     """
-    python = (config.load_settings().get("tools") or {}).get("deezy_python", "")
+    tools = config.load_settings().get("tools") or {}
+    exe = tools.get("deezy", "")
+    if exe:
+        return [exe]
+    python = tools.get("deezy_python", "")
     if python:
         return [python, "-m", "deezy"]
+    if shutil.which("deezy"):
+        return ["deezy"]
     if FROZEN and _deezy_importable():
         exe_dir = Path(sys.executable).parent
         cli = exe_dir / ("fpsconv-cli.exe" if sys.platform == "win32" else "fpsconv-cli")
@@ -805,7 +815,7 @@ def doctor() -> dict:
         "pymediainfo": False,
         "truehdd": shutil.which(truehdd) or (truehdd if os.path.isfile(truehdd) else None),
         "deezy": None,
-        "deezy_via": "bundled" if dz[-1] == "deezy" else dz[0],
+        "deezy_via": "bundled" if dz[-1] == "deezy" and len(dz) == 2 else dz[0],
         "config_dir": str(config.config_dir()),
         "settings": settings,
         "can_download_ffmpeg": sys.platform == "win32",
