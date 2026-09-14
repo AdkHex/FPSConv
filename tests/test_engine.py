@@ -70,3 +70,45 @@ class OverwritePolicy(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ───────────────────────── fps detection & suggestion ─────────────────────────
+
+def test_fps_label_rounds_to_known_rates():
+    assert engine.fps_label(24000 / 1001) == "23.976"
+    assert engine.fps_label(24.0) == "24"
+    assert engine.fps_label(30000 / 1001) == "29.97"
+    assert engine.fps_label(0) is None
+    assert engine.fps_label("x") is None
+
+
+def test_detect_fps_prefers_video_track_then_tags_then_name():
+    video = {"streams": [{"codec_type": "audio"}, {"codec_type": "video", "avg_frame_rate": "24000/1001"}]}
+    assert engine.detect_fps(video, "movie.25fps.mkv") == ("23.976", "video")
+    tagged = {"format": {"tags": {"FPS": "25"}}, "streams": [{"codec_type": "audio"}]}
+    assert engine.detect_fps(tagged, "a.mka") == ("25", "tag")
+    assert engine.detect_fps({"streams": []}, "Movie.2019.23.976fps.DDP5.1.mka") == ("23.976", "name")
+    assert engine.detect_fps({"streams": []}, "Show.S01E24.mka") == (None, "")
+    # a cover-art "video" stream is not a frame rate
+    art = {"streams": [{"codec_type": "video", "avg_frame_rate": "90000/1", "disposition": {"attached_pic": 1}}]}
+    assert engine.detect_fps(art, "x.m4a") == (None, "")
+
+
+def test_suggest_from_known_frame_rates():
+    sg = engine.suggest_conversion("23.976", 0, "25", 0)
+    assert sg["conv_type"] == "23.976-25"
+    assert engine.suggest_conversion("25", 0, "25", 0)["conv_type"] is None
+
+
+def test_suggest_from_durations_when_audio_has_no_fps():
+    video = 5400.0                       # 1 h 30 at 25 fps
+    audio = video * 25 / 24              # the same cut at 24 fps runs longer
+    sg = engine.suggest_conversion(None, audio, "25", video)
+    assert sg["conv_type"] == "24-25"
+    # tells 23.976 and 24 apart (they differ by 0.1 %)
+    sg = engine.suggest_conversion(None, video * 25 / (24000 / 1001), "25", video)
+    assert sg["conv_type"] == "23.976-25"
+    # nothing sensible when the durations are unrelated
+    assert engine.suggest_conversion(None, 100.0, "25", 5400.0) is None
+    # same length already
+    assert engine.suggest_conversion(None, 5400.5, None, 5400.0)["conv_type"] is None

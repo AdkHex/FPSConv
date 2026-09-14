@@ -49,6 +49,29 @@ fpsconv-cli doctor            # what is installed / configured
 fpsconv-cli dee C:\Dolby\DEE\dee.exe   # write deew's config for this DEE
 ```
 
+## Which fps is my audio?
+
+Audio has no frame rate of its own — it is "23.976 fps audio" only because it
+was cut to a 23.976 fps video. So FPSConv shows, next to every queued file,
+the frame rate it is tied to and where that came from:
+
+| Chip | Meaning |
+|---|---|
+| `25 fps` | the file has a video track at 25 fps (mkv / mp4 / ts …) |
+| `23.976 fps ~` | no video track; taken from an fps tag in the container or from the file name (`…23.976fps…`) |
+| `fps ?` | audio-only file with nothing to go on |
+
+Pick a **Target video** in the sidebar and FPSConv reads its frame rate,
+compares durations, and sets the conversion for every file (`24-25` when a
+file is 25/24 longer than the video, and so on). Rows say *suggested* or
+*no change needed*; you can still override the dropdown per row.
+
+Same from the CLI:
+
+```
+fpsconv-cli probe Movie.Audio.ac3 --target Movie.25fps.mkv
+```
+
 ## Auto-update
 
 The installed app checks `https://github.com/AdkHex/FPSConv/releases/latest/download/latest.json`

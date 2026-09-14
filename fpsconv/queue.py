@@ -9,7 +9,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from . import config, engine
+from . import log as applog
 from .engine import Job
+
+LOG = applog.get("queue")
 
 TERMINAL = ("done", "failed", "cancelled", "skipped")
 
@@ -90,6 +93,8 @@ class JobQueue:
                 self._order.append(job.id)
                 added.append(job)
             self._version += 1
+        if added:
+            LOG.info("queued %d job(s) → %s", len(added), os.path.abspath(out_dir))
         self._submit(added)
         return added
 
@@ -137,7 +142,9 @@ class JobQueue:
             job.cancel()
             job.state = "cancelled"
             job.error = "cancelled before start"
+            LOG.info("cancelled before start: %s", os.path.basename(job.source))
         elif job.state == "running":
+            LOG.info("cancelling: %s", os.path.basename(job.source))
             job.cancel()
         else:
             return False

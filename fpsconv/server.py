@@ -16,7 +16,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import APP_NAME, __version__, config, engine
+from . import APP_NAME, __version__, config, engine, window
+from . import log as applog
 from .queue import JobQueue
 from .updater import Updater
 
@@ -75,12 +76,16 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                             "version": __version__, "app": APP_NAME, "frozen": engine.FROZEN})
             elif url.path == "/api/update":
                 self._json(updater.snapshot())
+            elif url.path == "/api/logs":
+                self._json(applog.records(since=int(q.get("since", ["0"])[0] or 0)))
             elif url.path == "/api/ffmpeg/status":
                 self._json(httpd_ref.get("ffmpeg_dl", {"state": "idle"}))
             elif url.path == "/api/browse":
-                self._json(self._browse(q.get("path", [""])[0]))
+                self._json(self._browse(q.get("path", [""])[0], q.get("kind", [""])[0]))
             elif url.path == "/api/probe":
                 self._json(self._probe(q.get("path", [""])[0]))
+            elif url.path == "/api/reference":
+                self._json(self._reference(q.get("path", [""])[0]))
             else:
                 self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
 
@@ -109,6 +114,13 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                 self._json({"added": [j.id for j in added]})
             elif url.path == "/api/settings":
                 self._json(config.save_settings(data))
+            elif url.path == "/api/suggest":
+                ref = data.get("reference") or {}
+                out = []
+                for it in data.get("items", []):
+                    out.append(engine.suggest_conversion(it.get("fps"), float(it.get("duration_s") or 0),
+                                                         ref.get("fps"), float(ref.get("duration_s") or 0)))
+                self._json({"suggestions": out})
             elif url.path == "/api/cancel":
                 self._json({"ok": queue.cancel(data.get("id", ""))})
             elif url.path == "/api/cancel_all":
@@ -122,6 +134,10 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                 self._json({"ok": queue.remove(data.get("id", ""))})
             elif url.path == "/api/open":
                 self._json({"ok": engine.open_folder(data.get("path", ""))})
+            elif url.path == "/api/logs/open":
+                self._json({"ok": engine.open_folder(str(config.config_dir() / "logs"))})
+            elif url.path == "/api/pick":
+                self._json(self._pick(data.get("kind", "files"), data.get("start", "")))
             elif url.path == "/api/expand":
                 folder = data.get("path", "")
                 if not os.path.isdir(folder):
@@ -167,7 +183,18 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
         # -- api bodies --------------------------------------------------- #
 
         @staticmethod
-        def _browse(path: str) -> dict:
+        def _pick(kind: str, start: str) -> dict:
+            """Native picker: pywebview window → Windows PowerShell dialog → none."""
+            paths = window.pick(kind, start)
+            if paths is None and os.name == "nt":
+                paths = _powershell_pick(kind, start)
+            if paths is None:
+                return {"native": False, "paths": []}
+            return {"native": True, "paths": paths}
+
+        @staticmethod
+        def _browse(path: str, kind: str = "") -> dict:
+            exts = engine.VIDEO_EXTS if kind == "video" else engine.AUDIO_EXTS
             path = os.path.abspath(os.path.expanduser(path or os.getcwd()))
             if os.path.isfile(path):
                 path = os.path.dirname(path)
@@ -180,7 +207,7 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                         continue
                     full = os.path.join(path, name)
                     is_dir = os.path.isdir(full)
-                    if is_dir or Path(name).suffix.lower() in engine.AUDIO_EXTS:
+                    if is_dir or Path(name).suffix.lower() in exts:
                         entries.append({"name": name, "path": full, "dir": is_dir})
             except OSError as exc:
                 return {"error": str(exc), "path": path, "entries": []}
@@ -203,12 +230,49 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                                else f"ffmpeg wav → deew {engine.DEE_CODEC_MAP.get(s['codec'], ('', 'ddp', ''))[1]}")
             return {
                 "path": path, "name": os.path.basename(path),
-                "duration": engine.fmt_time(info["duration"]),
+                "duration": engine.fmt_time(info["duration"]), "duration_s": info["duration"],
+                "fps": info["fps"], "fps_source": info["fps_source"],
                 "size": engine.hr_size(os.path.getsize(path)),
                 "streams": info["streams"],
             }
 
+        @staticmethod
+        def _reference(path: str) -> dict:
+            if not os.path.isfile(path):
+                return {"error": "file not found"}
+            try:
+                return engine.probe_video(path)
+            except Exception as e:  # noqa: BLE001
+                return {"error": f"cannot read {os.path.basename(path)}: {e}"}
+
     return Handler
+
+
+def _powershell_pick(kind: str, start: str) -> list[str] | None:
+    """Windows fallback when the GUI runs in a browser: a WinForms dialog via PowerShell."""
+    import subprocess
+
+    start_ps = start.replace("'", "''")
+    if kind == "folder":
+        script = ("Add-Type -AssemblyName System.Windows.Forms; "
+                  "$d = New-Object System.Windows.Forms.FolderBrowserDialog; "
+                  f"if ('{start_ps}') {{ $d.SelectedPath = '{start_ps}' }}; "
+                  "if ($d.ShowDialog() -eq 'OK') { $d.SelectedPath }")
+    else:
+        script = ("Add-Type -AssemblyName System.Windows.Forms; "
+                  "$d = New-Object System.Windows.Forms.OpenFileDialog; $d.Multiselect = $true; "
+                  "$d.Filter = 'Audio / video|*.mka;*.mkv;*.mp4;*.m4a;*.mov;*.ts;*.m2ts;*.webm;*.ac3;*.ec3;*.eac3;*.thd;*.truehd;*.aac;*.wav;*.flac;*.ogg;*.opus|All files|*.*'; "
+                  f"if ('{start_ps}') {{ $d.InitialDirectory = '{start_ps}' }}; "
+                  "if ($d.ShowDialog() -eq 'OK') { $d.FileNames }")
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-STA", "-Command", script],
+                             capture_output=True, text=True, timeout=600,
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except Exception:  # noqa: BLE001
+        return None
+    if out.returncode != 0:
+        return None
+    return [line.strip() for line in out.stdout.splitlines() if line.strip()]
 
 
 def _free_port(preferred: int) -> int:
@@ -237,6 +301,7 @@ def serve(port: int = 8765, open_browser: bool = True, workers: int | None = Non
     ref["server"] = httpd
     url = f"http://127.0.0.1:{port}/"
     print(f"{APP_NAME} {__version__} — GUI at {url}  (Ctrl-C to stop)", flush=True)
+    applog.get("app").info("%s %s started · GUI at %s · settings in %s", APP_NAME, __version__, url, config.config_dir())
     updater.start()
 
     server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)

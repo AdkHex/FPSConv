@@ -35,7 +35,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
-from . import config
+from . import config, log as applog
+
+LOG = applog.get("engine")
 
 # ───────────────────────── CONFIGURATION (from fps.py) ─────────────────────────
 
@@ -58,6 +60,8 @@ AUDIO_EXTS = {
     ".mka", ".mkv", ".mp4", ".m4a", ".mov", ".ts", ".m2ts", ".webm",
     ".ac3", ".ec3", ".eac3", ".thd", ".truehd", ".aac", ".wav", ".flac", ".ogg", ".opus",
 }
+#: What the "Target video" picker shows: anything ffprobe can read a frame rate from.
+VIDEO_EXTS = AUDIO_EXTS | {".avi", ".m4v", ".wmv", ".mpg", ".mpeg", ".flv", ".vob"}
 
 # Popen flag so no console window pops up on Windows for each ffmpeg/deew run.
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -108,7 +112,11 @@ def deew_cmd() -> list[str]:
     if python:
         return [python, "-m", "deew"]
     if FROZEN and _deew_importable():
-        return [sys.executable, "deew"]
+        # Prefer the console-subsystem exe: with CREATE_NO_WINDOW its children
+        # (dee.exe, ffmpeg) inherit a hidden console instead of popping one up.
+        exe_dir = Path(sys.executable).parent
+        cli = exe_dir / ("fpsconv-cli.exe" if sys.platform == "win32" else "fpsconv-cli")
+        return [str(cli if cli.exists() else sys.executable), "deew"]
     return [sys.executable, "-m", "deew"]
 
 
@@ -229,7 +237,7 @@ def hr_size(size) -> str:
 
 def fmt_time(sec) -> str:
     try:
-        sec = float(sec)
+        sec = max(0.0, float(sec))
         m, s = divmod(sec, 60)
         h, m = divmod(m, 60)
         return f"{int(h):02d}:{int(m):02d}:{int(s):02d}"
@@ -252,6 +260,120 @@ def get_duration(path: str) -> float:
         return 0.0
 
 
+# Frame rates the app knows how to convert between, plus the common ones
+# worth naming when they show up in a video track.
+_FPS_LABELS = (
+    (23.976, "23.976"), (24.0, "24"), (25.0, "25"), (29.97, "29.97"),
+    (30.0, "30"), (50.0, "50"), (59.94, "59.94"), (60.0, "60"),
+)
+# "…23.976fps…", "…25 fps…", "…29.97…" in a file name.  A bare 24/25/30
+# is not trusted (S01E24) unless "fps" follows it.
+_FPS_IN_NAME = re.compile(r"(?<!\d)(23\.976|23\.98|29\.97|59\.94|(?:24|25|30|50|60)(?=[\s._-]?fps))[\s._-]?(?:fps)?(?!\d)", re.I)
+
+
+def fps_label(value: float) -> Optional[str]:
+    """24.0 → "24", 23.976023… → "23.976"; None for 0 / nonsense."""
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not v or v != v or v > 1000:
+        return None
+    for ref, label in _FPS_LABELS:
+        if abs(v - ref) < 0.015:
+            return label
+    return f"{v:.3f}".rstrip("0").rstrip(".")
+
+
+def _parse_rate(text: str) -> float:
+    """ffprobe rates are "24000/1001" or "25/1"."""
+    try:
+        num, _, den = str(text).partition("/")
+        return float(num) / (float(den) if den else 1.0)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return 0.0
+
+
+def _fps_from_tags(*tag_dicts: dict) -> Optional[str]:
+    for tags in tag_dicts:
+        for k, v in (tags or {}).items():
+            if k.lower().replace("_", "").replace("-", "") in ("fps", "framerate", "originalfps", "sourcefps", "videofps"):
+                label = fps_label(_parse_rate(v))
+                if label:
+                    return label
+    return None
+
+
+def detect_fps(data: dict, file_path: str = "") -> tuple[Optional[str], str]:
+    """(fps label, where it came from) for a probed file.
+
+    Audio has no frame rate of its own: it is only "23.976 fps audio" because
+    it was cut to a 23.976 fps video.  So we look, in order, at the video track
+    it is muxed with, at fps-like container / stream tags, and finally at the
+    file name.  ("", "") when nothing tells us.
+    """
+    for s in data.get("streams", []):
+        if s.get("codec_type") != "video" or s.get("disposition", {}).get("attached_pic"):
+            continue
+        for key in ("avg_frame_rate", "r_frame_rate"):
+            label = fps_label(_parse_rate(s.get(key, "")))
+            if label:
+                return label, "video"
+    fmt = data.get("format") or {}
+    tag_fps = _fps_from_tags(fmt.get("tags"), *[s.get("tags") for s in data.get("streams", [])])
+    if tag_fps:
+        return tag_fps, "tag"
+    m = _FPS_IN_NAME.search(os.path.basename(file_path))
+    if m:
+        return fps_label(float(m.group(1))) or m.group(1), "name"
+    return None, ""
+
+
+def suggest_conversion(src_fps: Optional[str], src_duration: float,
+                       ref_fps: Optional[str], ref_duration: float,
+                       tolerance: float = 0.0005) -> Optional[dict]:
+    """Which FPS_CONVERSIONS key turns this audio into one that fits the reference video.
+
+    * both frame rates known → "<src>-<ref>" if the app has it
+    * otherwise compare durations: audio cut at 24 fps played against a 25 fps
+      video is 25/24 longer, so the conversion whose speed ratio matches
+      ``src_duration / ref_duration`` (within ``tolerance``, 0.05 %) is the one.
+    Returns {"conv_type", "reason", "delta"} or None.
+    """
+    if src_fps and ref_fps:
+        key = f"{src_fps}-{ref_fps}"
+        if key in FPS_CONVERSIONS:
+            return {"conv_type": key, "reason": f"audio is {src_fps} fps, video is {ref_fps} fps", "delta": 0.0}
+        if src_fps == ref_fps:
+            return {"conv_type": None, "reason": f"already {ref_fps} fps – no conversion needed", "delta": 0.0}
+    if src_duration > 0 and ref_duration > 0:
+        want = src_duration / ref_duration
+        best, best_err = None, tolerance
+        for key, ratio in FPS_CONVERSIONS.items():
+            if ref_fps and not key.endswith("-" + ref_fps):
+                continue
+            err = abs(ratio - want) / want
+            if err < best_err:
+                best, best_err = key, err
+        if best:
+            delta = abs(src_duration - ref_duration * FPS_CONVERSIONS[best])
+            return {"conv_type": best,
+                    "reason": f"audio runs {fmt_time(src_duration)} against a {fmt_time(ref_duration)} video (×{want:.5f})",
+                    "delta": round(delta, 2)}
+        if abs(want - 1) < tolerance:
+            return {"conv_type": None, "reason": "durations already match – no conversion needed", "delta": round(abs(src_duration - ref_duration), 2)}
+    return None
+
+
+def probe_video(file_path: str) -> dict:
+    """Frame rate + duration of a reference video (no audio needed)."""
+    data = _ffprobe_json(file_path)
+    fps, source = detect_fps(data, file_path)
+    duration = float((data.get("format") or {}).get("duration") or 0)
+    return {"path": file_path, "name": os.path.basename(file_path), "fps": fps,
+            "fps_source": source, "duration": fmt_time(duration), "duration_s": duration}
+
+
 def _classify(codec_name: str) -> str:
     c = (codec_name or "aac").lower()
     if "eac3" in c:
@@ -271,9 +393,11 @@ def probe_streams(file_path: str) -> dict:
     """
     streams: list[dict] = []
     duration = 0.0
+    fps, fps_source = None, ""
     try:
         data = _ffprobe_json(file_path)
         duration = float((data.get("format") or {}).get("duration") or 0)
+        fps, fps_source = detect_fps(data, file_path)
         fmt_bitrate = int((data.get("format") or {}).get("bit_rate") or 0) // 1000
         for s in data.get("streams", []):
             if s.get("codec_type") != "audio":
@@ -292,7 +416,7 @@ def probe_streams(file_path: str) -> dict:
             })
     except Exception:
         pass
-    return {"streams": streams, "duration": duration}
+    return {"streams": streams, "duration": duration, "fps": fps, "fps_source": fps_source}
 
 
 def detect_audio_info(file_path: str, stream_index: int = 0) -> tuple[str, int, int]:
@@ -429,23 +553,45 @@ class Job:
     out_path: str = ""
     out_size: int = 0
     error: str = ""
+    started_at: float = 0.0
     finished_at: float = 0.0
+    detail: str = ""                   # one-line "what is happening now"
     log: list[str] = field(default_factory=list)
     _proc: Optional[subprocess.Popen] = field(default=None, repr=False)
     _cancel: threading.Event = field(default_factory=threading.Event, repr=False)
+    _last_progress_line: int = field(default=-1, repr=False)
+
+    # -- log helpers -------------------------------------------------------- #
+
+    def say(self, text: str, level: str = "info") -> None:
+        """Append a timestamped line to the job log (and the app log)."""
+        self.log.append(f"{applog.stamp()}  {text}")
+        self._last_progress_line = -1
+        getattr(LOG, level if level in ("info", "warning", "error", "debug") else "info")(
+            "[%s] %s", os.path.basename(self.source)[:40], text)
+
+    def progress_line(self, text: str) -> None:
+        """A live progress line: replaces the previous one instead of piling up."""
+        line = f"{applog.stamp()}  {text}"
+        if 0 <= self._last_progress_line < len(self.log):
+            self.log[self._last_progress_line] = line
+        else:
+            self.log.append(line)
+            self._last_progress_line = len(self.log) - 1
 
     def to_dict(self) -> dict:
+        elapsed = (time.time() - self.started_at) if self.state == "running" and self.started_at else self.elapsed
         return {
             "id": self.id, "source": self.source, "name": os.path.basename(self.source),
             "conv_type": self.conv_type, "out_dir": self.out_dir, "stream_index": self.stream_index,
             "bitrate_override": self.bitrate_override, "overwrite": self.overwrite,
-            "state": self.state, "step": self.step, "percent": round(self.percent, 1),
-            "elapsed": fmt_time(self.elapsed), "eta": fmt_time(self.eta),
+            "state": self.state, "step": self.step, "detail": self.detail, "percent": round(self.percent, 1),
+            "elapsed": fmt_time(elapsed), "eta": fmt_time(self.eta) if self.eta > 0 else "",
             "codec": self.codec, "bitrate": self.bitrate, "channels": self.channels,
             "duration": fmt_time(self.duration), "out_path": self.out_path,
             "out_name": os.path.basename(self.out_path) if self.out_path else "",
             "out_size": hr_size(self.out_size) if self.out_size else "",
-            "error": self.error, "finished_at": self.finished_at, "log": self.log[-60:],
+            "error": self.error, "finished_at": self.finished_at, "log": self.log[-400:],
         }
 
     @classmethod
@@ -500,18 +646,20 @@ def run_ffmpeg_progress(cmd: list[str], job: Job, step_name: str,
                         total_dur: float, notify: ProgressFn) -> bool:
     if "-progress" not in cmd:
         cmd = cmd[:-1] + ["-progress", "pipe:1", cmd[-1]]
-    job.log.append("$ " + " ".join(cmd))
+    job.say(f"{step_name}: $ " + " ".join(cmd))
     try:
         proc = _spawn(cmd)
     except OSError as exc:
         job.error = f"cannot start ffmpeg: {exc}"
-        job.log.append(job.error)
+        job.say(job.error, "error")
         return False
     job._proc = proc
     job.step = step_name
+    job.detail = "starting ffmpeg"
     start = time.time()
     last = 0.0
     tail: list[str] = []
+    state: dict[str, str] = {}
     assert proc.stdout is not None
     for raw in proc.stdout:
         if job._cancel.is_set():
@@ -519,13 +667,15 @@ def run_ffmpeg_progress(cmd: list[str], job: Job, step_name: str,
         line = raw.decode("utf-8", "ignore").strip()
         if not line:
             continue
-        if not line.startswith(("out_time", "frame=", "fps=", "bitrate=", "total_size=",
-                                "stream_", "speed=", "progress=", "drop_", "dup_")):
-            tail.append(line)
-            tail = tail[-30:]
-        if line.startswith("out_time_us="):
+        if "=" in line and line.split("=", 1)[0] in ("out_time_us", "out_time_ms", "out_time", "speed",
+                                                    "bitrate", "total_size", "frame", "fps", "progress",
+                                                    "drop_frames", "dup_frames", "stream_0_0_q"):
+            key, value = line.split("=", 1)
+            state[key] = value.strip()
+            if key != "out_time_us":
+                continue
             try:
-                cur = int(line.split("=")[1]) / 1_000_000.0
+                cur = int(value) / 1_000_000.0
             except ValueError:
                 continue
             job.percent = min(100.0, cur / total_dur * 100) if total_dur > 0 else 0.0
@@ -533,64 +683,121 @@ def run_ffmpeg_progress(cmd: list[str], job: Job, step_name: str,
             job.elapsed = now - start
             speed = cur / job.elapsed if job.elapsed > 0 else 0
             job.eta = (total_dur - cur) / speed if speed > 0 else 0
-            if now - last >= 0.5:
+            job.detail = (f"ffmpeg {fmt_time(cur)} / {fmt_time(total_dur)}"
+                          f"  ·  {state.get('speed', '')}  ·  {state.get('bitrate', '')}")
+            if now - last >= 1.0:
+                job.progress_line(f"{step_name}: {job.detail}  ·  {job.percent:.1f}%")
                 notify(job.to_dict())
                 last = now
+            continue
+        tail.append(line)
+        tail = tail[-30:]
+        job.say(f"ffmpeg: {line}", "warning" if _ERR_RE.search(line) else "info")
     proc.wait()
     job.elapsed = time.time() - start
     if proc.returncode != 0 and not job._cancel.is_set():
-        job.log.extend(tail)
         job.error = _pick_error(tail) or f"ffmpeg exited with code {proc.returncode}"
+        job.say(f"ffmpeg exited with code {proc.returncode}: {job.error}", "error")
+    else:
+        job.say(f"{step_name}: finished in {fmt_time(job.elapsed)}")
     return proc.returncode == 0 and not job._cancel.is_set()
 
 
 _PCT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*%")
 
 
+_ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07")
+_STAGE_RE = re.compile(r"\[\s*([^\]|]+?)\s*\|")
+#: deew's stages and the share of the job each one gets on the progress bar.
+_DEEW_STAGES = {"ffmpeg": (0, 10), "DEE: measure": (10, 40), "DEE: encode": (40, 100)}
+
+
 def run_deew_progress(cmd: list[str], job: Job, step_name: str, notify: ProgressFn) -> bool:
-    job.log.append("$ " + " ".join(cmd))
+    """Run deew and turn its rich progress bars into stage + percent.
+
+    deew draws its bars with *rich*, which only refreshes live on a terminal.
+    ``FORCE_COLOR=1`` makes rich treat the pipe as a terminal, so the bar is
+    redrawn continuously (carriage returns + ANSI codes) and we can read
+    ``[ DEE: measure | file ] ━━━ 42.10%`` as it happens.
+    """
+    job.say(f"{step_name}: $ " + " ".join(cmd))
+    env = dict(os.environ, FORCE_COLOR="1", TERM="xterm-256color", COLUMNS="120",
+               PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
     try:
-        proc = _spawn(cmd)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                stdin=subprocess.DEVNULL, creationflags=_NO_WINDOW, env=env)
     except OSError as exc:
         job.error = f"cannot start deew: {exc}"
-        job.log.append(job.error)
+        job.say(job.error, "error")
         return False
     job._proc = proc
     job.step = step_name
+    job.detail = "starting deew"
     job.percent = 0.0
     start = time.time()
     last = 0.0
-    buffer = ""
-    tail = ""
+    buffer = b""
+    tail: list[str] = []
+    seen_plain: set[str] = set()
+    stage = ""
+    stage_started = start
     assert proc.stdout is not None
     while True:
-        chunk = proc.stdout.read(16)          # 16-byte reader: survives \r-only output
+        chunk = proc.stdout.read(16)            # 16-byte reader: survives \r-only output
         if not chunk:
             break
         if job._cancel.is_set():
             break
-        text = chunk.decode("utf-8", "ignore")
-        buffer += text
-        tail = (tail + text)[-3000:]
-        matches = _PCT_RE.findall(buffer)
-        if matches:
-            pct = float(matches[-1])
-            buffer = buffer[-50:]
-            job.percent = min(100.0, pct)
-            now = time.time()
-            job.elapsed = now - start
-            job.eta = (job.elapsed / pct) * (100 - pct) if pct > 0 else 0
-            if now - last >= 0.5:
-                notify(job.to_dict())
-                last = now
+        buffer += chunk
+        # Split on CR/LF; keep the unfinished remainder for the next chunk.
+        parts = re.split(rb"[\r\n]+", buffer)
+        buffer = parts.pop()
+        for raw in parts:
+            text = _ANSI_RE.sub("", raw.decode("utf-8", "ignore")).strip()
+            if not text:
+                continue
+            m = _PCT_RE.search(text)
+            st = _STAGE_RE.search(text)
+            if m and st:
+                name = st.group(1).strip()
+                pct = float(m.group(1))
+                if name != stage:
+                    if stage:
+                        job.say(f"deew: {stage} finished in {fmt_time(time.time() - stage_started)}")
+                    stage, stage_started = name, time.time()
+                    job.say(f"deew: {name} started")
+                lo, hi = _DEEW_STAGES.get(name, (0, 100))
+                job.percent = min(100.0, lo + (hi - lo) * pct / 100.0)
+                now = time.time()
+                job.elapsed = now - start
+                stage_el = now - stage_started
+                job.eta = (stage_el / pct) * (100 - pct) if pct > 0 else 0
+                job.detail = f"{name}  ·  {pct:.1f}%"
+                if now - last >= 1.0:
+                    job.progress_line(f"deew: {name}  {pct:.1f}%  ·  {fmt_time(stage_el)} in this stage")
+                    notify(job.to_dict())
+                    last = now
+                continue
+            if text in seen_plain:
+                continue
+            seen_plain.add(text)
+            tail.append(text)
+            tail = tail[-40:]
+            job.say(f"deew: {text}", "warning" if _ERR_RE.search(text) else "info")
+    if buffer.strip():
+        text = _ANSI_RE.sub("", buffer.decode("utf-8", "ignore")).strip()
+        if text and text not in seen_plain:
+            tail.append(text)
+            job.say(f"deew: {text}")
     proc.wait()
     job.elapsed = time.time() - start
-    lines = [l.strip() for l in re.split(r"[\r\n]+", tail) if l.strip()]
-    # Keep deew's tail in the log even on success: when DEE is misconfigured it
-    # can exit 0 without writing anything, and this is the only evidence.
-    job.log.extend(dict.fromkeys(lines[-12:]))
+    if stage:
+        job.say(f"deew: {stage} finished in {fmt_time(time.time() - stage_started)}")
     if proc.returncode != 0 and not job._cancel.is_set():
-        job.error = _pick_error(lines) or f"deew exited with code {proc.returncode}"
+        job.error = _pick_error(tail) or f"deew exited with code {proc.returncode}"
+        job.say(f"deew exited with code {proc.returncode}: {job.error}", "error")
+    else:
+        job.say(f"{step_name}: deew exited with code {proc.returncode} after {fmt_time(job.elapsed)}")
     return proc.returncode == 0 and not job._cancel.is_set()
 
 
@@ -642,6 +849,10 @@ def convert(job: Job, notify: ProgressFn, work_root: str = ".temp_jobs") -> Job:
     os.makedirs(job.out_dir, exist_ok=True)
     job.state = "running"
     job.step = "Initializing"
+    job.started_at = time.time()
+    job.say(f"job started: {os.path.basename(file_path)}  →  {os.path.basename(out_path)}")
+    job.say(f"source: {codec.upper()} · {job.bitrate} kbps · {job.channels} ch · {fmt_time(job.duration)} · "
+            f"stream #{job.stream_index} · mode {conv_type} (atempo {atempo_chain(ratio)})")
     notify(job.to_dict())
 
     t0 = time.time()
@@ -683,7 +894,8 @@ def convert(job: Job, notify: ProgressFn, work_root: str = ".temp_jobs") -> Job:
                     shutil.move(deew_out, out_path)
                     success = True
                 elif dee_ok:
-                    job.error = f"deew reported success but {base}{ext} was not produced"
+                    job.error = (f"deew reported success but {base}{ext} was not produced — "
+                                 f"check the DEE path and the deew lines above")
     except Exception as exc:  # noqa: BLE001 - a job must never take the app down
         job.error = f"{type(exc).__name__}: {exc}"
     finally:
@@ -691,19 +903,23 @@ def convert(job: Job, notify: ProgressFn, work_root: str = ".temp_jobs") -> Job:
         job.elapsed = time.time() - t0
         job._proc = None
         job.finished_at = time.time()
+        job.detail = ""
         if job._cancel.is_set():
             job.state = "cancelled"
             job.error = "cancelled by user"
             _remove(out_path)
+            job.say("cancelled — partial output removed", "warning")
         elif success and os.path.exists(out_path):
             job.state = "done"
             job.percent = 100.0
             job.eta = 0.0
             job.out_size = os.path.getsize(out_path)
+            job.say(f"done in {fmt_time(job.elapsed)}: {out_path} ({hr_size(job.out_size)})")
         else:
             job.state = "failed"
             job.error = job.error or "Conversion failed — check codec / format"
             _remove(out_path)
+            job.say(f"failed: {job.error}", "error")
         notify(job.to_dict())
     return job
 

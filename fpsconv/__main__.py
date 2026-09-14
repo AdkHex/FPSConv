@@ -13,10 +13,32 @@ import sys
 import time
 
 from . import APP_NAME, __version__, engine
+from . import log as applog
+
+
+def _hide_child_windows() -> None:
+    """deew starts dee.exe / ffmpeg with plain Popen; on Windows that would open
+    a console window for each. Give every child CREATE_NO_WINDOW + SW_HIDE."""
+    if sys.platform != "win32":
+        return
+    import subprocess
+
+    original = subprocess.Popen.__init__
+
+    def patched(self, *args, **kwargs):
+        kwargs["creationflags"] = kwargs.get("creationflags", 0) | subprocess.CREATE_NO_WINDOW
+        si = kwargs.get("startupinfo") or subprocess.STARTUPINFO()
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = subprocess.SW_HIDE
+        kwargs["startupinfo"] = si
+        original(self, *args, **kwargs)
+
+    subprocess.Popen.__init__ = patched  # type: ignore[method-assign]
 
 
 def _run_bundled_deew(argv: list[str]) -> int:
     """The installed Windows build carries deew inside the exe; this runs it."""
+    _hide_child_windows()
     sys.argv = ["deew", *argv]
     try:
         runpy.run_module("deew", run_name="__main__", alter_sys=True)
@@ -69,6 +91,41 @@ def _cli_convert(args: argparse.Namespace) -> int:
     return rc
 
 
+def _cli_probe(args) -> int:
+    """Show every audio stream and the frame rate each file is tied to.
+
+    With ``--target VIDEO`` it also says which conversion makes the audio fit
+    that video (from the frame rates, or from the durations if the audio-only
+    file carries no fps).
+    """
+    ref = None
+    if args.target:
+        ref = engine.probe_video(args.target)
+        print(f"target : {ref['name']}  {ref['fps'] or '?'} fps ({ref['fps_source'] or 'unknown'})  {ref['duration']}")
+        print()
+    rc = 0
+    for path in args.inputs:
+        info = engine.probe_streams(path)
+        if not info["streams"]:
+            print(f"{os.path.basename(path)}: no audio stream found")
+            rc = 1
+            continue
+        fps = f"{info['fps']} fps ({info['fps_source']})" if info["fps"] else "fps unknown (audio only – use --target)"
+        print(f"{os.path.basename(path)}  {engine.fmt_time(info['duration'])}  {fps}")
+        for st in info["streams"]:
+            print(f"    #{st['index']} {st['codec_name']} {st['bitrate']} kbps {st['channels']} ch"
+                  f"{' ' + st['language'] if st['language'] else ''}{' – ' + st['title'] if st['title'] else ''}")
+        if ref:
+            sg = engine.suggest_conversion(info["fps"], info["duration"], ref["fps"], ref["duration_s"])
+            if sg is None:
+                print("    suggestion: none – durations do not match any known conversion")
+            elif sg["conv_type"]:
+                print(f"    suggestion: --mode {sg['conv_type']}   ({sg['reason']}{', off by ' + str(sg['delta']) + ' s' if sg['delta'] else ''})")
+            else:
+                print(f"    suggestion: {sg['reason']}")
+    return rc
+
+
 def _cli_doctor() -> int:
     d = engine.doctor()
     print(f"{APP_NAME} {__version__}  ({'installed build' if d['frozen'] else 'from source'})")
@@ -111,6 +168,10 @@ def main(argv: list[str] | None = None) -> int:
     conv.add_argument("--bitrate", "-b", type=int, default=0, help="kbps; 0 = keep the source bitrate")
     conv.add_argument("--overwrite", choices=["overwrite", "skip", "rename"], default="overwrite")
 
+    probe = sub.add_parser("probe", help="show audio streams and the frame rate a file is tied to")
+    probe.add_argument("inputs", nargs="+", help="audio / video files")
+    probe.add_argument("--target", "-t", help="video the audio must fit; suggests the conversion")
+
     sub.add_parser("doctor", help="show what is installed")
 
     dee = sub.add_parser("dee", help="write deew's config.toml for a Dolby Encoding Engine path")
@@ -119,6 +180,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.cmd == "convert":
         return _cli_convert(args)
+    if args.cmd == "probe":
+        return _cli_probe(args)
     if args.cmd == "doctor":
         return _cli_doctor()
     if args.cmd == "dee":
@@ -126,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
         return _cli_doctor()
     from .server import serve
 
+    applog.setup()
     serve(port=getattr(args, "port", 8765), open_browser=not getattr(args, "no_browser", False),
           workers=getattr(args, "jobs", None),
           native_window=False if getattr(args, "browser", False) else None)

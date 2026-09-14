@@ -30,6 +30,9 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from . import GITHUB_OWNER, GITHUB_REPO, __version__, config
+from . import log as applog
+
+LOG = applog.get("updater")
 
 LATEST_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest/download/latest.json"
 CHECK_INTERVAL_S = 6 * 3600
@@ -167,9 +170,11 @@ class Updater:
         try:
             latest = fetch_latest()
         except Exception as exc:  # noqa: BLE001
+            LOG.warning("update check failed: %s", exc)
             self._set(state="error", error=f"could not reach GitHub: {exc}", checked_at=time.time())
             return self.snapshot()
         self._set(latest=latest, checked_at=time.time())
+        LOG.info("update check: installed %s, latest %s", self.current, latest.get("version"))
         if is_newer(latest.get("version", ""), self.current):
             if self.installer and self.installer.exists() and self.installer.name.endswith(f"{latest['version']}.exe"):
                 self._set(state="ready")
@@ -197,12 +202,14 @@ class Updater:
             if old != dest:
                 old.unlink(missing_ok=True)
         self._set(state="ready", installer=dest, progress=100.0)
+        LOG.info("update %s downloaded and verified: %s", latest["version"], dest)
         return self.snapshot()
 
     def install(self) -> dict:
         if self.state != "ready" or not self.installer:
             return self.snapshot()
         self._set(state="installing")
+        LOG.info("installing update %s — the app will restart", self.latest.get("version"))
         try:
             launch_installer(self.installer)
         except Exception as exc:  # noqa: BLE001

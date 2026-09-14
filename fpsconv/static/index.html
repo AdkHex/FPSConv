@@ -109,6 +109,14 @@
   .tr.sel{background:oklch(100% 0 0/.06)}
   .tr .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tr .sub{color:var(--muted-foreground);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;gap:6px;align-items:center}
+  .tr .fps{display:inline-flex;align-items:center;gap:4px;padding:0 6px;height:18px;border-radius:5px;font-family:var(--mono);font-size:11px;background:var(--secondary);color:var(--foreground);white-space:nowrap}
+  .tr .fps.unknown{color:var(--muted-foreground);background:transparent;border:1px dashed var(--border)}
+  .tr .fps.hit{background:oklch(35% .09 150);color:oklch(92% .05 150)}
+  .tr .mode.suggested{border-color:oklch(55% .12 150)}
+  .tr .why{font-size:11px;color:var(--muted-foreground);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ref{display:flex;align-items:center;gap:8px}
+  .ref .txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ref .ck{color:var(--muted-foreground);font-family:var(--mono);font-size:12px}
   .tr .sub select{background:transparent;border:1px solid var(--input);color:var(--muted-foreground);border-radius:5px;font-size:11.5px;padding:1px 4px;max-width:200px}
   .tr .mono{font-family:var(--mono);font-size:12.5px;color:var(--muted-foreground)}
   .tr select.mode{background:transparent;border:1px solid var(--input);color:var(--foreground);border-radius:6px;font:12.5px var(--mono);padding:4px 6px;width:100%}
@@ -205,6 +213,16 @@
       <span class="lbl">Conversion</span>
       <select class="control" id="mode" onchange="onConv()"></select>
       <div class="hint" id="ratio"></div>
+    </div>
+
+    <div class="field">
+      <span class="lbl">Target video <span style="color:var(--muted-foreground);font-weight:400">(optional)</span></span>
+      <button class="control dashed" id="refbtn" onclick="openBrowser('ref')" title="Pick the video this audio has to fit. FPSConv reads its frame rate, compares durations and picks the conversion for every file.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M3 15h18M8 5v14M16 5v14"/></svg>
+        <span class="txt" id="reftxt">Pick the video to match…</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="hint" id="refhint" style="display:none"></div>
     </div>
 
     <div class="field">
@@ -317,7 +335,7 @@ const I={
   open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14l3 3 3-3"/></svg>',
 };
 let S={}, modes=[], ratios={}, pending=[], jobs=[], checked=new Set(), selected=null, lastVersion=-1, wasBusy=false;
-let browseKind='files', curDir='', dlgChecked=new Set();
+let browseKind='files', curDir='', dlgChecked=new Set(), ref=null;
 const sessionStart=Date.now()/1000-1;
 
 async function get(u){return (await fetch(u)).json()}
@@ -379,7 +397,32 @@ async function installUpdate(){await post('/api/update/install',{});pollUpdate()
 function toggleSettings(){const m=$('settingsmenu');const open=!m.classList.contains('open');closeMenus();if(open){m.classList.add('open');loadDoctor()}}
 async function quitApp(){if(!confirm('Quit FPS Converter? Running jobs will be cancelled.'))return;await post('/api/quit',{});document.body.innerHTML='<div class="empty"><h3>FPS Converter has been closed.</h3><p>You can close this tab.</p></div>'}
 
-function onConv(){save({conv_type:$('mode').value});updateRatio();pending.forEach(f=>f.conv_type=$('mode').value);render()}
+function onConv(){save({conv_type:$('mode').value});updateRatio();pending.forEach(f=>{f.conv_type=$('mode').value;f.suggest=null});suggestAll()}
+/* "23.976-25" → ["23.976","25"] */
+function parts(k){return k.split('-')}
+/* Conversion for one file without a target video: keep the chosen target fps, swap the source for the detected one */
+function autoMode(f){
+  if(!f.fps)return null;
+  const to=parts($('mode').value)[1];
+  if(f.fps===to)return{conv_type:null,reason:`already ${to} fps`};
+  const k=`${f.fps}-${to}`;
+  return modes.includes(k)?{conv_type:k,reason:`audio is ${f.fps} fps (${f.fps_source}) → ${to} fps`}:null;
+}
+async function suggestAll(){
+  if(ref){
+    const r=await post('/api/suggest',{reference:ref,items:pending.map(f=>({fps:f.fps,duration_s:f.duration_s}))});
+    (r.suggestions||[]).forEach((sg,i)=>{pending[i].suggest=sg;if(sg&&sg.conv_type)pending[i].conv_type=sg.conv_type});
+  }else pending.forEach(f=>{f.suggest=autoMode(f);if(f.suggest&&f.suggest.conv_type)f.conv_type=f.suggest.conv_type});
+  render();
+}
+function setRef(r){
+  ref=r;
+  $('reftxt').textContent=r?r.name:'Pick the video to match…';$('refbtn').classList.toggle('set',!!r);$('refbtn').title=r?r.path:'';
+  const h=$('refhint');h.style.display=r?'':'none';
+  if(r){h.innerHTML=`${r.fps?`<b>${r.fps} fps</b> (${r.fps_source})`:'<span style="color:var(--danger)">frame rate unknown</span>'} · ${r.duration} <a href="#" style="color:var(--muted-foreground);margin-left:6px" onclick="setRef(null);return false">clear</a>`;
+    if(r.fps){const to=parts($('mode').value)[1];if(to!==r.fps){const k=modes.find(m=>parts(m)[1]===r.fps&&parts(m)[0]===parts($('mode').value)[0])||modes.find(m=>parts(m)[1]===r.fps);if(k){$('mode').value=k;save({conv_type:k});updateRatio()}}}}
+  suggestAll();
+}
 function updateRatio(){const k=$('mode').value;$('ratio').textContent=`speed ×${ratios[k]} · ${atempo(ratios[k])}`}
 function atempo(r){const p=[];if(Math.abs(r-1)<1e-4)return'anull';while(r>2){p.push('atempo=2.0');r/=2}while(r<0.5){p.push('atempo=0.5');r*=2}p.push('atempo='+r.toFixed(6));return p.join(',')}
 function setOut(p,persist=true){S.out_dir=p;if(persist)save({out_dir:p});$('outtxt').textContent=p||'Choose a folder';$('outbtn').classList.toggle('set',!!p);$('outbtn').title=p;render()}
@@ -398,7 +441,7 @@ async function addPaths(paths){
     if(S.mode==='single')pending=[];
     pending.push(info);
   }
-  render();
+  await suggestAll();
 }
 async function addFolder(folder){
   const r=await post('/api/expand',{path:folder,recursive:$('recursive').checked});
@@ -412,7 +455,7 @@ async function addByPath(){
 }
 function removePending(i){pending.splice(i,1);render()}
 function setPendingStream(i,v){pending[i].stream_index=+v;render()}
-function setPendingMode(i,v){pending[i].conv_type=v}
+function setPendingMode(i,v){pending[i].conv_type=v;pending[i].suggest=null;render()}
 
 async function start(){
   if(!pending.length)return;
@@ -436,6 +479,12 @@ async function removeChecked(){
 
 /* polling + render */
 async function poll(){try{const s=await get('/api/status');if(s.version!==lastVersion){lastVersion=s.version;jobs=s.jobs;render()}}catch(e){}setTimeout(poll,600)}
+const FPS_SRC={video:'from the video track in this file',tag:'from a frame-rate tag in the container',name:'from the file name'};
+function fpsChip(f){
+  if(!f.fps)return `<span class="fps unknown" title="Audio has no frame rate of its own: this file has no video track, fps tag or fps in its name. Pick a Target video and FPSConv will work it out from the durations.">fps ?</span>`;
+  const hit=ref&&ref.fps&&f.fps===ref.fps;
+  return `<span class="fps ${hit?'hit':''}" title="${esc(FPS_SRC[f.fps_source]||f.fps_source)}">${f.fps} fps${f.fps_source!=='video'?' ~':''}</span>`;
+}
 function statusText(s){return{done:'Done',failed:'Failed',cancelled:'Cancelled',running:'Running',queued:'Queued',skipped:'Skipped'}[s]||s}
 function render(){
   const rows=[];
@@ -444,8 +493,8 @@ function render(){
     const streamSel=f.streams.length>1?`<select onchange="setPendingStream(${i},this.value)">${f.streams.map(s=>`<option value="${s.index}" ${s.index===f.stream_index?'selected':''}>#${s.index} ${s.codec_name} ${s.channels}ch${s.language?' '+s.language:''}${s.title?' – '+esc(s.title):''}</option>`).join('')}</select>`:'';
     rows.push(`<div class="tr">
       <input type="checkbox" class="cb" ${checked.has(id)?'checked':''} onchange="toggleCheck(${JSON.stringify(id).replace(/"/g,'&quot;')},this.checked)">
-      <div><div class="name" title="${esc(f.path)}">${esc(f.name)}</div><div class="sub">${streamSel}<span>${st.codec.toUpperCase()} · ${st.bitrate} kbps · ${st.channels} ch · ${f.duration} · ${esc(st.engine)}</span></div></div>
-      <div><select class="mode" onchange="setPendingMode(${i},this.value)">${modes.map(k=>`<option ${k===f.conv_type?'selected':''}>${k}</option>`).join('')}</select></div>
+      <div><div class="name" title="${esc(f.path)}">${esc(f.name)}</div><div class="sub">${fpsChip(f)}${streamSel}<span>${st.codec.toUpperCase()} · ${st.bitrate} kbps · ${st.channels} ch · ${f.duration} · ${esc(st.engine)}</span></div></div>
+      <div><select class="mode ${f.suggest&&f.suggest.conv_type?'suggested':''}" onchange="setPendingMode(${i},this.value)" title="${esc(f.suggest?f.suggest.reason:'')}">${modes.map(k=>`<option ${k===f.conv_type?'selected':''}>${k}</option>`).join('')}</select>${f.suggest?`<div class="why" title="${esc(f.suggest.reason)}">${f.suggest.conv_type?'suggested':'no change needed'}${f.suggest.delta?` · Δ ${f.suggest.delta}s`:''}</div>`:''}</div>
       <div><div class="bar"><i></i></div></div>
       <div class="status ready">Ready</div>
       <div class="mono">${f.size}</div><div class="mono">—</div><div class="mono">—</div>
@@ -487,17 +536,17 @@ function select(id){selected=id;$('log').classList.add('open');render()}
 /* browser dialog */
 function openBrowser(kind){
   browseKind=kind;dlgChecked=new Set();
-  $('dlg-title').textContent=kind==='folder'?'Choose output folder':kind==='files'?'Add files':'Add folder';
-  $('dlg-ok').textContent=kind==='folder'?'Use this folder':kind==='files'?'Add selected':'Add this folder';
+  $('dlg-title').textContent={folder:'Choose output folder',files:'Add files',ref:'Pick the target video'}[kind]||'Add folder';
+  $('dlg-ok').textContent={folder:'Use this folder',files:'Add selected',ref:'Use this video'}[kind]||'Add this folder';
   $('dlg-rec').style.display=kind==='folder-add'?'':'none';
   $('overlay').classList.add('open');browse(curDir||S.out_dir||'~');
 }
 function closeBrowser(){$('overlay').classList.remove('open')}
 async function browse(p){
-  const r=await get('/api/browse?path='+encodeURIComponent(p||''));
+  const r=await get('/api/browse?path='+encodeURIComponent(p||'')+(browseKind==='ref'?'&kind=video':''));
   if(r.error)toast(r.error,true);
   curDir=r.path;$('dlg-path').value=r.path;
-  const entries=r.entries.filter(e=>e.dir||browseKind==='files');
+  const entries=r.entries.filter(e=>e.dir||browseKind==='files'||browseKind==='ref');
   const a=v=>esc(JSON.stringify(v));
   $('dlg-list').innerHTML=(r.drives||[]).map(d=>`<div class="e" onclick='browse(${a(d)})'>${I.folder}<span>${esc(d)}</span></div>`).join('')+
     entries.map(e=>e.dir?`<div class="e" onclick='browse(${a(e.path)})'>${I.folder}<span>${esc(e.name)}</span></div>`
@@ -508,17 +557,19 @@ async function browse(p){
 function browseUp(){browse(curDir.replace(/[\\/][^\\/]*$/,'')||curDir)}
 function toggleDlg(p,force){
   const on=force!==undefined?force:!dlgChecked.has(p);
-  if(S.mode==='single')dlgChecked.clear();
+  if(S.mode==='single'||browseKind==='ref')dlgChecked.clear();
   on?dlgChecked.add(p):dlgChecked.delete(p);
   document.querySelectorAll('#dlg-list .e[data-p]').forEach(x=>{x.querySelector('.cb').checked=dlgChecked.has(JSON.parse(x.dataset.p))});
   updateNote();
 }
-function updateNote(){$('dlg-note').textContent=browseKind==='files'?(dlgChecked.size?`${dlgChecked.size} selected`:(S.mode==='single'?'Pick one file':'Tick the files to add')):curDir}
+function updateNote(){$('dlg-note').textContent=browseKind==='ref'?(dlgChecked.size?[...dlgChecked][0]:'Pick the video the audio has to fit'):browseKind==='files'?(dlgChecked.size?`${dlgChecked.size} selected`:(S.mode==='single'?'Pick one file':'Tick the files to add')):curDir}
 async function dlgOk(){
   if(browseKind==='folder'){setOut(curDir);closeBrowser();return}
   if(browseKind==='folder-add'){closeBrowser();await addFolder(curDir);return}
   if(!dlgChecked.size){toast('Nothing selected',true);return}
-  closeBrowser();await addPaths([...dlgChecked]);
+  closeBrowser();
+  if(browseKind==='ref'){const r=await get('/api/reference?path='+encodeURIComponent([...dlgChecked][0]));if(r.error){toast(r.error,true);return}setRef(r);return}
+  await addPaths([...dlgChecked]);
 }
 init();
 </script>
