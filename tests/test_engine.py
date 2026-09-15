@@ -64,12 +64,17 @@ class DeewConfig(unittest.TestCase):
         from pathlib import Path
         with tempfile.TemporaryDirectory() as tmp:
             with mock.patch.object(config, "config_dir", return_value=Path(tmp)), \
+                 mock.patch.object(config, "cache_dir", return_value=Path(tmp) / "cache"), \
                  mock.patch.object(engine, "deew_config_path", return_value=Path(tmp) / "deew" / "config.toml"):
                 path = engine.write_deew_config(r"C:\Dolby\DEE\dee.exe")
                 data = engine.read_deew_config()
                 self.assertEqual(data["dee_path"], r"C:\Dolby\DEE\dee.exe")
-                self.assertEqual(data["temp_path"], str(Path(tmp) / "deew-temp"))
-                self.assertTrue((Path(tmp) / "deew-temp").is_dir())
+                self.assertEqual(data["temp_path"], str(Path(tmp) / "cache" / "temp" / "deew"))
+                self.assertTrue((Path(tmp) / "cache" / "temp" / "deew").is_dir())
+                # a Temp folder chosen in Settings moves deew's temp with it
+                config.save_settings({"dirs": {"temp": str(Path(tmp) / "fast")}})
+                engine.write_deew_config(r"C:\Dolby\DEE\dee.exe")
+                self.assertEqual(engine.read_deew_config()["temp_path"], str(Path(tmp) / "fast" / "deew"))
                 self.assertEqual(data["logo"], 0)
                 self.assertTrue(path.exists())
 
@@ -282,6 +287,22 @@ class JobModel(unittest.TestCase):
                 self.assertEqual(saved["encode"], {"target": "dd", "channels": 6, "bitrate": 0, "atmos": False, "drc": "film_light"})
                 self.assertEqual(config.load_settings()["tools"]["truehdd"], "/x/truehdd")
                 self.assertEqual(config.load_settings()["task"], "encode")
+
+
+class Folders(unittest.TestCase):
+    def test_defaults_and_overrides(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(config, "config_dir", return_value=Path(tmp) / "cfg"), \
+                 mock.patch.object(config, "cache_dir", return_value=Path(tmp) / "cache"):
+                self.assertEqual(config.temp_dir(), Path(tmp) / "cache" / "temp")
+                self.assertEqual(config.work_dir(), Path(tmp) / "cache" / "work")
+                self.assertEqual(config.logs_dir(), Path(tmp) / "cfg" / "logs")
+                saved = config.save_settings({"dirs": {"temp": "D:/fast/tmp", "work": "", "junk": "x"}})
+                self.assertEqual(saved["dirs"], {"temp": "D:/fast/tmp", "work": "", "logs": ""})
+                self.assertEqual(config.temp_dir(), Path("D:/fast/tmp"))
+                self.assertEqual(config.work_dir(), Path(tmp) / "cache" / "work")   # empty = default
+                self.assertEqual(engine.deezy_work_dir(), str(Path(tmp) / "cache" / "work"))
 
 
 class OverwritePolicy(unittest.TestCase):

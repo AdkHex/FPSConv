@@ -35,9 +35,14 @@ DEFAULTS: dict[str, Any] = {
     },
     "tools": {"ffmpeg": "", "ffprobe": "", "deew_python": "",
               "mediainfo": "", "deezy": "", "deezy_python": "", "truehdd": ""},
+    "dirs": {                  # "" = the default shown by dir_defaults()
+        "temp": "",            # job intermediates (WAVs, truehdd masters) + deew's own temp
+        "work": "",            # DeeZy's logs and batch results
+        "logs": "",            # FPSConv's own log files (takes effect on the next start)
+    },
 }
 
-_NESTED = ("tools", "encode")
+_NESTED = ("tools", "encode", "dirs")
 
 _lock = threading.Lock()
 
@@ -50,6 +55,40 @@ def config_dir() -> Path:
     else:
         base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
     return base / "FPSConv"
+
+
+def cache_dir() -> Path:
+    """Big, disposable files: per-user local data, never the roaming profile or the program folder."""
+    if sys.platform == "win32":
+        base = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Caches"
+    else:
+        base = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    return base / "FPSConv"
+
+
+def dir_defaults() -> dict[str, str]:
+    return {"temp": str(cache_dir() / "temp"), "work": str(cache_dir() / "work"), "logs": str(config_dir() / "logs")}
+
+
+def _dir(key: str) -> Path:
+    chosen = (load_settings().get("dirs") or {}).get(key, "")
+    return Path(chosen) if chosen else Path(dir_defaults()[key])
+
+
+def temp_dir() -> Path:
+    """Where jobs put their intermediates (a sub-folder per job) and deew its own temp."""
+    return _dir("temp")
+
+
+def work_dir() -> Path:
+    """DeeZy's working folder (logs, batch results)."""
+    return _dir("work")
+
+
+def logs_dir() -> Path:
+    return _dir("logs")
 
 
 def _read(name: str, default: Any) -> Any:

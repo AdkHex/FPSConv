@@ -169,6 +169,15 @@ Settings and history: `%APPDATA%\FPSConv\` (Windows), `~/Library/Application Sup
 (macOS), `~/.config/FPSConv/` (Linux). deew's config: platformdirs' user config dir for `deew`
 (`%LOCALAPPDATA%\deew\config.toml` on Windows).
 
+**Folders** (⚙ → Folders, empty = default):
+
+| Folder | Holds | Default |
+| --- | --- | --- |
+| Output | finished files (same setting as the sidebar) | — |
+| Temp | one sub-folder per job for the big intermediates: decoded WAVs, truehdd Atmos masters, deew / DEE temp; deleted when the job ends | `%LOCALAPPDATA%\FPSConv\temp` (macOS `~/Library/Caches/FPSConv/temp`) |
+| Working | DeeZy's logs and batch results | `%LOCALAPPDATA%\FPSConv\work` |
+| Logs | FPSConv's own log files (applies at the next start) | `%APPDATA%\FPSConv\logs` |
+
 ## Layout
 
 ```

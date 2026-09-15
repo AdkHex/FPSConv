@@ -353,9 +353,9 @@ def write_deew_config(dee_path: str) -> Path:
     }
     ffmpeg = shutil.which(tool("ffmpeg")) or tool("ffmpeg")
     ffprobe = shutil.which(tool("ffprobe")) or tool("ffprobe")
-    # A temp folder we own. Left empty, the bundled deew would use "temp" next to
-    # FPSConv.exe inside Program Files / Programs, which is the wrong place.
-    temp_dir = config.config_dir() / "deew-temp"
+    # A temp folder we own (under the Temp folder from Settings). Left empty, the
+    # bundled deew would use "temp" next to FPSConv.exe, which is the wrong place.
+    temp_dir = config.temp_dir() / "deew"
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     def q(v: str) -> str:
@@ -389,7 +389,7 @@ def ensure_deew_config() -> None:
     dee = str(current.get("dee_path") or "")
     if not dee:
         return
-    wanted = str(config.config_dir() / "deew-temp")
+    wanted = str(config.temp_dir() / "deew")
     if current.get("temp_path") != wanted or current.get("logo") != 0:
         try:
             write_deew_config(dee)
@@ -818,6 +818,8 @@ def doctor() -> dict:
         "deezy": None,
         "deezy_via": "bundled" if dz[-1] == "deezy" and len(dz) == 2 else dz[0],
         "config_dir": str(config.config_dir()),
+        "dirs": {"temp": str(config.temp_dir()), "work": str(config.work_dir()), "logs": str(config.logs_dir()),
+                 "defaults": config.dir_defaults()},
         "settings": settings,
         "can_download_ffmpeg": sys.platform == "win32",
     }
@@ -1339,8 +1341,8 @@ def deezy_cmd_atmos(src: str, stream_index: int, enc: Encode, drc: str, work_dir
 
 
 def deezy_work_dir() -> str:
-    """A writable folder for DeeZy's logs and batch results (``<config dir>/deezy-work``)."""
-    path = config.config_dir() / "deezy-work"
+    """A writable folder for DeeZy's logs and batch results (the Working folder from Settings)."""
+    path = config.work_dir()
     try:
         path.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -1391,8 +1393,12 @@ def deezy_tools() -> dict:
 
 # ───────────────────────── MAIN CONVERSION (from fps.py) ─────────────────────────
 
-def convert(job: Job, notify: ProgressFn, work_root: str = ".temp_jobs") -> Job:
-    """Run one job to completion (or cancellation). Mutates and returns ``job``."""
+def convert(job: Job, notify: ProgressFn, work_root: Optional[str] = None) -> Job:
+    """Run one job to completion (or cancellation). Mutates and returns ``job``.
+
+    ``work_root`` (None = the Temp folder from Settings) gets one sub-folder per job.
+    """
+    work_root = work_root or str(config.temp_dir())
     if job.task == TASK_ENCODE:
         return convert_encode(job, notify, work_root)
 
@@ -1497,8 +1503,9 @@ def convert(job: Job, notify: ProgressFn, work_root: str = ".temp_jobs") -> Job:
     return job
 
 
-def convert_encode(job: Job, notify: ProgressFn, work_root: str = ".temp_jobs") -> Job:
+def convert_encode(job: Job, notify: ProgressFn, work_root: Optional[str] = None) -> Job:
     """Audio-only encode: source track -> DD / DDP / DDP Atmos, no speed change."""
+    work_root = work_root or str(config.temp_dir())
     file_path = job.source
 
     def finish(state: str, error: str = "") -> Job:

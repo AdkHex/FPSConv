@@ -39,7 +39,7 @@ def setup(level: int = logging.INFO) -> Path:
     """Install handlers once; returns the log file path."""
     global _configured
     root = logging.getLogger("fpsconv")
-    log_dir = config.config_dir() / "logs"
+    log_dir = config.logs_dir()
     path = log_dir / "fpsconv.log"
     if _configured:
         return path

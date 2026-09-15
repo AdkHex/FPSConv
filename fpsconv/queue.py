@@ -18,7 +18,8 @@ TERMINAL = ("done", "failed", "cancelled", "skipped")
 
 
 class JobQueue:
-    def __init__(self, workers: int = 1, work_root: str = ".temp_jobs", history: bool = True) -> None:
+    def __init__(self, workers: int = 1, work_root: Optional[str] = None, history: bool = True) -> None:
+        """``work_root`` None = the temp folder from Settings, read when each job starts."""
         self._jobs: dict[str, Job] = {}
         self._order: list[str] = []
         self._lock = threading.Lock()
@@ -122,7 +123,7 @@ class JobQueue:
             self._touch()
             self._persist()
             return
-        engine.convert(job, notify=self._touch, work_root=self._work_root)
+        engine.convert(job, notify=self._touch, work_root=self._work_root or str(config.temp_dir()))
         self._touch()
         self._persist()
 

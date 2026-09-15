@@ -312,6 +312,15 @@
           <span>deezy.exe</span><div class="row"><input class="in" id="t-deezy" placeholder="deezy.exe standalone build (DDP Atmos)"><button class="btn sm" onclick="browseFor('t-deezy')">Browse</button></div>
         </div>
       </div>
+      <div class="sec"><h3>Folders (empty = default)</h3>
+        <div class="kv">
+          <span>Output</span><div class="row"><input class="in" id="d-out" placeholder="where finished files go"><button class="btn sm" onclick="browseDirFor('d-out')">Browse</button><button class="btn sm" onclick="openDir('d-out')">Open</button></div>
+          <span>Temp</span><div class="row"><input class="in" id="d-temp"><button class="btn sm" onclick="browseDirFor('d-temp')">Browse</button><button class="btn sm" onclick="openDir('d-temp')">Open</button></div>
+          <span>Working</span><div class="row"><input class="in" id="d-work"><button class="btn sm" onclick="browseDirFor('d-work')">Browse</button><button class="btn sm" onclick="openDir('d-work')">Open</button></div>
+          <span>Logs</span><div class="row"><input class="in" id="d-logs"><button class="btn sm" onclick="browseDirFor('d-logs')">Browse</button><button class="btn sm" onclick="openDir('d-logs')">Open</button></div>
+        </div>
+        <div class="help" style="font-size:12px;color:var(--text-3);margin-top:8px"><b>Temp</b>: one sub-folder per job for the big intermediates (decoded WAVs, truehdd Atmos masters, deew / DEE temp) — put it on a fast drive with room for ~3× the source. Deleted when the job ends. <b>Working</b>: DeeZy's logs and batch results. <b>Logs</b>: FPSConv's own log files (a change applies at the next start). Settings and history stay in <span class="v" id="cfgdir2"></span>.</div>
+      </div>
       <div class="sec"><h3>Updates &amp; window</h3>
         <div style="display:flex;flex-direction:column;gap:10px">
           <label class="tg"><input type="checkbox" class="cb" id="t-auto" onchange="save({auto_update:this.checked})">Install updates automatically when no job is running</label>
@@ -405,6 +414,8 @@ async function loadDoctor(){
   $('tools').innerHTML=rows.map(([n,c,t])=>`<span><i class="dot ${c}"></i>${n}</span><span class="v" title="${esc(t)}">${esc(t)}</span>`).join('');
   $('t-ffmpeg').value=S.tools?.ffmpeg||'';$('t-ffprobe').value=S.tools?.ffprobe||'';$('t-deew').value=S.tools?.deew_python||'';
   $('t-mediainfo').value=S.tools?.mediainfo||'';$('t-truehdd').value=S.tools?.truehdd||'';$('t-deezy').value=S.tools?.deezy||'';
+  const dd=d.dirs?.defaults||{};$('d-out').value=S.out_dir||'';for(const k of ['temp','work','logs']){const el=$('d-'+k);el.value=S.dirs?.[k]||'';el.placeholder=dd[k]||''}
+  $('cfgdir2').textContent=d.config_dir;
   const atmosOk=d.dee&&d.deezy&&d.truehdd;$('st-atmos').style.display=S.task==='encode'?'':'none';
   $('st-atmos').innerHTML=`<i class="dot ${atmosOk?'ok':'warn'}"></i>Atmos ${atmosOk?'ready':(d.dee?(d.deezy?'needs truehdd':'needs deezy'):'needs DEE')}`;
   $('t-dee').value=d.dee_path||'';$('t-auto').checked=S.auto_update!==false;$('t-win').checked=S.native_window!==false;
@@ -413,7 +424,13 @@ async function loadDoctor(){
   $('st-ffmpeg').innerHTML=`<i class="dot ${d.ffmpeg&&d.ffprobe?'ok':'bad'}"></i>ffmpeg ${d.ffmpeg&&d.ffprobe?'ready':'missing'}`;
   $('st-dee').innerHTML=`<i class="dot ${d.dee?'ok':(d.deew?'warn':'bad')}"></i>DEE ${d.dee?'ready':(d.deew?'not configured':'unavailable')}`;
 }
-async function saveTools(){S=await post('/api/settings',{tools:{ffmpeg:$('t-ffmpeg').value,ffprobe:$('t-ffprobe').value,deew_python:$('t-deew').value,mediainfo:$('t-mediainfo').value,truehdd:$('t-truehdd').value,deezy:$('t-deezy').value}});S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,drc:'film_light'},S.encode||{});await loadDoctor();toast('Saved')}
+async function saveTools(){
+  S=await post('/api/settings',{tools:{ffmpeg:$('t-ffmpeg').value,ffprobe:$('t-ffprobe').value,deew_python:$('t-deew').value,mediainfo:$('t-mediainfo').value,truehdd:$('t-truehdd').value,deezy:$('t-deezy').value},
+    dirs:{temp:$('d-temp').value,work:$('d-work').value,logs:$('d-logs').value},out_dir:$('d-out').value.trim()});
+  S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,drc:'film_light'},S.encode||{});
+  setOut(S.out_dir||'',false);await loadDoctor();toast('Saved')}
+async function browseDirFor(id){const r=await post('/api/pick',{kind:'folder',start:$(id).value||$(id).placeholder||''});if(r.native){if(r.paths[0])$(id).value=r.paths[0]}else fbOpen('folder',p=>{$(id).value=p[0]})}
+function openDir(id){post('/api/open',{path:$(id).value||$(id).placeholder||''})}
 async function saveDee(){const r=await post('/api/dee',{dee_path:$('t-dee').value});if(r.ok){toast('DEE configured — deew config written');await loadDoctor()}}
 async function browseFor(id){const r=await post('/api/pick',{kind:'files',start:''});if(r.native){if(r.paths[0])$(id).value=r.paths[0]}else{fbOpen('file',p=>{$(id).value=p[0]})}}
 async function downloadFfmpeg(){await post('/api/ffmpeg/download',{});$('ffdl-btn').disabled=true;const t=setInterval(async()=>{const st=await get('/api/ffmpeg/status');$('ffdl-st').textContent=st.state==='running'?`${st.step} ${st.percent}%`:st.state==='error'?'failed: '+st.error:'installed';if(st.state!=='running'){clearInterval(t);$('ffdl-btn').disabled=false;loadDoctor()}},800)}

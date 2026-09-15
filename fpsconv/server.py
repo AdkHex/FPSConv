@@ -137,7 +137,10 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                     plans.append(enc.to_dict())
                 self._json({"plans": plans})
             elif url.path == "/api/settings":
-                self._json(config.save_settings(data))
+                saved = config.save_settings(data)
+                if "dirs" in data:
+                    engine.ensure_deew_config()      # deew's temp path follows the Temp folder
+                self._json(saved)
             elif url.path == "/api/suggest":
                 ref = data.get("reference") or {}
                 out = []
@@ -157,9 +160,15 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
             elif url.path == "/api/remove":
                 self._json({"ok": queue.remove(data.get("id", ""))})
             elif url.path == "/api/open":
-                self._json({"ok": engine.open_folder(data.get("path", ""))})
+                path = data.get("path", "")
+                if path and not os.path.isdir(path):
+                    try:
+                        os.makedirs(path, exist_ok=True)     # a Folders entry that has not been used yet
+                    except OSError:
+                        pass
+                self._json({"ok": engine.open_folder(path)})
             elif url.path == "/api/logs/open":
-                self._json({"ok": engine.open_folder(str(config.config_dir() / "logs"))})
+                self._json({"ok": engine.open_folder(str(config.logs_dir()))})
             elif url.path == "/api/pick":
                 self._json(self._pick(data.get("kind", "files"), data.get("start", "")))
             elif url.path == "/api/expand":
