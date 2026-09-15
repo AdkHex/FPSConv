@@ -256,7 +256,7 @@ class Flat71(unittest.TestCase):
             e = engine.resolve_encode("ddp", 8, True, 1536, 8, True, "truehd")
             from pathlib import Path
             cmd = engine.patcher_cmd(r"C:\DEE\dee.exe", "/w/master.atmos", "/o/m.ec3", e, "film_standard", "/w/dee", Path("/p/dee-ddp71-atmos-wrapper.py"))
-            self.assertEqual(cmd[1:], ["/p/dee-ddp71-atmos-wrapper.py", r"C:\DEE\dee.exe", "/w/master.atmos", "/o/m.ec3",
+            self.assertEqual(cmd[1:], [str(Path("/p/dee-ddp71-atmos-wrapper.py")), r"C:\DEE\dee.exe", "/w/master.atmos", "/o/m.ec3",
                                        "--compatibility-layout", "flat-7.1", "--data-rate", "1536",
                                        "--line-mode-drc-profile", "film_standard", "--rf-mode-drc-profile", "film_standard",
                                        "--temp-dir", "/w/dee", "--overwrite"])
