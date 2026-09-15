@@ -375,9 +375,10 @@ async function clearAll(){
   const r=await post('/api/clear',{});
   render();toast(`Cleared ${n} loaded file${n===1?'':'s'} and ${r.removed||0} finished job${r.removed===1?'':'s'}`);
 }
-async function showMi(path){
+async function showMi(path,id){
   $('mi-title').textContent='MediaInfo — '+path.replace(/^.*[\\/]/,'');$('mi-path').textContent=path;$('mi-pre').textContent='reading…';$('mi').classList.add('open');
-  const r=await get('/api/mediainfo?path='+encodeURIComponent(path));
+  const r=await get('/api/mediainfo?path='+encodeURIComponent(path)+(id?'&id='+encodeURIComponent(id):''));
+  if(r.path&&r.path!==path){$('mi-path').textContent=r.path;$('mi-title').textContent='MediaInfo — '+r.path.replace(/^.*[\\/]/,'')}
   $('mi-pre').textContent=r.report||r.error||'no report';
 }
 function closeMi(){$('mi').classList.remove('open')}
@@ -564,7 +565,7 @@ function render(){
   for(const j of jobs){
     const live=j.state==='queued'||j.state==='running';
     const miPath=['done','skipped'].includes(j.state)&&j.out_path?j.out_path:j.source, miTitle=miPath===j.out_path?'MediaInfo of the encoded output':'MediaInfo of the source';
-    const mi=`<button class="ib" title="${miTitle}" onclick='event.stopPropagation();showMi(${esc(JSON.stringify(miPath))})'>${I.info}</button>`;
+    const mi=`<button class="ib" title="${miTitle}" onclick='event.stopPropagation();showMi(${esc(JSON.stringify(miPath))},"${j.id}")'>${I.info}</button>`;
     const acts=live?`${mi}<button class="ib" title="Cancel" onclick="event.stopPropagation();post('/api/cancel',{id:'${j.id}'})">${I.x}</button>`
       :`${mi}${['done','skipped'].includes(j.state)?`<button class="ib" title="Open output folder" onclick="event.stopPropagation();post('/api/open',{path:${esc(JSON.stringify(j.out_dir))}})">${I.open}</button>`:`<button class="ib" title="Retry" onclick="event.stopPropagation();post('/api/retry',{id:'${j.id}'})">${I.retry}</button>`}<button class="ib" title="Remove from list" onclick="event.stopPropagation();post('/api/remove',{id:'${j.id}'})">${I.x}</button>`;
     const det=j.state==='running'?(j.detail||j.step):j.state==='failed'?j.error:j.state==='done'?'→ '+j.out_name:j.state==='skipped'?'skipped — '+j.error:j.state==='cancelled'?'cancelled':'queued';

@@ -266,6 +266,21 @@ class MediaInfoReport(unittest.TestCase):
     def test_missing_file_is_empty(self):
         self.assertEqual(engine.mediainfo_report("/no/such/file.ec3"), "")
 
+    def test_find_output_exact_stem_and_diagnosis(self):
+        with tempfile.TemporaryDirectory() as d:
+            real = os.path.join(d, "Movie_DDP7.1Atmos_1536k.ec3")
+            open(real, "w").close()
+            self.assertEqual(engine.find_output(real), (real, ""))
+            # the recorded path is stale but a file with that stem is in the folder
+            found, why = engine.find_output(os.path.join(d, "gone", "Movie_DDP7.1Atmos_1536k.ec3"), d, "Movie_DDP7.1Atmos_1536k")
+            self.assertEqual((found, why), (real, ""))
+            # nothing matches: the error names the folder and the closest names
+            found, why = engine.find_output(os.path.join(d, "Movie_DD5.1_640k.ac3"), d, "Movie_DD5.1_640k")
+            self.assertEqual(found, "")
+            self.assertIn("similar names there: ['Movie_DDP7.1Atmos_1536k.ec3']", why)
+            found, why = engine.find_output("/nope/x.ec3")
+            self.assertIn("does not exist or is not reachable", why)
+
 
 class JobModel(unittest.TestCase):
     def test_old_history_defaults_to_fps(self):

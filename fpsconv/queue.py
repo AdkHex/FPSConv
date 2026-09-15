@@ -188,6 +188,10 @@ class JobQueue:
         self._persist()
         return True
 
+    def get(self, job_id: str) -> Optional[Job]:
+        with self._lock:
+            return self._jobs.get(job_id)
+
     def busy(self) -> bool:
         with self._lock:
             return any(self._jobs[i].state in ("queued", "running") for i in self._order)

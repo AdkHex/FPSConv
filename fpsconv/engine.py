@@ -614,6 +614,37 @@ def _mediainfo_json(path: str) -> Optional[dict]:
         return None
 
 
+def find_output(path: str, folder: str = "", stem: str = "") -> tuple[str, str]:
+    """Locate a file for the MediaInfo report: ``(found path, diagnosis)``.
+
+    Tries the exact path (also normalised), then any file in ``folder`` whose
+    name starts with ``stem`` (case-insensitive, newest first — the tool may
+    have written a slightly different name), and otherwise explains what the
+    folder does contain so a mismatch can be seen instead of guessed.
+    """
+    for cand in (path, os.path.normpath(path) if path else ""):
+        if cand and os.path.isfile(cand):
+            return cand, ""
+    folder = folder or (os.path.dirname(path) if path else "")
+    stem = (stem or os.path.splitext(os.path.basename(path))[0]).lower()
+    if folder and os.path.isdir(folder):
+        try:
+            names = os.listdir(folder)
+        except OSError as exc:
+            return "", f"cannot read {folder}: {exc}"
+        hits = [n for n in names if stem and n.lower().startswith(stem)]
+        if hits:
+            hits.sort(key=lambda n: os.path.getmtime(os.path.join(folder, n)), reverse=True)
+            return os.path.join(folder, hits[0]), ""
+        # nothing with that stem: show the closest names so the difference is visible
+        first = stem.split("_")[0][:24]
+        similar = [n for n in names if first and n.lower().startswith(first)][:6]
+        detail = (f"folder {folder} has no file starting with {stem!r}; similar names there: {similar}"
+                  if similar else f"folder {folder} has {len(names)} file(s), none starting with {stem!r}")
+        return "", f"not found: {path}\n{detail}"
+    return "", f"not found: {path}\nfolder {folder or '?'} does not exist or is not reachable from this app"
+
+
 def _report_from_json(data: dict) -> str:
     """A readable MediaInfo-style report from its JSON, for when only JSON is available."""
     out = []
