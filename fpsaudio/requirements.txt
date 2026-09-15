@@ -1,0 +1,8 @@
+# All of these ship Windows wheels for Python 3.11+, so install.ps1 never has to
+# compile anything.
+numpy>=1.24
+soxr>=0.3.7          # libsoxr VHQ resampler — the default retime engine
+soundfile>=0.12      # libsndfile: RF64 / W64 intermediates (no 4 GB ceiling)
+pyloudnorm>=0.1.1    # EBU R128 loudness, for the loudness-delta gate
+typer>=0.9           # CLI
+textual>=0.50        # TUI

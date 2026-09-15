@@ -1,0 +1,36 @@
+# Bit-exact retiming by sample-rate redeclaration (§3.2).
+#
+# Where the arithmetic allows it, this is the best possible result: not one
+# sample is altered, only the declared sample rate. The PCM MD5 of the output
+# is asserted to equal the input's, and the job hard-fails if it does not.
+#
+# It only works when source_rate x speed lands on a whole number of hertz:
+#
+#   48000 x 25/24     = 50000     ok    (24 -> 25)
+#   48000 x 1001/1000 = 48048     ok    (23.976 -> 24)
+#   48000 x 24/25     = 46080     ok    (25 -> 24)
+#   48000 x 1000/1001 = 47952.05  no    (24 -> 23.976)
+#
+# Run `fpsaudio explain --preset <key> --rate 48000` to check before committing.
+# Anything that cannot be done exactly is REFUSED here rather than quietly
+# downgraded to a resample — pick presets/film-to-pal.toml for that.
+
+[defaults]
+preset = "24_to_25"
+method = "redeclare"
+atmos_policy = "refuse"
+
+[output]
+codec = "flac"               # must be a format that accepts an arbitrary rate
+container = "flac"
+template = "{stem}__a{index}__{profile}__{rate}Hz"
+overwrite = "skip"
+dither = "none"              # dither would break bit-exactness
+
+[decode]
+drc_scale = 0.0
+ignore_dialnorm = true
+
+[verify]
+pcm_md5 = true               # the whole point; leave this on
+duration_drift = true

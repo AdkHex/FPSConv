@@ -1,0 +1,37 @@
+# Maximum-scrutiny settings for a master you intend to keep.
+#
+# Slower than the defaults, on purpose: the null test decodes the output,
+# resamples it back, and measures the residual, which roughly doubles the work.
+# Worth it once; not worth it on every file in a 200-file batch.
+
+[defaults]
+preset = "23.976_to_25"
+method = "resample"
+atmos_policy = "refuse"
+
+[output]
+codec = "flac"
+container = "flac"
+bit_depth = 24
+template = "{stem}__a{index}__{profile}__{rate}Hz__{depth}bit"
+overwrite = "fail"           # never silently replace an archival master
+dither = "tpdf"
+
+[decode]
+drc_scale = 0.0
+ignore_dialnorm = true
+
+[verify]
+sample_count = true
+duration_drift = true
+pcm_md5 = true
+channel_layout = true
+null_test = true
+loudness = true
+duration_tolerance_ms = 1.0
+null_test_max_dbfs = -140.0
+loudness_tolerance_lu = 0.1
+
+[concurrency]
+files = 2                    # null tests are memory-hungry; keep it modest
+encoders = 1

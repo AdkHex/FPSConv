@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.devvenv/
+.fpsaudio-work/
+.fpsaudio/
+tools/
+build/
+dist/
+*.egg-info/

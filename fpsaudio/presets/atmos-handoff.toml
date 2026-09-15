@@ -1,0 +1,36 @@
+# Dolby Atmos: retime everything that can be automated, then hand off.
+#
+# TrueHD and TrueHD Atmos ENCODING cannot be automated at all — Dolby Media
+# Encoder is GUI-only and ships no command line. So this preset does every part
+# that can be done correctly and stops cleanly:
+#
+#   * decodes the TrueHD stream with truehdd, objects intact
+#   * retimes the essence with libsoxr VHQ
+#   * rescales every object timestamp by the SAME exact Fraction as the audio
+#   * writes the essence as RF64/W64, the retimed Atmos master, a verification
+#     report, and DME_RECIPE.md listing the exact settings to select
+#
+# You finish the last step by hand. That is honest about what is possible here.
+#
+# DD+ Atmos (E-AC-3 JOC) sources still refuse: no JOC decoder exists outside
+# Dolby's own tools, so decoding one would keep the 5.1 core and throw the
+# objects away.
+
+[defaults]
+preset = "23.976_to_25"
+method = "resample"
+atmos_policy = "handoff"
+
+[output]
+template = "{stem}__a{index}__{profile}"
+overwrite = "skip"
+keep_intermediates = true    # the hand-off bundle needs them
+
+[decode]
+drc_scale = 0.0
+ignore_dialnorm = true
+
+[verify]
+pcm_md5 = true
+duration_drift = true
+loudness = true

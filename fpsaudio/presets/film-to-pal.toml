@@ -1,0 +1,27 @@
+# 23.976 -> 25 : the classic NTSC-film to PAL speed-up.
+#
+# This is the most common job in the whole toolchain: a film mastered at
+# 24000/1001 fps played back at 25 fps runs 4.27% fast, and the audio has to
+# follow. Pitch rises with speed, exactly as it does in a cinema projector —
+# that is a property of the operation, not a defect.
+
+[defaults]
+preset = "23.976_to_25"
+method = "resample"          # libsoxr VHQ; pitch moves with speed
+atmos_policy = "refuse"      # never flatten an object bed without being told to
+
+[output]
+codec = "auto"               # lossless in, lossless out
+container = "auto"
+template = "{stem}__a{index}__{profile}"
+overwrite = "skip"
+dither = "tpdf"
+
+[decode]
+drc_scale = 0.0              # no dynamic range compression baked in (§3.3)
+ignore_dialnorm = true
+
+[verify]
+pcm_md5 = true
+null_test = false            # slow; turn on for a final master
+loudness = false

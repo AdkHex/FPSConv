@@ -1,0 +1,2 @@
+# No Python packages required for the GUI (tkinter is built into standard Python).
+# FFmpeg/FFprobe are still required and must be available in PATH.

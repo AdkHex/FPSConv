@@ -1,0 +1,7 @@
+# The GUI and the CLI use only the Python standard library.
+# deew is the wrapper that drives Dolby Encoding Engine (DEE) for AC-3 / E-AC-3 / TrueHD
+# fps jobs and for the DD / DDP output of the audio-encode task.
+# It does not include DEE itself — see README.md.
+# deezy (DDP Atmos output) is installed as an optional extra by Install.bat / run.sh.
+# Both need Python 3.10 – 3.13.
+deew>=2.9

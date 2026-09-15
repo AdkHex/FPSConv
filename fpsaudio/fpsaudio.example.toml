@@ -1,0 +1,39 @@
+# Copy to one of these and edit:
+#   %APPDATA%\fpsaudio\config.toml     (per user)
+#   .\fpsaudio.toml                    (per project; highest precedence)
+#
+# Everything here is optional. `fpsaudio doctor` prints which files were loaded.
+
+[defaults]
+preset = "23.976_to_25"
+method = "resample"            # resample | redeclare | stretch
+atmos_policy = "refuse"        # refuse | handoff | flatten
+
+[output]
+directory = "D:/retimed"
+codec = "auto"
+container = "auto"
+template = "{stem}__a{index}__{profile}"
+overwrite = "skip"             # skip | overwrite | rename | fail
+dither = "tpdf"                # tpdf | shaped | none
+# bit_depth = 24
+# sample_rate = 48000
+
+[decode]
+drc_scale = 0.0                # 0 = no dynamic range compression (recommended)
+ignore_dialnorm = true
+
+[concurrency]
+files = 4                      # 0 = auto
+encoders = 2                   # 0 = auto
+
+[verify]
+pcm_md5 = true
+null_test = false
+loudness = false
+
+# Point at binaries that are not on PATH. `fpsaudio doctor` shows what it found.
+[tools]
+# ffmpeg = "C:/tools/ffmpeg/bin/ffmpeg.exe"
+# fdkaac = "C:/tools/fdkaac/fdkaac.exe"
+# truehdd = "C:/tools/truehdd/truehdd.exe"
