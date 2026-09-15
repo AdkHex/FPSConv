@@ -1261,6 +1261,10 @@ def deezy_cmd_atmos(src: str, stream_index: int, enc: Encode, drc: str, work_dir
 
     Only ``--no-progress-bars`` is a top-level DeeZy option; ``--ffmpeg`` /
     ``--dee`` / ``--truehdd`` belong to the ``encode atmos`` sub-parser.
+
+    ``--working-dir`` (DeeZy's logs / batch-results) goes under our config
+    folder: left alone, DeeZy creates ``deezy_work`` next to its own exe, which
+    is Program Files for a normal install and not writable.
     """
     cmd = deezy_cmd() + ["--no-progress-bars", "encode", "atmos"]
     for flag in ("ffmpeg", "dee", "truehdd"):
@@ -1271,8 +1275,19 @@ def deezy_cmd_atmos(src: str, stream_index: int, enc: Encode, drc: str, work_dir
         "--atmos-mode", enc.atmos_mode, "--bitrate", str(enc.bitrate),
         "--track-index", f"a:{stream_index}",
         "--drc-line-mode", drc if drc in DRC_PROFILES else "film_light",
-        "--temp-dir", work_dir, "--output", out_path, "--overwrite", src,
+        "--working-dir", deezy_work_dir(), "--temp-dir", os.path.abspath(work_dir),
+        "--output", out_path, "--overwrite", src,
     ]
+
+
+def deezy_work_dir() -> str:
+    """A writable folder for DeeZy's logs and batch results (``<config dir>/deezy-work``)."""
+    path = config.config_dir() / "deezy-work"
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    return str(path)
 
 
 def deezy_tools() -> dict:
