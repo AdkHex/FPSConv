@@ -54,6 +54,29 @@ def _run_bundled(module: str, argv: list[str]) -> int:
     return 0
 
 
+def _run_script(script: str, argv: list[str]) -> int:
+    """Run a plain Python script with the bundled interpreter (``fpsconv-cli.exe tool.py …``).
+
+    Lets the installed build drive stdlib-only tools such as the DD+ 7.1 Atmos
+    patcher without a Python install on the machine. ``sys.executable`` stays
+    this exe, so a script that spawns ``[sys.executable, other.py]`` keeps working.
+    """
+    _hide_child_windows()
+    sys.argv = [script, *argv]
+    sys.path.insert(0, os.path.dirname(os.path.abspath(script)))
+    try:
+        runpy.run_path(script, run_name="__main__")
+    except SystemExit as exc:
+        code = exc.code
+        return code if isinstance(code, int) else (0 if code is None else 1)
+    except BaseException:  # noqa: BLE001
+        import traceback
+        traceback.print_exc()
+        sys.stderr.flush()
+        return 1
+    return 0
+
+
 def _cli_convert(args: argparse.Namespace) -> int:
     from .queue import JobQueue
 
@@ -72,7 +95,8 @@ def _cli_convert(args: argparse.Namespace) -> int:
         queue.add([{"path": s, "stream_index": args.stream} for s in sources], "", args.output,
                   overwrite=args.overwrite, task=engine.TASK_ENCODE,
                   encode={"target": args.format, "channels": args.channels, "bitrate": args.bitrate,
-                          "atmos": not args.no_atmos, "drc": args.drc})
+                          "atmos": not args.no_atmos, "drc": args.drc, "atmos71": args.atmos_71,
+                          "bed_conform": not args.no_bed_conform})
     else:
         queue.add([{"path": s, "stream_index": args.stream} for s in sources], args.mode,
                   args.output, bitrate=args.bitrate, overwrite=args.overwrite)
@@ -153,6 +177,14 @@ def _cli_doctor() -> int:
     print(f"mediainfo   : {d['mediainfo'] or ('pymediainfo (bundled)' if d['pymediainfo'] else 'NOT FOUND (needed to detect Atmos)')}")
     print(f"deezy       : {'ok (' + d['deezy_via'] + ')' if d['deezy'] else 'NOT FOUND — needed for DDP Atmos: DeeZy standalone exe (github.com/jessielw/DeeZy), set its path in Settings'}")
     print(f"truehdd     : {d['truehdd'] or 'NOT FOUND — needed for DDP Atmos (github.com/truehdd/truehdd)'}")
+    dll = d["dee_dll"]
+    print(f"7.1 patcher : {d['patcher'] or 'not installed (Settings → DD+ 7.1 Atmos → Download, or: patcher)'}")
+    dll_text = {"supported": "DEE 5.2.1 build supported by the flat-7.1 patch",
+                "patched": "DLL currently patched (the patcher restores it from its backup on the next run)",
+                "unsupported": "this DEE build is NOT supported by the flat-7.1 patch (needs 5.2.1-5994839)",
+                "no-dll": "dee_audio_filter_ddp_atmos.dll is not next to dee.exe",
+                "no-dee": "DEE not configured", "unreadable": "DLL unreadable"}[dll["state"]]
+    print(f"DEE for 7.1 : {dll_text}")
     print(f"settings    : {d['config_dir']}")
     ok = d["ffmpeg"] and d["ffprobe"]
     print()
@@ -166,6 +198,8 @@ def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] in ("deew", "deezy"):
         return _run_bundled(argv[0], argv[1:])
+    if argv and argv[0].lower().endswith(".py") and os.path.isfile(argv[0]):
+        return _run_script(argv[0], argv[1:])
 
     parser = argparse.ArgumentParser(prog="fpsconv", description=f"{APP_NAME} {__version__}")
     parser.add_argument("--version", action="version", version=f"{APP_NAME} {__version__}")
@@ -194,6 +228,9 @@ def main(argv: list[str] | None = None) -> int:
                      help="0 = same as source, else 1 / 2 / 6 (5.1) / 8 (7.1); never upmixes")
     enc.add_argument("--bitrate", "-b", type=int, default=0, help="kbps; 0 = DEE default for the layout")
     enc.add_argument("--no-atmos", action="store_true", help="encode the bed only, even for TrueHD Atmos sources")
+    enc.add_argument("--atmos-71", choices=list(engine.ATMOS71_LAYOUTS), default="flat",
+                     help="7.1 Atmos legacy layout: flat = Lb Rb through the patched DEE (default), dee = DEE's own 5.1+2 heights (Tfl Tfr)")
+    enc.add_argument("--no-bed-conform", action="store_true", help="flat 7.1: do not pass --bed-conform to truehdd")
     enc.add_argument("--drc", choices=list(engine.DRC_PROFILES), default="film_light")
     enc.add_argument("--output", "-o", default="output")
     enc.add_argument("--jobs", "-j", type=int, default=1)
@@ -206,6 +243,7 @@ def main(argv: list[str] | None = None) -> int:
     probe.add_argument("--target", "-t", help="video the audio must fit; suggests the conversion")
 
     sub.add_parser("doctor", help="show what is installed")
+    sub.add_parser("patcher", help="download the DD+ 7.1 Atmos patcher (LumaVistaLab, GPL-3.0) into the app's tools folder")
 
     dee = sub.add_parser("dee", help="write deew's config.toml for a Dolby Encoding Engine path")
     dee.add_argument("path", help=r"path to dee.exe, e.g. C:\Dolby\DEE\dee.exe")
@@ -216,6 +254,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "probe":
         return _cli_probe(args)
     if args.cmd == "doctor":
+        return _cli_doctor()
+    if args.cmd == "patcher":
+        found = engine.download_patcher(lambda p, step: print(f"\r{step} {p:.0f}%", end="", flush=True))
+        print(f"\ninstalled: {found['script']}")
         return _cli_doctor()
     if args.cmd == "dee":
         print(f"wrote {engine.write_deew_config(args.path)}")

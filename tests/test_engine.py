@@ -126,7 +126,7 @@ class ResolveEncode(unittest.TestCase):
 
     def test_atmos_only_when_confirmed(self):
         yes = engine.resolve_encode("ddp", 0, True, 0, 8, True, "truehd")
-        self.assertEqual((yes.atmos, yes.atmos_mode, yes.bitrate, yes.label), (True, "bluray", 1536, "DDP 7.1 Atmos 1536k"))
+        self.assertEqual((yes.atmos, yes.atmos_mode, yes.bitrate, yes.label), (True, "bluray", 1536, "DDP 7.1 Atmos flat 1536k"))
         streaming = engine.resolve_encode("ddp", 6, True, 0, 8, True, "truehd")
         self.assertEqual((streaming.atmos, streaming.atmos_mode, streaming.bitrate), (True, "streaming", 768))
         stereo = engine.resolve_encode("ddp", 2, True, 0, 8, True, "truehd")
@@ -220,11 +220,80 @@ class CommandBuilders(unittest.TestCase):
     def test_encode_plan_mentions_the_real_steps(self):
         e = engine.resolve_encode("ddp", 8, True, 1536, 8, True, "truehd")
         plan = engine.encode_plan(e, {"pretty": "TrueHD Atmos", "codec": "truehd", "sample_rate": 48000})
+        self.assertEqual(len(plan), 5)                                   # flat 7.1: the patched-DEE chain
+        self.assertIn("truehdd decodes", plan[1]); self.assertIn("flat-7.1", plan[2]); self.assertIn("1536 kbps", plan[2]); self.assertIn("Lb Rb", plan[4])
+        e = engine.resolve_encode("ddp", 8, True, 1536, 8, True, "truehd", atmos71="dee")
+        plan = engine.encode_plan(e, {"pretty": "TrueHD Atmos", "codec": "truehd", "sample_rate": 48000})
         self.assertEqual(len(plan), 4)
         self.assertIn("truehdd decodes", plan[1]); self.assertIn("Blu-ray mode", plan[2]); self.assertIn("1536 kbps", plan[2])
         e = engine.resolve_encode("ddp", 6, True, 0, 8, False)
         plan = engine.encode_plan(e, {"pretty": "DTS-HD MA", "codec": "aac", "codec_name": "dts", "sample_rate": 96000})
         self.assertIn("lossless decode", plan[0]); self.assertIn("96000 Hz to 48 kHz", plan[0]); self.assertIn("7.1 → 5.1 downmix", plan[1])
+
+
+class Flat71(unittest.TestCase):
+    def test_resolve_flat_vs_dee(self):
+        flat = engine.resolve_encode("ddp", 8, True, 1536, 8, True, "truehd")
+        self.assertTrue(flat.flat71); self.assertEqual(flat.label, "DDP 7.1 Atmos flat 1536k")
+        self.assertTrue(any("Lb Rb" in n for n in flat.notes))
+        dee = engine.resolve_encode("ddp", 8, True, 1536, 8, True, "truehd", atmos71="dee")
+        self.assertFalse(dee.flat71); self.assertTrue(any("Tfl Tfr" in n for n in dee.notes))
+        # flat 7.1 uses the wrapper's data-rate list; out-of-range falls back to the default
+        self.assertEqual(engine.resolve_encode("ddp", 8, True, 1500, 8, True, "truehd").bitrate, 1512)
+        self.assertEqual(engine.resolve_encode("ddp", 8, True, 640, 8, True, "truehd").bitrate, 1536)
+        # 5.1 Atmos and non-Atmos never take the flat path
+        self.assertFalse(engine.resolve_encode("ddp", 6, True, 0, 8, True, "truehd").flat71)
+        self.assertFalse(engine.resolve_encode("ddp", 8, True, 0, 8, False, "truehd").flat71)
+        self.assertEqual(engine.encode_output_name("/x/m.thd", 0, flat), "m_DDP7.1Atmos_1536k.ec3")
+
+    def test_commands(self):
+        with mock.patch.object(config, "load_settings", return_value={"tools": {"truehdd": "", "patcher": "/p"}}):
+            self.assertEqual(engine.truehdd_cmd("/t/truehdd", "/w/in.thd", "/w/master"),
+                             ["/t/truehdd", "--progress", "decode", "--output-path", "/w/master", "--warp-mode", "normal", "--bed-conform", "/w/in.thd"])
+            self.assertNotIn("--bed-conform", engine.truehdd_cmd("/t/truehdd", "/w/in.thd", "/w/master", bed_conform=False))
+            self.assertEqual(engine.thd_extract_cmd("ffmpeg", "/in/m.mkv", 1, "/w/x.thd"),
+                             ["ffmpeg", "-y", "-nostdin", "-i", "/in/m.mkv", "-map", "0:a:1", "-vn", "-sn", "-dn", "-c:a", "copy", "-f", "truehd", "/w/x.thd"])
+            e = engine.resolve_encode("ddp", 8, True, 1536, 8, True, "truehd")
+            from pathlib import Path
+            cmd = engine.patcher_cmd(r"C:\DEE\dee.exe", "/w/master.atmos", "/o/m.ec3", e, "film_standard", "/w/dee", Path("/p/dee-ddp71-atmos-wrapper.py"))
+            self.assertEqual(cmd[1:], ["/p/dee-ddp71-atmos-wrapper.py", r"C:\DEE\dee.exe", "/w/master.atmos", "/o/m.ec3",
+                                       "--compatibility-layout", "flat-7.1", "--data-rate", "1536",
+                                       "--line-mode-drc-profile", "film_standard", "--rf-mode-drc-profile", "film_standard",
+                                       "--temp-dir", "/w/dee", "--overwrite"])
+            self.assertEqual(cmd[0], engine.script_runner()[0])
+
+    def test_dll_status(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            dee = Path(tmp) / "dee.exe"; dee.write_bytes(b"x")
+            self.assertEqual(engine.dee_dll_status(str(dee))["state"], "no-dll")
+            dll = Path(tmp) / engine.PATCHER_DLL; dll.write_bytes(b"not the real one")
+            st = engine.dee_dll_status(str(dee)); self.assertEqual(st["state"], "unsupported"); self.assertEqual(len(st["sha256"]), 64)
+            with mock.patch.object(engine, "PATCHER_DLL_SHA256", st["sha256"]):
+                self.assertEqual(engine.dee_dll_status(str(dee))["state"], "supported")
+            self.assertEqual(engine.dee_dll_status("/nope/dee.exe")["state"], "no-dee")
+
+    def test_patcher_parser_maps_dee_progress(self):
+        p = engine._PatcherParser()
+        self.assertEqual(p("Run directory: /x"), ("preparing", None))
+        self.assertEqual(p("[2026] INFO: encode_to_atmos_ddp: Starting measurement."), ("DEE measure", 0.0))
+        self.assertEqual(p("Overall progress: 20.0."), ("DEE measure", 50.0))
+        self.assertEqual(p("[2026] INFO: encode_to_atmos_ddp: Measurement done. Final Integrated loudness: -21.8."), ("DEE encode", 0.0))
+        self.assertEqual(p("Overall progress: 70.0."), ("DEE encode", 50.0))
+        self.assertEqual(p("patched AC-3 frames: 1250"), ("Surround EX flag", 100.0))
+        self.assertIsNone(p("INFO: CPU: 17.7 %"))
+        self.assertEqual(engine._parse_truehdd_line("Decoding [=====>   ] 42%"), ("truehdd decode", 42.0))
+
+    def test_flat71_ready_reasons(self):
+        with mock.patch.object(engine, "patcher_script", return_value=None):
+            self.assertIn("not installed", engine.flat71_ready()[1])
+        with mock.patch.object(engine, "patcher_script", return_value=__import__("pathlib").Path("/p/w.py")), \
+             mock.patch.object(engine, "deezy_tools", return_value={"ffmpeg": "f", "dee": "", "truehdd": "t"}):
+            self.assertIn("Dolby Encoding Engine", engine.flat71_ready()[1])
+        with mock.patch.object(engine, "patcher_script", return_value=__import__("pathlib").Path("/p/w.py")), \
+             mock.patch.object(engine, "deezy_tools", return_value={"ffmpeg": "f", "dee": "/d/dee.exe", "truehdd": "t"}), \
+             mock.patch.object(engine, "dee_dll_status", return_value={"state": "unsupported", "sha256": "ab" * 32, "dll": "/d/x.dll"}):
+            self.assertIn("not the one the 7.1 patcher is validated for", engine.flat71_ready()[1])
 
 
 class MediaInfoAtmos(unittest.TestCase):
@@ -291,7 +360,7 @@ class JobModel(unittest.TestCase):
 
     def test_encode_fields_roundtrip(self):
         job = engine.Job(source="/a.mkv", conv_type="encode", out_dir="/o", task="encode", target="dd",
-                         target_channels=6, atmos=False, drc="speech", bitrate_override=448)
+                         target_channels=6, atmos=False, drc="speech", bitrate_override=448, atmos71="dee", bed_conform=False)
         job.label, job.pretty = "DD 5.1 448k", "TrueHD"
         back = engine.Job.from_dict(job.to_dict())
         self.assertEqual(back.key(), job.key())
@@ -310,7 +379,8 @@ class JobModel(unittest.TestCase):
             with mock.patch.object(config, "config_dir", return_value=__import__("pathlib").Path(tmp)):
                 saved = config.save_settings({"task": "encode", "encode": {"target": "dd", "channels": "6", "atmos": 0, "junk": 1},
                                               "tools": {"truehdd": "/x/truehdd"}})
-                self.assertEqual(saved["encode"], {"target": "dd", "channels": 6, "bitrate": 0, "atmos": False, "drc": "film_light"})
+                self.assertEqual(saved["encode"], {"target": "dd", "channels": 6, "bitrate": 0, "atmos": False,
+                                                   "atmos71": "flat", "bed_conform": True, "drc": "film_light"})
                 self.assertEqual(config.load_settings()["tools"]["truehdd"], "/x/truehdd")
                 self.assertEqual(config.load_settings()["task"], "encode")
 

@@ -91,6 +91,8 @@ class JobQueue:
                               target=encode.get("target") or "ddp",
                               target_channels=int(encode.get("channels") or 0),
                               atmos=bool(encode.get("atmos", True)),
+                              atmos71=encode.get("atmos71") or "flat",
+                              bed_conform=bool(encode.get("bed_conform", True)),
                               drc=encode.get("drc") or "film_light")
                 else:
                     job = Job(source=src, conv_type=item.get("conv_type") or conv_type,
@@ -135,7 +137,8 @@ class JobQueue:
             job = Job(source=old.source, conv_type=old.conv_type, out_dir=old.out_dir,
                       stream_index=old.stream_index, bitrate_override=old.bitrate_override,
                       overwrite=old.overwrite, task=old.task, target=old.target,
-                      target_channels=old.target_channels, atmos=old.atmos, drc=old.drc)
+                      target_channels=old.target_channels, atmos=old.atmos, drc=old.drc,
+                      atmos71=old.atmos71, bed_conform=old.bed_conform)
             pos = self._order.index(job_id)
             self._order[pos] = job.id
             del self._jobs[job_id]

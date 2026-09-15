@@ -54,7 +54,8 @@ notification when a batch finishes.
 
 ```
 fpsconv-cli convert <files or folders…> -m 23.976-25 [-o OUT] [-j N] [-r] [-s STREAM] [-b KBPS] [--overwrite overwrite|skip|rename]
-fpsconv-cli encode  <files or folders…> [-f ddp|dd] [-c 0|1|2|6|8] [-b KBPS] [--no-atmos] [--drc film_light|…] [-o OUT] [-j N] [-r] [-s STREAM]
+fpsconv-cli encode  <files or folders…> [-f ddp|dd] [-c 0|1|2|6|8] [-b KBPS] [--no-atmos] [--atmos-71 flat|dee] [--drc film_light|…] [-o OUT] [-j N] [-r] [-s STREAM]
+fpsconv-cli patcher           # download the DD+ 7.1 Atmos patcher
 fpsconv-cli doctor            # what is installed / configured
 fpsconv-cli dee C:\Dolby\DEE\dee.exe   # write deew's config for this DEE
 ```
@@ -68,7 +69,7 @@ deew (bundled), or, for Atmos, to truehdd + DEE through DeeZy (external, see the
 
 | Source | What you can make | Pipeline |
 | --- | --- | --- |
-| TrueHD 7.1 **Atmos** (Blu-ray) | **DDP 7.1 Atmos** (1152 – 1664 kbps, default 1536) · **DDP 5.1 Atmos** (384 – 1024, default 768) · plain DDP 7.1 / 5.1 / 2.0 · DD 5.1 / 2.0 | Atmos: `deezy encode atmos` (truehdd → DEE JOC). Plain: ffmpeg WAV → `deew` |
+| TrueHD 7.1 **Atmos** (Blu-ray) | **DDP 7.1 Atmos, flat 7.1** (1152 – 1664 kbps, default 1536) · **DDP 5.1 Atmos** (384 – 1024, default 768) · plain DDP 7.1 / 5.1 / 2.0 · DD 5.1 / 2.0 | flat 7.1: ffmpeg copy → `truehdd` DAMF → **patched DEE** (see below). 5.1 Atmos: `deezy encode atmos`. Plain: ffmpeg WAV → `deew` |
 | TrueHD 7.1 / DTS-HD MA 7.1 / FLAC 7.1 | DDP 7.1 (384 – 1664; **1536 kbps is the "1503 kbps" MediaInfo shows**) · DDP 5.1 · DDP 2.0 · DD 5.1 / 2.0 | ffmpeg WAV → `deew -f ddp` (`-dm 6` / `-dm 2` = Dolby downmix in DEE) |
 | TrueHD 5.1 / DTS-HD MA 5.1 / AC-3 5.1 / DD+ 5.1 | DDP 5.1 (192 – **1024** max) · DDP 2.0 · DD 5.1 (max 640) · DD 2.0 | same |
 | AAC 2.0 / any stereo | DDP 2.0 (96 – 1024, default 256) · DD 2.0 (96 – 640) | same |
@@ -92,6 +93,41 @@ Things it tells you rather than does quietly:
 * AC-3 / DD+ sources are decoded with `-drc_scale 0` (no decoder DRC baked in);
   96 kHz sources are resampled to 48 kHz with soxr when the ffmpeg build has it.
 * DD has no 7.1: a 7.1 source becomes DD 5.1.
+
+### True DDP 7.1 Atmos (flat 7.1, `Lb Rb`)
+
+Dolby Encoding Engine — every 5.x build, and Dolby Media Encoder since 2015 — encodes the
+Blu-ray DD+ JOC legacy 7.1 presentation as **5.1 + 2 height channels**: MediaInfo shows
+`Channel layout : L R C LFE Ls Rs Tfl Tfr`, and a non-Atmos 7.1 decoder gets, in effect,
+5.1.2 audio. Dolby has stated this is by design and no version or XML setting changes it.
+Neither truehdd nor DeeZy can influence it; a plain channel-map relabel (DRX-Lab
+`eac3-7.1-atmos-fix`) only renames the height pair and is not used here.
+
+FPSConv's **Flat 7.1** layout (the default for 7.1 Atmos) uses the
+[LumaVistaLab DD+ 7.1 patcher](https://github.com/LumaVistaLab/DEE_DDPlusJOC_7.1_Patcher)
+(GPL-3.0, run as a separate process): it backs up DEE's `dee_audio_filter_ddp_atmos.dll`,
+applies the validated two-byte configuration patch (`19 → 21`), runs DEE in Blu-ray mode so
+the encoder renders a **real 7.1 JOC downmix with a Pro Logic IIx 5.1 core**, restores the
+DLL, and sets the Surround EX flag (`dsurexmod = 2`) in the AC-3 core. Result:
+
+```
+Format profile     : Blu-ray Disc
+Format settings    : Dolby Surround EX
+Channel layout     : L R C LFE Ls Rs Lb Rb
+```
+
+— the signature of the retail Dolby demo discs. Requirements and honesty notes:
+
+* **DEE build 5.2.1-5994839 only** — the patch is validated for the DLL with SHA-256
+  `3d66bcec…95d2` and refuses anything else; ⚙ shows whether your DEE qualifies.
+* ⚙ → **DD+ 7.1 Atmos → Download** fetches the release zip (SHA-256 verified) into
+  `%LOCALAPPDATA%\FPSConv\tools`; it runs with FPSConv's own Python, nothing to install.
+  truehdd is still needed (`--bed-conform --warp-mode normal` are passed).
+* The patch is young (Sep 2026) and its authors validated it with LAV Audio and Dolby Media
+  Decoder on a synthetic master; there are no AVR reports yet. Listen to your first encode.
+* During the run DEE's DLL is patched in place and restored afterwards; if a run is killed
+  hard, the next run restores it from the backup the patcher keeps.
+* Pick **DEE default** in the 7.1 Atmos layout box to get the unpatched (Tfl Tfr) encode.
 
 Output: `<name>[_a<N>]_<DDP|DD><layout>[Atmos]_<kbps>k.<ec3|ac3>`, e.g.
 `movie_DDP7.1Atmos_1536k.ec3`, `movie_a1_DD5.1_640k.ac3` — raw elementary
@@ -188,7 +224,7 @@ fpsconv/            engine.py (fps.py pipeline + audio-encode task) · queue.py 
                     static/index.html (GUI)
 packaging/          FPSConv.spec (PyInstaller) · installer.iss (Inno Setup) · entry.py · make_icon.py
 .github/workflows/  release.yml (build + release on push) · ci.yml (tests on PRs)
-tests/              41 unit tests, no ffmpeg/deew/deezy needed
+tests/              51 unit tests, no ffmpeg/deew/deezy needed
 ```
 
 ## Known limits inherited from the fps.py engine

@@ -17,7 +17,12 @@ ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))
 
 datas = [(os.path.join(ROOT, "fpsconv", "static"), os.path.join("fpsconv", "static"))]
 binaries = []
-hiddenimports = ["fpsconv", "fpsconv.server", "fpsconv.window", "fpsconv.updater"]
+hiddenimports = ["fpsconv", "fpsconv.server", "fpsconv.window", "fpsconv.updater",
+                 # stdlib used by the external DD+ 7.1 Atmos patcher scripts that the installed
+                 # build runs with its own interpreter (`fpsconv-cli.exe script.py …`)
+                 "argparse", "contextlib", "hashlib", "json", "locale", "re", "shutil", "struct", "subprocess",
+                 "tempfile", "time", "uuid", "xml.etree.ElementTree", "dataclasses", "datetime", "fractions",
+                 "pathlib", "typing", "ctypes", "ctypes.wintypes", "msvcrt", "runpy", "zipfile"]
 
 for pkg in ("deew", "rich", "toml", "platformdirs", "xmltodict", "unidecode", "packaging", "requests",
             "pymediainfo"):

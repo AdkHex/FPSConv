@@ -26,6 +26,7 @@ Encode task (no speed change, any source, Dolby output — see ``convert_encode`
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
@@ -163,6 +164,7 @@ class Encode:
     atmos_mode: str           # streaming | bluray | ""
     bitrate: int
     notes: list[str] = field(default_factory=list)
+    flat71: bool = False      # bluray Atmos through the patched DEE: legacy 7.1 = Lb Rb, not Tfl Tfr
 
     @property
     def ext(self) -> str:
@@ -171,20 +173,23 @@ class Encode:
     @property
     def label(self) -> str:
         return (f"{FORMAT_NAMES[self.fmt]} {LAYOUT_NAMES[self.out_channels]}"
-                f"{' Atmos' if self.atmos else ''} {self.bitrate}k")
+                f"{' Atmos' if self.atmos else ''}{' flat' if self.flat71 else ''} {self.bitrate}k")
 
     def to_dict(self) -> dict:
         return {"fmt": self.fmt, "src_channels": self.src_channels, "wav_channels": self.wav_channels,
                 "out_channels": self.out_channels, "atmos": self.atmos, "atmos_mode": self.atmos_mode,
-                "bitrate": self.bitrate, "label": self.label, "notes": self.notes}
+                "flat71": self.flat71, "bitrate": self.bitrate, "label": self.label, "notes": self.notes}
 
 
 def resolve_encode(target: str, target_channels: int, keep_atmos: bool, bitrate: int,
-                   src_channels: int, src_atmos: Optional[bool], src_codec: str = "") -> Encode:
+                   src_channels: int, src_atmos: Optional[bool], src_codec: str = "",
+                   atmos71: str = "flat") -> Encode:
     """Decide what one encode job will really produce, and why.
 
     Never upmixes: a 7.1 request on a 2.0 source yields 2.0. Atmos survives only
     for a DDP 5.1 / 7.1 target from a source that MediaInfo confirmed as Atmos.
+    ``atmos71`` picks the 7.1 Atmos legacy layout: ``flat`` (Lb Rb, patched DEE)
+    or ``dee`` (DEE's own 5.1 + 2 heights, Tfl Tfr).
     """
     fmt = target if target in TARGETS else "ddp"
     notes: list[str] = []
@@ -209,7 +214,12 @@ def resolve_encode(target: str, target_channels: int, keep_atmos: bool, bitrate:
         elif src_atmos is None and src_codec == "truehd":
             notes.append("Atmos unknown (mediainfo not available): encoding the bed only")
     mode = ("bluray" if out == 8 else "streaming") if atmos else ""
-    kbps = snap_bitrate(fmt, out, bitrate, atmos)
+    flat71 = bool(atmos and mode == "bluray" and atmos71 != "dee")
+    if flat71:
+        kbps = int(bitrate or 0)
+        kbps = min(FLAT71_BITRATES, key=lambda b: abs(b - kbps)) if FLAT71_BITRATES[0] <= kbps <= FLAT71_BITRATES[-1] else DEFAULT_BITRATE[("atmos", 8)]
+    else:
+        kbps = snap_bitrate(fmt, out, bitrate, atmos)
     if bitrate and kbps != int(bitrate):
         lo, hi = allowed_bitrates(fmt, out, atmos)[0], allowed_bitrates(fmt, out, atmos)[-1]
         what = f"{FORMAT_NAMES[fmt]} {LAYOUT_NAMES[out]}{' Atmos' if atmos else ''}"
@@ -219,7 +229,10 @@ def resolve_encode(target: str, target_channels: int, keep_atmos: bool, bitrate:
             notes.append(f"{bitrate} kbps is not a DEE {what} rate: using {kbps}")
     if fmt == "ddp" and out == 8 and not atmos and kbps > 1024:
         notes.append("DDP 7.1 above 1024 kbps: Blu-ray profile")
-    return Encode(fmt, int(src_channels or 2), wav, out, atmos, mode, kbps, notes)
+    if atmos and mode == "bluray":
+        notes.append("flat 7.1: Lb Rb via the patched DEE (truehdd → DEE 5.2.1 patch → Surround EX flag)" if flat71
+                     else "DEE default: legacy 7.1 is 5.1 + 2 heights — MediaInfo shows Tfl Tfr, not Lb Rb")
+    return Encode(fmt, int(src_channels or 2), wav, out, atmos, mode, kbps, notes, flat71)
 
 
 def encode_output_name(file_path: str, stream_index: int, enc: Encode) -> str:
@@ -729,9 +742,11 @@ def probe_streams(file_path: str, with_mediainfo: bool = True) -> dict:
     streams: list[dict] = []
     duration = 0.0
     fps, fps_source = None, ""
+    format_name = ""
     try:
         data = _ffprobe_json(file_path)
         duration = float((data.get("format") or {}).get("duration") or 0)
+        format_name = str((data.get("format") or {}).get("format_name") or "")
         fps, fps_source = detect_fps(data, file_path)
         fmt_bitrate = int((data.get("format") or {}).get("bit_rate") or 0) // 1000
         for s in data.get("streams", []):
@@ -752,6 +767,7 @@ def probe_streams(file_path: str, with_mediainfo: bool = True) -> dict:
                 "title": tags.get("title", ""),
                 "atmos": None,
                 "commercial": "",
+                "format_name": format_name,
             })
     except Exception:
         pass
@@ -891,6 +907,10 @@ def doctor() -> dict:
     }
     if out["ffmpeg"]:
         out["ffmpeg_soxr"] = ffmpeg_has_soxr(ffmpeg)
+    script = patcher_script()
+    out["patcher"] = str(script) if script else None
+    out["patcher_dir"] = str(patcher_dir())
+    out["dee_dll"] = dee_dll_status()
     try:
         import importlib.util
         out["pymediainfo"] = importlib.util.find_spec("pymediainfo") is not None
@@ -930,6 +950,8 @@ class Job:
     target: str = "ddp"                # encode: ddp | dd
     target_channels: int = 0           # encode: 0 = same as source, else 1 / 2 / 6 / 8
     atmos: bool = True                 # encode: keep Atmos when the source has it
+    atmos71: str = "flat"              # encode: 7.1 Atmos legacy layout — flat (Lb Rb, patched DEE) | dee (Tfl Tfr)
+    bed_conform: bool = True           # encode: truehdd --bed-conform for the flat-7.1 path
     drc: str = "film_light"            # encode: DEE DRC profile
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     state: str = "queued"              # queued | running | done | failed | cancelled | skipped
@@ -958,7 +980,8 @@ class Job:
         """What makes two queued jobs "the same" for duplicate detection."""
         base = (self.source, self.conv_type, self.stream_index, self.task)
         if self.task == TASK_ENCODE:
-            base += (self.target, self.target_channels, bool(self.atmos), self.bitrate_override, self.drc)
+            base += (self.target, self.target_channels, bool(self.atmos), self.bitrate_override, self.drc,
+                     self.atmos71, bool(self.bed_conform))
         return base
 
     # -- log helpers -------------------------------------------------------- #
@@ -986,7 +1009,8 @@ class Job:
             "conv_type": self.conv_type, "out_dir": self.out_dir, "stream_index": self.stream_index,
             "bitrate_override": self.bitrate_override, "overwrite": self.overwrite,
             "task": self.task, "target": self.target, "target_channels": self.target_channels,
-            "atmos": self.atmos, "drc": self.drc, "label": self.label or self.conv_type,
+            "atmos": self.atmos, "atmos71": self.atmos71, "bed_conform": self.bed_conform,
+            "drc": self.drc, "label": self.label or self.conv_type,
             "state": self.state, "step": self.step, "detail": self.detail, "percent": round(self.percent, 1),
             "elapsed": fmt_time(elapsed), "eta": fmt_time(self.eta) if self.eta > 0 else "",
             "codec": self.codec, "pretty": self.pretty, "bitrate": self.bitrate, "channels": self.channels,
@@ -1004,6 +1028,7 @@ class Job:
             overwrite=d.get("overwrite", "overwrite"), id=d.get("id") or uuid.uuid4().hex[:12],
             task=d.get("task") or TASK_FPS, target=d.get("target") or "ddp",
             target_channels=int(d.get("target_channels") or 0), atmos=bool(d.get("atmos", True)),
+            atmos71=d.get("atmos71") or "flat", bed_conform=bool(d.get("bed_conform", True)),
             drc=d.get("drc") or "film_light",
         )
         job.state = d.get("state", "done")
@@ -1231,29 +1256,45 @@ def _dir_size(path: str) -> int:
     return total
 
 
-def run_deezy_progress(cmd: list[str], job: Job, step_name: str, notify: ProgressFn,
-                       work_dir: str = "") -> bool:
-    """Run DeeZy and turn its output into stage + percent + a live detail line.
+ParseFn = Callable[[str], Optional[tuple[str, Optional[float]]]]
 
-    Without a terminal DeeZy logs plain lines such as ``truehdd (1 of 3)  42.0%``,
-    ``DEE measure (2 of 3) …`` and ``DEE encode (3 of 3) …``. For a raw ``.thd``
-    DeeZy knows no duration, so the truehdd stage prints no percentage at all;
-    while DeeZy is silent the detail line shows how much truehdd / DEE have
-    written into ``work_dir`` so a long decode is visibly alive.
+
+def _parse_deezy_line(text: str) -> Optional[tuple[str, Optional[float]]]:
+    m = _DEEZY_LINE.match(text)
+    if m:
+        return m.group(1).strip(), float(m.group(4))
+    t = _TRUEHDD_PCT.match(text)
+    if t:
+        return "truehdd", float(t.group(1))
+    if text.startswith("[truehdd"):
+        return "truehdd", None
+    return None
+
+
+def run_tool_progress(cmd: list[str], job: Job, step_name: str, notify: ProgressFn, *,
+                      tool_name: str, parse: ParseFn, stages: dict[str, tuple[int, int]],
+                      work_dir: str = "", idle_stage: str = "working", env_extra: Optional[dict] = None,
+                      cwd: Optional[str] = None) -> bool:
+    """Run a tool whose stdout carries stage / percent lines and turn them into progress.
+
+    ``parse(line)`` returns ``(stage, percent-or-None)`` for lines that mean
+    something, ``None`` otherwise. ``stages`` maps a stage name to the share of
+    the job it gets on the bar. While the tool is quiet the detail line shows how
+    much has been written into ``work_dir`` so a long decode is visibly alive.
     """
     job.say(f"{step_name}: $ " + " ".join(cmd))
-    env = dict(os.environ, DEEZY_NO_PROGRESS="1", NO_COLOR="1", PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+    env = dict(os.environ, NO_COLOR="1", PYTHONIOENCODING="utf-8", PYTHONUTF8="1", **(env_extra or {}))
     try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=cwd or None,
                                 stdin=subprocess.DEVNULL, creationflags=_NO_WINDOW, env=env)
     except OSError as exc:
-        job.error = f"cannot start deezy: {exc}"
+        job.error = f"cannot start {tool_name}: {exc}"
         job.say(job.error, "error")
         return False
     job._proc = proc
     job.step = step_name
-    job.detail = "starting deezy"
-    job.percent = 0.0
+    job.detail = f"starting {tool_name}"
+    job.percent = min(v[0] for v in stages.values()) if stages else 0.0
     start = time.time()
     last = 0.0
     tail: list[str] = []
@@ -1268,20 +1309,20 @@ def run_deezy_progress(cmd: list[str], job: Job, step_name: str, notify: Progres
             lines.put(raw)
         lines.put(None)
 
-    threading.Thread(target=reader, daemon=True, name="deezy-reader").start()
+    threading.Thread(target=reader, daemon=True, name=f"{tool_name}-reader").start()
 
     def set_stage(name: str) -> None:
         nonlocal stage, stage_started
         if name != stage:
             if stage:
-                job.say(f"deezy: {stage} finished in {fmt_time(time.time() - stage_started)}")
+                job.say(f"{tool_name}: {stage} finished in {fmt_time(time.time() - stage_started)}")
             stage, stage_started = name, time.time()
-            job.say(f"deezy: {name} started")
+            job.say(f"{tool_name}: {name} started")
 
     def progress(name: str, pct: float) -> None:
         nonlocal last
         set_stage(name)
-        lo, hi = _DEEZY_STAGES.get(name, (0, 100))
+        lo, hi = stages.get(name, (0, 100))
         job.percent = min(100.0, lo + (hi - lo) * pct / 100.0)
         now = time.time()
         job.elapsed = now - start
@@ -1289,7 +1330,7 @@ def run_deezy_progress(cmd: list[str], job: Job, step_name: str, notify: Progres
         job.eta = (stage_el / pct) * (100 - pct) if pct > 0 else 0
         job.detail = f"{name}  ·  {pct:.1f}%"
         if now - last >= 1.0:
-            job.progress_line(f"deezy: {name}  {pct:.1f}%  ·  {fmt_time(stage_el)} in this stage")
+            job.progress_line(f"{tool_name}: {name}  {pct:.1f}%  ·  {fmt_time(stage_el)} in this stage")
             notify(job.to_dict())
             last = now
 
@@ -1299,46 +1340,249 @@ def run_deezy_progress(cmd: list[str], job: Job, step_name: str, notify: Progres
         try:
             raw = lines.get(timeout=1.0)
         except _queue.Empty:
-            # DeeZy is quiet (truehdd decoding a raw .thd): show that work is happening
             now = time.time()
             job.elapsed = now - start
             written = _dir_size(work_dir) if work_dir and os.path.isdir(work_dir) else 0
-            what = stage or "truehdd decode"
+            what = stage or idle_stage
             job.detail = f"{what}  ·  {hr_size(written)} written to temp  ·  {fmt_time(now - stage_started)} in this stage"
             if now - last >= 5.0:
-                job.progress_line(f"deezy: {job.detail}")
+                job.progress_line(f"{tool_name}: {job.detail}")
                 notify(job.to_dict())
                 last = now
             continue
         if raw is None:
             break
         text = _ANSI_RE.sub("", raw.decode("utf-8", "ignore")).strip()
-        if not text or text == last_text:          # debug level repeats every info line
+        if not text or text == last_text:          # debug levels repeat every info line
             continue
         last_text = text
-        m = _DEEZY_LINE.match(text)
-        if m:
-            progress(m.group(1).strip(), float(m.group(4)))
-            continue
-        t = _TRUEHDD_PCT.match(text)
-        if t:
-            progress("truehdd", float(t.group(1)))
-            continue
-        if text.startswith("[truehdd") and not stage:
-            set_stage("truehdd")
+        parsed = parse(text)
+        if parsed is not None:
+            name, pct = parsed
+            if pct is not None:
+                progress(name, pct)
+                continue
+            if not stage:
+                set_stage(name)
         tail.append(text)
         tail = tail[-40:]
-        job.say(f"deezy: {text}", "warning" if _ERR_RE.search(text) else "info")
+        job.say(f"{tool_name}: {text}", "warning" if _ERR_RE.search(text) else "info")
     proc.wait()
     job.elapsed = time.time() - start
     if stage:
-        job.say(f"deezy: {stage} finished in {fmt_time(time.time() - stage_started)}")
+        job.say(f"{tool_name}: {stage} finished in {fmt_time(time.time() - stage_started)}")
     if proc.returncode != 0 and not job._cancel.is_set():
-        job.error = _pick_error(tail) or f"deezy exited with code {proc.returncode}"
-        job.say(f"deezy exited with code {proc.returncode}: {job.error}", "error")
+        job.error = _pick_error(tail) or f"{tool_name} exited with code {proc.returncode}"
+        job.say(f"{tool_name} exited with code {proc.returncode}: {job.error}", "error")
     else:
-        job.say(f"{step_name}: deezy exited with code {proc.returncode} after {fmt_time(job.elapsed)}")
+        job.say(f"{step_name}: {tool_name} exited with code {proc.returncode} after {fmt_time(job.elapsed)}")
     return proc.returncode == 0 and not job._cancel.is_set()
+
+
+def run_deezy_progress(cmd: list[str], job: Job, step_name: str, notify: ProgressFn,
+                       work_dir: str = "") -> bool:
+    """DeeZy: ``truehdd (1 of 3)  42.0%``, ``DEE measure (2 of 3) …``, ``DEE encode (3 of 3) …``.
+
+    For a raw ``.thd`` DeeZy knows no duration, so its truehdd stage prints no
+    percentage; ``DEEZY_NO_PROGRESS`` and ``--no-progress-bars`` keep it from
+    drawing rich bars.
+    """
+    return run_tool_progress(cmd, job, step_name, notify, tool_name="deezy", parse=_parse_deezy_line,
+                             stages=_DEEZY_STAGES, work_dir=work_dir, idle_stage="truehdd decode",
+                             env_extra={"DEEZY_NO_PROGRESS": "1"})
+
+
+# ───────────────────────── FLAT 7.1 ATMOS (patched DEE) ─────────────────────────
+
+#: LumaVistaLab/DEE_DDPlusJOC_7.1_Patcher — makes DEE 5.2.1 render the Blu-ray DD+ JOC legacy
+#: presentation as flat 7.1 (Lb Rb) instead of 5.1 + 2 heights (Tfl Tfr). GPL-3.0, stdlib-only
+#: Python, run as a separate process. Release v1.1-stable.
+PATCHER_URL = ("https://github.com/LumaVistaLab/DEE_DDPlusJOC_7.1_Patcher/raw/main/release/"
+               "dee-ddp71-atmos-wrapper-v1.1-stable.zip")
+PATCHER_ZIP_SHA256 = "b0dd0d73e37d1fb20131ff6845f5e340a09d3669a6b3a0fd20e822f7df1328e9"
+PATCHER_ZIP_TOP = "dee-ddp71-atmos-wrapper-v1.1-stable"
+PATCHER_SCRIPT = "dee-ddp71-atmos-wrapper.py"
+PATCHER_DLL = "dee_audio_filter_ddp_atmos.dll"
+#: The one DEE 5.2.1 build the patch is validated for (original and patched DLL hashes).
+PATCHER_DLL_SHA256 = "3d66bcec36031fd48e6565d15f05fea656642377ca4f8c98cdce1cce8b7e95d2"
+PATCHER_DLL_PATCHED_SHA256 = "fd49c7b9b19bba5f7ec0b862a9811a7b822b2efe200bc82a033fb9b7f54c1588"
+FLAT71_BITRATES = [1152, 1280, 1408, 1512, 1536, 1664]
+ATMOS71_LAYOUTS = ("flat", "dee")       # flat = Lb Rb via the patcher · dee = DEE default 5.1+2 heights
+
+
+def patcher_dir() -> Path:
+    chosen = (config.load_settings().get("tools") or {}).get("patcher", "")
+    return Path(chosen) if chosen else config.cache_dir() / "tools" / PATCHER_ZIP_TOP
+
+
+def patcher_script() -> Optional[Path]:
+    d = patcher_dir()
+    for cand in (d / PATCHER_SCRIPT, d / PATCHER_ZIP_TOP / PATCHER_SCRIPT):
+        if cand.is_file():
+            return cand
+    return None
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def download_patcher(progress: Optional[Callable[[float, str], None]] = None) -> dict:
+    """Fetch the patcher release zip, verify its SHA-256, unpack under the cache folder."""
+    dest = config.cache_dir() / "tools"
+    dest.mkdir(parents=True, exist_ok=True)
+    req = urllib.request.Request(PATCHER_URL, headers={"User-Agent": "FPSConv"})
+    buf = io.BytesIO()
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        total = int(resp.headers.get("Content-Length") or 0)
+        got = 0
+        while True:
+            chunk = resp.read(1 << 16)
+            if not chunk:
+                break
+            buf.write(chunk)
+            got += len(chunk)
+            if progress and total:
+                progress(got / total * 90, "downloading the 7.1 patcher")
+    digest = hashlib.sha256(buf.getvalue()).hexdigest()
+    if digest != PATCHER_ZIP_SHA256:
+        raise RuntimeError(f"downloaded zip has SHA-256 {digest[:16]}…, expected {PATCHER_ZIP_SHA256[:16]}… — not installed")
+    with zipfile.ZipFile(buf) as zf:
+        for member in zf.namelist():
+            if ".." in member or member.startswith("/"):
+                raise RuntimeError(f"refusing unsafe zip entry {member!r}")
+        zf.extractall(dest)
+    script = dest / PATCHER_ZIP_TOP / PATCHER_SCRIPT
+    if not script.is_file():
+        raise RuntimeError("the zip did not contain dee-ddp71-atmos-wrapper.py")
+    if progress:
+        progress(100, "done")
+    return {"dir": str(dest / PATCHER_ZIP_TOP), "script": str(script)}
+
+
+def dee_dll_status(dee_path: str = "") -> dict:
+    """Whether the user's DEE carries the exact DLL build the flat-7.1 patch is validated for."""
+    dee = dee_path or str(read_deew_config().get("dee_path") or "")
+    if not dee or not os.path.isfile(dee):
+        return {"state": "no-dee", "dll": "", "sha256": ""}
+    dll = Path(dee).parent / PATCHER_DLL
+    if not dll.is_file():
+        return {"state": "no-dll", "dll": str(dll), "sha256": ""}
+    try:
+        digest = _sha256(dll)
+    except OSError as exc:
+        return {"state": "unreadable", "dll": str(dll), "sha256": "", "error": str(exc)}
+    if digest == PATCHER_DLL_SHA256:
+        state = "supported"
+    elif digest == PATCHER_DLL_PATCHED_SHA256:
+        state = "patched"          # left patched by an interrupted run; the wrapper restores it from its backup
+    else:
+        state = "unsupported"
+    return {"state": state, "dll": str(dll), "sha256": digest}
+
+
+def script_runner() -> list[str]:
+    """How to run a stdlib Python script: the bundled interpreter in the installed build
+    (``fpsconv-cli.exe script.py …``, see ``__main__``), else this interpreter."""
+    if FROZEN:
+        exe_dir = Path(sys.executable).parent
+        cli = exe_dir / ("fpsconv-cli.exe" if sys.platform == "win32" else "fpsconv-cli")
+        return [str(cli if cli.exists() else sys.executable)]
+    return [sys.executable]
+
+
+def flat71_ready() -> tuple[bool, str]:
+    """(ok, reason) — everything the flat-7.1 path needs, checked up front."""
+    if not patcher_script():
+        return False, "the DD+ 7.1 patcher is not installed: Settings (⚙) → DD+ 7.1 Atmos → Download"
+    tools = deezy_tools()
+    if not tools["dee"]:
+        return False, "Dolby Encoding Engine is not configured: set the dee.exe path in Settings (⚙)"
+    if not tools["truehdd"]:
+        return False, "truehdd is not found: set its path in Settings (⚙)"
+    st = dee_dll_status(tools["dee"])
+    if st["state"] == "no-dll":
+        return False, f"{PATCHER_DLL} is not next to dee.exe — the patcher needs a full DEE 5.2.1 install"
+    if st["state"] == "unsupported":
+        return False, (f"this DEE build is not the one the 7.1 patcher is validated for "
+                       f"({PATCHER_DLL} SHA-256 {st['sha256'][:12]}…, expected {PATCHER_DLL_SHA256[:12]}…); "
+                       "use DEE 5.2.1-5994839 or choose the DEE-default layout")
+    if st["state"] == "unreadable":
+        return False, f"cannot read {st['dll']}: {st.get('error', '')}"
+    return True, ""
+
+
+def thd_extract_cmd(ffmpeg: str, src: str, stream_index: int, out_thd: str) -> list[str]:
+    """Copy the TrueHD elementary stream out of a container, untouched."""
+    return [ffmpeg, "-y", "-nostdin", "-i", src, "-map", f"0:a:{stream_index}", "-vn", "-sn", "-dn",
+            "-c:a", "copy", "-f", "truehd", out_thd]
+
+
+def truehdd_cmd(truehdd: str, thd: str, out_base: str, bed_conform: bool = True) -> list[str]:
+    """Decode the TrueHD Atmos presentation to a DAMF master (``out_base.atmos`` + siblings)."""
+    cmd = [truehdd, "--progress", "decode", "--output-path", out_base, "--warp-mode", "normal"]
+    if bed_conform:
+        cmd.append("--bed-conform")
+    return cmd + [thd]
+
+
+def patcher_cmd(dee_exe: str, master_atmos: str, out_path: str, enc: "Encode", drc: str,
+                temp_dir: str, script: Optional[Path] = None) -> list[str]:
+    """``dee-ddp71-atmos-wrapper.py <dee> <master> <out> --compatibility-layout flat-7.1 …``."""
+    profile = drc if drc in DRC_PROFILES else "film_light"
+    return script_runner() + [
+        str(script or patcher_script() or (patcher_dir() / PATCHER_SCRIPT)),
+        dee_exe, master_atmos, out_path,
+        "--compatibility-layout", "flat-7.1",
+        "--data-rate", str(enc.bitrate),
+        "--line-mode-drc-profile", profile, "--rf-mode-drc-profile", profile,
+        "--temp-dir", temp_dir, "--overwrite",
+    ]
+
+
+_TRUEHDD_ANY_PCT = re.compile(r"(\d+(?:\.\d+)?)\s*%")
+_DEE_OVERALL = re.compile(r"Overall progress:\s*(\d+(?:\.\d+)?)")
+_TRUEHDD_STAGES = {"truehdd decode": (0, 100)}
+_PATCHER_STAGES = {"preparing": (0, 2), "DEE measure": (2, 40), "DEE encode": (40, 97), "Surround EX flag": (97, 100)}
+
+
+def _parse_truehdd_line(text: str) -> Optional[tuple[str, Optional[float]]]:
+    m = _TRUEHDD_ANY_PCT.search(text)
+    return ("truehdd decode", float(m.group(1))) if m else None
+
+
+class _PatcherParser:
+    """DEE prints 'Overall progress: N.N.' for the whole job (measure ≈ first 40 %, encode the
+    rest); the wrapper adds its own lines before and after."""
+
+    def __init__(self) -> None:
+        self.stage = "preparing"
+
+    def __call__(self, text: str) -> Optional[tuple[str, Optional[float]]]:
+        if "Starting measurement" in text:
+            self.stage = "DEE measure"
+            return self.stage, 0.0
+        if "Measurement done" in text:
+            self.stage = "DEE encode"
+            return self.stage, 0.0
+        m = _DEE_OVERALL.search(text)
+        if m:
+            pct = float(m.group(1))
+            if self.stage == "DEE measure":
+                return self.stage, min(100.0, pct / 40.0 * 100.0)
+            if self.stage == "DEE encode":
+                return self.stage, max(0.0, min(100.0, (pct - 40.0) / 60.0 * 100.0))
+            return self.stage, pct
+        if "patched AC-3 frames" in text or "dsur" in text.lower() and "wrote" in text.lower():
+            self.stage = "Surround EX flag"
+            return self.stage, 100.0
+        if text.startswith(("Run directory", "Verified backup", "Generated ")):
+            return "preparing", None
+        return None
 
 
 def _deew_output(work_dir: str, base: str) -> Optional[str]:
@@ -1419,6 +1663,17 @@ def deezy_work_dir() -> str:
 def encode_plan(enc: Encode, stream: dict) -> list[str]:
     """What the job is about to do, step by step, for the job log."""
     src = stream.get("pretty") or stream.get("codec", "").upper()
+    if enc.atmos and enc.flat71:
+        return [
+            f"1/5 ffmpeg copies the {src} stream unchanged into a .thd in the temp folder (no decode)",
+            "2/5 truehdd decodes the bed and the Atmos objects into a Dolby Atmos master (DAMF) — the slow step; "
+            "for a raw .thd no percentage is available, so the row shows how much has been written",
+            "3/5 the DD+ 7.1 patcher backs up DEE's dee_audio_filter_ddp_atmos.dll, applies the validated flat-7.1 "
+            "patch (two bytes, 19 → 21), and runs DEE: loudness measurement, then DD+ JOC Blu-ray encode at "
+            f"{enc.bitrate} kbps with a real 7.1 render and a Pro Logic IIx 5.1 core; the original DLL is restored",
+            "4/5 the Surround EX flag patcher sets dsurexmod=2 in the AC-3 core (metadata + CRC only)",
+            "5/5 the .ec3 (MediaInfo: L R C LFE Ls Rs Lb Rb) is moved to the output folder, temp deleted",
+        ]
     if enc.atmos:
         mode = "7.1 (Blu-ray mode)" if enc.atmos_mode == "bluray" else "5.1 (streaming mode)"
         return [
@@ -1590,7 +1845,7 @@ def convert_encode(job: Job, notify: ProgressFn, work_root: Optional[str] = None
         return finish("failed", f"audio stream #{job.stream_index} not found")
 
     enc = resolve_encode(job.target, job.target_channels, job.atmos, job.bitrate_override,
-                         stream["channels"], stream["atmos"], stream["codec"])
+                         stream["channels"], stream["atmos"], stream["codec"], job.atmos71)
     job.codec, job.pretty = stream["codec"], stream["pretty"]
     job.bitrate, job.channels, job.label = enc.bitrate, enc.out_channels, enc.label
     job.duration = get_duration(file_path)
@@ -1600,6 +1855,10 @@ def convert_encode(job: Job, notify: ProgressFn, work_root: Optional[str] = None
         return finish("failed", f"{enc.label} needs Dolby Encoding Engine: set the dee.exe path in Settings (⚙) first")
     if enc.atmos and not deezy_tools()["truehdd"]:
         return finish("failed", "DDP Atmos needs truehdd: set its path in Settings (⚙) or untick Keep Atmos")
+    if enc.atmos and enc.flat71:
+        ok, why = flat71_ready()
+        if not ok:
+            return finish("failed", f"flat 7.1 Atmos: {why}")
 
     out_path = os.path.join(job.out_dir, encode_output_name(file_path, job.stream_index, enc))
     if os.path.exists(out_path):
@@ -1631,7 +1890,9 @@ def convert_encode(job: Job, notify: ProgressFn, work_root: Optional[str] = None
     t0 = time.time()
     success = False
     try:
-        if enc.atmos:
+        if enc.atmos and enc.flat71:
+            success = _encode_flat71(job, stream, enc, work_dir, out_path, notify)
+        elif enc.atmos:
             cmd = deezy_cmd_atmos(file_path, job.stream_index, enc, job.drc, work_dir, out_path, deezy_tools())
             ok = run_deezy_progress(cmd, job, "DeeZy Atmos (truehdd → DEE)", notify, work_dir=work_dir)
             if ok and os.path.exists(out_path):
@@ -1671,6 +1932,50 @@ def convert_encode(job: Job, notify: ProgressFn, work_root: Optional[str] = None
     finally:
         _settle(job, out_path, work_dir, t0, success, notify)
     return job
+
+
+def _encode_flat71(job: Job, stream: dict, enc: Encode, work_dir: str, out_path: str, notify: ProgressFn) -> bool:
+    """TrueHD Atmos → flat DD+ 7.1 JOC: ffmpeg copy → truehdd DAMF → patched DEE via the wrapper."""
+    tools = deezy_tools()
+    ffmpeg = tool("ffmpeg")
+    src = job.source
+    # 1/5 the TrueHD elementary stream (skip the copy when the source already is one)
+    thd = src
+    if (stream.get("format_name") or "") != "truehd":
+        thd = os.path.join(work_dir, f"fpsconv_{job.id}.thd")
+        if not run_ffmpeg_progress(thd_extract_cmd(ffmpeg, src, job.stream_index, thd), job,
+                                   "Extracting TrueHD (1/5)", job.duration, notify):
+            return False
+        if job._cancel.is_set():
+            return False
+    # 2/5 truehdd → DAMF master
+    master = os.path.join(work_dir, "master")
+    ok = run_tool_progress(truehdd_cmd(tools["truehdd"], thd, master, job.bed_conform), job,
+                           "truehdd decode (2/5)", notify, tool_name="truehdd", parse=_parse_truehdd_line,
+                           stages=_TRUEHDD_STAGES, work_dir=work_dir, idle_stage="truehdd decode")
+    if not ok or job._cancel.is_set():
+        return False
+    master_atmos = master + ".atmos"
+    if not os.path.isfile(master_atmos):
+        job.error = "truehdd finished but wrote no master.atmos — is this really a TrueHD Atmos track?"
+        job.say(job.error, "error")
+        return False
+    if thd != src:
+        _remove(thd)                       # the copy is not needed any more; the DAMF is the big one now
+    # 3/5 + 4/5 the wrapper: patched DEE (measure + encode), then the Surround EX flag
+    dee_temp = os.path.join(work_dir, "dee")
+    os.makedirs(dee_temp, exist_ok=True)
+    cmd = patcher_cmd(tools["dee"], master_atmos, out_path, enc, job.drc, dee_temp)
+    ok = run_tool_progress(cmd, job, "DEE flat 7.1 (3/5–4/5)", notify, tool_name="patcher", parse=_PatcherParser(),
+                           stages=_PATCHER_STAGES, work_dir=dee_temp, idle_stage="DEE",
+                           cwd=str(patcher_script().parent) if patcher_script() else None)
+    if not ok:
+        return False
+    if not os.path.exists(out_path):
+        job.error = f"the patcher reported success but {os.path.basename(out_path)} was not produced"
+        job.say(job.error, "error")
+        return False
+    return True
 
 
 def _settle(job: Job, out_path: str, work_dir: str, t0: float, success: bool, notify: ProgressFn) -> None:

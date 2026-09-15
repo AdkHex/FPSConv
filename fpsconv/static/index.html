@@ -203,6 +203,10 @@
       </div>
       <div class="f"><label>Bitrate</label><select class="in" id="enc-bitrate" onchange="onEncode()"></select><div class="help" id="enc-hint"></div></div>
       <div class="f"><label class="tg" style="margin:0"><input type="checkbox" class="cb" id="enc-atmos" onchange="onEncode()">Keep Atmos (TrueHD Atmos → DDP Atmos)</label></div>
+      <div class="f" id="enc-71-f"><label>7.1 Atmos layout</label>
+        <select class="in" id="enc-atmos71" onchange="onEncode()"><option value="flat">Flat 7.1 — Lb Rb (patched DEE)</option><option value="dee">DEE default — 5.1 + 2 heights (Tfl Tfr)</option></select>
+        <div class="help" id="enc-71-help"></div>
+      </div>
       <div class="f"><label>DRC profile</label><select class="in" id="enc-drc" onchange="onEncode()"></select></div>
       <div class="f"><div class="note">No speed change. TrueHD / DTS-HD MA decode losslessly; anything lossy (AAC, DD+) is re-encoded — <b>quality can only stay the same, never improve</b>. Never upmixes: a 2.0 source stays 2.0. DDP 5.1 tops out at 1024 kbps; 1536 kbps is 7.1 only. Atmos needs a TrueHD Atmos source, truehdd and DEE 5.2.</div></div>
     </div>
@@ -315,6 +319,13 @@
           <span>deezy.exe</span><div class="row"><input class="in" id="t-deezy" placeholder="deezy.exe standalone build (DDP Atmos)"><button class="btn sm" onclick="browseFor('t-deezy')">Browse</button></div>
         </div>
       </div>
+      <div class="sec"><h3>DD+ 7.1 Atmos (flat 7.1, Lb Rb)</h3>
+        <div class="kv" id="patcher-kv"></div>
+        <div class="kv" style="margin-top:8px">
+          <span>patcher folder</span><div class="row"><input class="in" id="t-patcher" placeholder="empty = the in-app download"><button class="btn sm" onclick="browseDirFor('t-patcher')">Browse</button><button class="btn sm" id="patcher-btn" onclick="downloadPatcher()">Download</button><span class="m" id="patcher-st"></span></div>
+        </div>
+        <div class="help" style="font-size:12px;color:var(--text-3);margin-top:8px">DEE 5.2.1 renders the legacy 7.1 of a Blu-ray DD+ Atmos encode as 5.1 + 2 <b>height</b> channels (MediaInfo: Tfl Tfr). The <a href="https://github.com/LumaVistaLab/DEE_DDPlusJOC_7.1_Patcher" target="_blank" style="color:var(--text-2)">DD+ 7.1 patcher</a> (LumaVistaLab, GPL-3.0) patches DEE's <code>dee_audio_filter_ddp_atmos.dll</code> for the run (backup, restore afterwards) so the encode is a real flat 7.1 with a Pro Logic IIx 5.1 core and Surround EX flag — MediaInfo: L R C LFE Ls Rs <b>Lb Rb</b>. Validated by its authors for DEE build 5.2.1-5994839 only (the DLL hash is checked before every run), so far with LAV Audio and Dolby Media Decoder on a synthetic master — <b>listen to your first encode on your own AVR</b>. Dolby says the height layout is by design and no DEE/DME version or setting changes it; this patch is the only known way to a real flat 7.1. Runs inside FPSConv's own Python — nothing else to install. <label class="tg" style="display:inline-flex;margin-left:6px"><input type="checkbox" class="cb" id="t-bedconform" onchange="save({encode:Object.assign(S.encode,{bed_conform:this.checked})})">truehdd --bed-conform (conform the Atmos bed to 7.1.2)</label></div>
+      </div>
       <div class="sec"><h3>Folders (empty = default)</h3>
         <div class="kv">
           <span>Output</span><div class="row"><input class="in" id="d-out" placeholder="where finished files go"><button class="btn sm" onclick="browseDirFor('d-out')">Browse</button><button class="btn sm" onclick="openDir('d-out')">Open</button></div>
@@ -417,9 +428,9 @@ async function init(){
   $('mode').innerHTML=modes.map(k=>`<option value="${k}">${k.replace('-',' → ')} fps</option>`).join('');
   $('enc-drc').innerHTML=(ENC.drc||[]).map(d=>`<option value="${d}">${d.replace('_',' ')}</option>`).join('');
   S=await get('/api/settings');
-  S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,drc:'film_light'},S.encode||{});
+  S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,atmos71:'flat',bed_conform:true,drc:'film_light'},S.encode||{});
   $('mode').value=modes.includes(S.conv_type)?S.conv_type:'23.976-25';updateRatio();
-  $('enc-target').value=S.encode.target;$('enc-channels').value=String(S.encode.channels);$('enc-atmos').checked=!!S.encode.atmos;$('enc-drc').value=S.encode.drc;
+  $('enc-target').value=S.encode.target;$('enc-channels').value=String(S.encode.channels);$('enc-atmos').checked=!!S.encode.atmos;$('enc-drc').value=S.encode.drc;$('enc-atmos71').value=S.encode.atmos71||'flat';
   fillBitrates();setTask(S.task||'fps',false);
   setOut(S.out_dir||'',false);setMode(S.mode||'single',false);
   $('workers').value=S.workers||2;$('overwrite').value=S.overwrite||'overwrite';
@@ -442,9 +453,13 @@ async function loadDoctor(){
   $('t-ffmpeg').value=S.tools?.ffmpeg||'';$('t-ffprobe').value=S.tools?.ffprobe||'';$('t-deew').value=S.tools?.deew_python||'';
   $('t-mediainfo').value=S.tools?.mediainfo||'';$('t-truehdd').value=S.tools?.truehdd||'';$('t-deezy').value=S.tools?.deezy||'';
   const dd=d.dirs?.defaults||{};$('d-out').value=S.out_dir||'';for(const k of ['temp','work','logs']){const el=$('d-'+k);el.value=S.dirs?.[k]||'';el.placeholder=dd[k]||''}
+  $('t-patcher').value=S.tools?.patcher||'';$('t-bedconform').checked=S.encode?.bed_conform!==false;
+  const dl=d.dee_dll||{},dlTxt={supported:['ok','DEE 5.2.1-5994839 — supported by the flat-7.1 patch'],patched:['warn','DLL is currently patched; the patcher restores it from its backup on the next run'],unsupported:['bad','this DEE build is NOT the one the patch is validated for (needs 5.2.1-5994839) — flat 7.1 will refuse to run'],'no-dll':['bad','dee_audio_filter_ddp_atmos.dll is not next to dee.exe'],'no-dee':['warn','DEE not configured'],unreadable:['bad','DLL unreadable']}[dl.state]||['warn','?'];
+  $('patcher-kv').innerHTML=`<span><i class="dot ${d.patcher?'ok':'warn'}"></i>patcher</span><span class="v" title="${esc(d.patcher||d.patcher_dir)}">${esc(d.patcher||'not installed — press Download (goes to '+d.patcher_dir+')')}</span><span><i class="dot ${dlTxt[0]}"></i>DEE build</span><span class="v" title="${esc(dl.sha256||'')}">${esc(dlTxt[1])}</span>`;
+  updateAtmos71Help();
   $('cfgdir2').textContent=d.config_dir;
   const atmosOk=d.dee&&d.deezy&&d.truehdd;$('st-atmos').style.display=S.task==='encode'?'':'none';
-  $('st-atmos').innerHTML=`<i class="dot ${atmosOk?'ok':'warn'}"></i>Atmos ${atmosOk?'ready':(d.dee?(d.deezy?'needs truehdd':'needs deezy'):'needs DEE')}`;
+  $('st-atmos').innerHTML=`<i class="dot ${atmosOk?'ok':'warn'}"></i>Atmos ${atmosOk?'ready':(d.dee?(d.deezy?'needs truehdd':'needs deezy'):'needs DEE')}${d.patcher&&d.dee_dll?.state==='supported'?' · flat 7.1 ready':''}`;
   $('t-dee').value=d.dee_path||'';$('t-auto').checked=S.auto_update!==false;$('t-win').checked=S.native_window!==false;
   $('ffdl').style.display=(d.can_download_ffmpeg&&!(d.ffmpeg&&d.ffprobe))?'flex':'none';
   $('cfgdir').textContent=d.config_dir;
@@ -454,12 +469,15 @@ async function loadDoctor(){
 async function saveTools(){
   S=await post('/api/settings',{tools:{ffmpeg:$('t-ffmpeg').value,ffprobe:$('t-ffprobe').value,deew_python:$('t-deew').value,mediainfo:$('t-mediainfo').value,truehdd:$('t-truehdd').value,deezy:$('t-deezy').value},
     dirs:{temp:$('d-temp').value,work:$('d-work').value,logs:$('d-logs').value},out_dir:$('d-out').value.trim()});
+  // patcher folder lives in tools too (separate post so an empty value clears it)
+  S=await post('/api/settings',{tools:{patcher:$('t-patcher').value}});
   S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,drc:'film_light'},S.encode||{});
   setOut(S.out_dir||'',false);await loadDoctor();toast('Saved')}
 async function browseDirFor(id){const r=await post('/api/pick',{kind:'folder',start:$(id).value||$(id).placeholder||''});if(r.native){if(r.paths[0])$(id).value=r.paths[0]}else fbOpen('folder',p=>{$(id).value=p[0]})}
 function openDir(id){post('/api/open',{path:$(id).value||$(id).placeholder||''})}
 async function saveDee(){const r=await post('/api/dee',{dee_path:$('t-dee').value});if(r.ok){toast('DEE configured — deew config written');await loadDoctor()}}
 async function browseFor(id){const r=await post('/api/pick',{kind:'files',start:''});if(r.native){if(r.paths[0])$(id).value=r.paths[0]}else{fbOpen('file',p=>{$(id).value=p[0]})}}
+async function downloadPatcher(){await post('/api/patcher/download',{});$('patcher-btn').disabled=true;const t=setInterval(async()=>{const st=await get('/api/patcher/status');$('patcher-st').textContent=st.state==='running'?`${st.step} ${st.percent}%`:st.state==='error'?'failed: '+st.error:'installed';if(st.state!=='running'){clearInterval(t);$('patcher-btn').disabled=false;loadDoctor()}},800)}
 async function downloadFfmpeg(){await post('/api/ffmpeg/download',{});$('ffdl-btn').disabled=true;const t=setInterval(async()=>{const st=await get('/api/ffmpeg/status');$('ffdl-st').textContent=st.state==='running'?`${st.step} ${st.percent}%`:st.state==='error'?'failed: '+st.error:'installed';if(st.state!=='running'){clearInterval(t);$('ffdl-btn').disabled=false;loadDoctor()}},800)}
 function openSettings(){loadDoctor();$('settings').classList.add('open')}
 function closeSettings(){$('settings').classList.remove('open')}
@@ -473,9 +491,17 @@ function setTask(t,persist=true){
   $('fps-conv').style.display=enc?'none':'';$('fps-ref').style.display=enc?'none':'';$('enc-fields').style.display=enc?'flex':'none';$('br-f').style.display=enc?'none':'';
   $('outhelp').innerHTML=enc?'Encodes are written here as <code>name_DDP7.1Atmos_1536k.ec3</code> (raw stream — mux it with mkvmerge).':'Converted files are written here as <code>name_mode.ext</code>.';
   $('st-atmos').style.display=enc?'':'none';
-  if(enc)refreshPlans();else render();
+  if(enc){updateAtmos71Help();refreshPlans()}else render();
 }
-function encSettings(){return{target:$('enc-target').value,channels:+$('enc-channels').value,bitrate:+$('enc-bitrate').value||0,atmos:$('enc-atmos').checked,drc:$('enc-drc').value}}
+function encSettings(){return{target:$('enc-target').value,channels:+$('enc-channels').value,bitrate:+$('enc-bitrate').value||0,atmos:$('enc-atmos').checked,atmos71:$('enc-atmos71').value,bed_conform:S.encode?.bed_conform!==false,drc:$('enc-drc').value}}
+function updateAtmos71Help(){
+  const enc=$('enc-target').value==='ddp'&&$('enc-atmos').checked&&+$('enc-channels').value!==6&&+$('enc-channels').value!==2&&+$('enc-channels').value!==1;
+  $('enc-71-f').style.display=enc?'':'none';
+  const flat=$('enc-atmos71').value==='flat', d=doctor||{}, dl=(d.dee_dll||{}).state;
+  $('enc-71-help').innerHTML=flat?(d.patcher&&dl==='supported'?'truehdd → patched DEE 5.2.1 → Surround EX flag. MediaInfo: L R C LFE Ls Rs <b>Lb Rb</b>.'
+      :`<span style="color:var(--warn)">needs ${!d.patcher?'the 7.1 patcher (⚙ → Download)':dl==='unsupported'?'DEE build 5.2.1-5994839 (yours is not supported by the patch)':dl==='no-dee'?'DEE configured in ⚙':'a full DEE 5.2.1 install'}</span> — jobs will refuse to run until then.`)
+    :'DEE\'s own Blu-ray JOC: MediaInfo shows <b>Tfl Tfr</b> — legacy 7.1 decoders get heights, not back surrounds.';
+}
 function fillBitrates(){
   const e=S.encode,fmt=$('enc-target').value,ch=+$('enc-channels').value;
   // an explicit layout shows its own list (DD has no 7.1: a 7.1 request becomes 5.1);
@@ -483,7 +509,7 @@ function fillBitrates(){
   let list;
   if(ch)list=(ENC.bitrates?.[fmt]?.[String(fmt==='dd'&&ch===8?6:ch)]||[]).slice();
   else list=[...new Set([].concat(...Object.values(ENC.bitrates?.[fmt]||{})))].sort((a,b)=>a-b);
-  if(fmt==='ddp'&&$('enc-atmos').checked)list=[...new Set(list.concat(ENC.atmos_bitrates?.streaming||[],ENC.atmos_bitrates?.bluray||[]))].sort((a,b)=>a-b);
+  if(fmt==='ddp'&&$('enc-atmos').checked)list=[...new Set(list.concat(ENC.atmos_bitrates?.streaming||[],$('enc-atmos71').value==='flat'?(ENC.flat71_bitrates||[]):(ENC.atmos_bitrates?.bluray||[])))].sort((a,b)=>a-b);
   const sel=$('enc-bitrate');
   sel.innerHTML='<option value="0">Auto (DEE default for the layout)</option>'+list.map(b=>`<option value="${b}">${b} kbps</option>`).join('');
   sel.value=list.includes(+e.bitrate)?String(e.bitrate):'0';
@@ -492,8 +518,8 @@ function fillBitrates(){
 }
 function onEncode(){
   const before=S.encode;S.encode=encSettings();
-  if(before.target!==S.encode.target||before.channels!==S.encode.channels||before.atmos!==S.encode.atmos){fillBitrates();S.encode=encSettings()}
-  save({encode:S.encode});refreshPlans();
+  if(before.target!==S.encode.target||before.channels!==S.encode.channels||before.atmos!==S.encode.atmos||before.atmos71!==S.encode.atmos71){fillBitrates();S.encode=encSettings()}
+  updateAtmos71Help();save({encode:S.encode});refreshPlans();
 }
 let planT;
 function refreshPlans(){clearTimeout(planT);planT=setTimeout(async()=>{

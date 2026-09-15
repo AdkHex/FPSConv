@@ -31,10 +31,13 @@ DEFAULTS: dict[str, Any] = {
         "channels": 0,         # 0 = same as source, else 1 / 2 / 6 / 8
         "bitrate": 0,          # 0 = DEE default for the layout
         "atmos": True,         # keep Atmos when the source has it (TrueHD Atmos -> DDP Atmos)
+        "atmos71": "flat",     # 7.1 Atmos legacy layout: flat (Lb Rb, patched DEE) | dee (DEE's 5.1+2 heights)
+        "bed_conform": True,   # truehdd --bed-conform on the flat-7.1 path
         "drc": "film_light",
     },
     "tools": {"ffmpeg": "", "ffprobe": "", "deew_python": "",
-              "mediainfo": "", "deezy": "", "deezy_python": "", "truehdd": ""},
+              "mediainfo": "", "deezy": "", "deezy_python": "", "truehdd": "",
+              "patcher": ""},   # folder of the DD+ 7.1 Atmos patcher ("" = the in-app download)
     "dirs": {                  # "" = the default shown by dir_defaults()
         "temp": "",            # job intermediates (WAVs, truehdd masters) + deew's own temp
         "work": "",            # DeeZy's logs and batch results

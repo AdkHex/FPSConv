@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+import socketserver
 import threading
 import webbrowser
 from http import HTTPStatus
@@ -81,6 +82,8 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                 self._json(applog.records(since=int(q.get("since", ["0"])[0] or 0)))
             elif url.path == "/api/ffmpeg/status":
                 self._json(httpd_ref.get("ffmpeg_dl", {"state": "idle"}))
+            elif url.path == "/api/patcher/status":
+                self._json(httpd_ref.get("patcher_dl", {"state": "idle"}))
             elif url.path == "/api/browse":
                 self._json(self._browse(q.get("path", [""])[0], q.get("kind", [""])[0]))
             elif url.path == "/api/probe":
@@ -148,7 +151,8 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                 for st in data.get("streams") or []:
                     enc = engine.resolve_encode(encode.get("target") or "ddp", int(encode.get("channels") or 0),
                                                 bool(encode.get("atmos", True)), int(encode.get("bitrate") or 0),
-                                                int(st.get("channels") or 2), st.get("atmos"), st.get("codec") or "")
+                                                int(st.get("channels") or 2), st.get("atmos"), st.get("codec") or "",
+                                                encode.get("atmos71") or "flat")
                     plans.append(enc.to_dict())
                 self._json({"plans": plans})
             elif url.path == "/api/settings":
@@ -221,6 +225,22 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
 
                 threading.Thread(target=work, daemon=True).start()
                 self._json({"ok": True, "state": "running"})
+            elif url.path == "/api/patcher/download":
+                if httpd_ref.get("patcher_dl", {}).get("state") == "running":
+                    return self._json({"ok": True, "state": "running"})
+                httpd_ref["patcher_dl"] = {"state": "running", "percent": 0, "step": "starting"}
+
+                def work_patcher():
+                    try:
+                        found = engine.download_patcher(
+                            lambda p, step: httpd_ref["patcher_dl"].update(percent=round(p), step=step))
+                        httpd_ref["patcher_dl"] = {"state": "done", "percent": 100, "found": found}
+                        applog.get("server").info("installed the DD+ 7.1 patcher in %s", found["dir"])
+                    except Exception as exc:  # noqa: BLE001
+                        httpd_ref["patcher_dl"] = {"state": "error", "error": str(exc)}
+
+                threading.Thread(target=work_patcher, daemon=True).start()
+                self._json({"ok": True, "state": "running"})
             elif url.path == "/api/quit":
                 self._json({"ok": True, "busy": queue.busy()})
                 queue.cancel_all()
@@ -239,6 +259,8 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                 "bitrates": {fmt: {str(ch): engine.BITRATES[(fmt, ch)] for ch in (1, 2, 6, 8) if (fmt, ch) in engine.BITRATES}
                              for fmt in engine.TARGETS},
                 "atmos_bitrates": engine.ATMOS_BITRATES,
+                "flat71_bitrates": engine.FLAT71_BITRATES,
+                "atmos71": list(engine.ATMOS71_LAYOUTS),
                 "defaults": {f"{fmt}_{ch}": kbps for (fmt, ch), kbps in engine.DEFAULT_BITRATE.items()},
                 "drc": list(engine.DRC_PROFILES),
             }
@@ -255,6 +277,8 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                 return "channels must be 0, 1, 2, 6 or 8"
             if (encode.get("drc") or "film_light") not in engine.DRC_PROFILES:
                 return f"unknown DRC profile {encode.get('drc')!r}"
+            if (encode.get("atmos71") or "flat") not in engine.ATMOS71_LAYOUTS:
+                return f"unknown 7.1 Atmos layout {encode.get('atmos71')!r}"
             return ""
 
         @staticmethod
@@ -353,6 +377,16 @@ def _powershell_pick(kind: str, start: str) -> list[str] | None:
     return [line.strip() for line in out.stdout.splitlines() if line.strip()]
 
 
+class _LoopbackServer(ThreadingHTTPServer):
+    """127.0.0.1 only — skip http.server's reverse-DNS lookup of the host name on bind,
+    which blocks start-up for as long as a broken DNS takes to time out."""
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)       # HTTPServer.server_bind would call getfqdn()
+        self.server_name = "127.0.0.1"
+        self.server_port = self.server_address[1]
+
+
 def _free_port(preferred: int) -> int:
     with socket.socket() as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -375,7 +409,7 @@ def serve(port: int = 8765, open_browser: bool = True, workers: int | None = Non
         threading.Thread(target=ref["server"].shutdown, daemon=True).start()
 
     updater = Updater(is_busy=queue.busy, on_install=stop)
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), make_handler(queue, ref, updater))
+    httpd = _LoopbackServer(("127.0.0.1", port), make_handler(queue, ref, updater))
     ref["server"] = httpd
     url = f"http://127.0.0.1:{port}/"
     print(f"{APP_NAME} {__version__} — GUI at {url}  (Ctrl-C to stop)", flush=True)
