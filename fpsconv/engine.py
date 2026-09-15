@@ -614,6 +614,41 @@ def _mediainfo_json(path: str) -> Optional[dict]:
         return None
 
 
+def _report_from_json(data: dict) -> str:
+    """A readable MediaInfo-style report from its JSON, for when only JSON is available."""
+    out = []
+    for t in ((data.get("media") or {}).get("track")) or []:
+        out.append(str(t.get("@type", "")))
+        for k, v in t.items():
+            if k.startswith("@") or k == "extra" or v in (None, ""):
+                continue
+            out.append(f"{k:<40}: {v}")
+        out.append("")
+    return "\n".join(out).strip()
+
+
+def mediainfo_report(path: str) -> str:
+    """MediaInfo's text report for a file: the ``mediainfo`` CLI, else pymediainfo, else JSON rendered."""
+    if not os.path.isfile(path):
+        return ""
+    try:
+        text = subprocess.check_output([tool("mediainfo"), path], text=True, creationflags=_NO_WINDOW,
+                                       stdin=subprocess.DEVNULL, timeout=120)
+        if text.strip():
+            return text.strip()
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from pymediainfo import MediaInfo
+        text = MediaInfo.parse(path, output="TEXT")
+        if isinstance(text, str) and text.strip():
+            return text.strip()
+    except Exception:  # noqa: BLE001
+        pass
+    data = _mediainfo_json(path)
+    return _report_from_json(data) if data else ""
+
+
 def _parse_mediainfo_audio(data: Optional[dict]) -> Optional[list[dict]]:
     """Per audio track (in container order): ``{"atmos": bool, "commercial": str}``.
 

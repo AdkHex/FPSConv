@@ -87,6 +87,13 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                 self._json(self._probe(q.get("path", [""])[0]))
             elif url.path == "/api/reference":
                 self._json(self._reference(q.get("path", [""])[0]))
+            elif url.path == "/api/mediainfo":
+                path = q.get("path", [""])[0]
+                if not os.path.isfile(path):
+                    return self._json({"error": "file not found"}, HTTPStatus.NOT_FOUND)
+                report = engine.mediainfo_report(path)
+                self._json({"path": path, "name": os.path.basename(path), "report": report,
+                            "error": "" if report else "mediainfo is not available (install MediaInfo CLI or set its path in Settings)"})
             else:
                 self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
 

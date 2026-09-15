@@ -45,8 +45,10 @@ Conversions `23.976-24`, `23.976-25`, `24-23.976`, `24-25`, `25-23.976`, `25-24`
 **GUI:** single-file or batch queue (N parallel), per-row conversion mode and
 audio-stream picker, live progress / ETA, cancel (kills the process, removes the
 partial file), retry, open output folder, job log with the exact commands,
-overwrite / skip / numbered-copy policy, custom bitrate, history across
-restarts, desktop notification when a batch finishes.
+MediaInfo report of any source or encoded output (ⓘ on the row), **Clear** in
+the top bar to drop every loaded file and finished job at once, overwrite / skip /
+numbered-copy policy, custom bitrate, history across restarts, desktop
+notification when a batch finishes.
 
 **CLI** (`fpsconv-cli.exe` in the install folder, or `python -m fpsconv` from source):
 

@@ -75,7 +75,7 @@
   .total i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s}
 
   .grid{flex:1;min-height:0;display:flex;flex-direction:column}
-  .th,.tr{display:grid;grid-template-columns:30px minmax(220px,1fr) 150px 150px minmax(190px,.9fr) 118px 90px 96px 84px;gap:10px;align-items:center;padding:0 12px 0 14px}
+  .th,.tr{display:grid;grid-template-columns:30px minmax(220px,1fr) 150px 150px minmax(190px,.9fr) 118px 90px 96px 100px;gap:10px;align-items:center;padding:0 12px 0 14px}
   .th{height:36px;flex:none;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3);border-bottom:1px solid var(--line);background:var(--panel)}
   .tb{flex:1;overflow:auto}
   .tr{min-height:54px;border-bottom:1px solid var(--line);padding-top:8px;padding-bottom:8px}
@@ -172,6 +172,9 @@
 <div class="top">
   <span class="brand">FPSConv</span><span class="ver" id="ver">…</span>
   <div class="grow"></div>
+  <button class="tbtn" id="tb-clear" onclick="clearAll()" title="Remove every loaded file and every finished job from the list (running jobs are kept)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg>Clear
+  </button>
   <button class="tbtn" id="tb-log" onclick="toggleAct()" title="Show or hide the activity panel">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15h18"/></svg>Activity
   </button>
@@ -347,6 +350,14 @@
     <div class="ft"><span class="note" id="fb-note"></span><label class="tg" id="fb-rec" style="display:none"><input type="checkbox" class="cb" id="recursive">sub-folders</label><button class="btn" onclick="closeFb()">Cancel</button><button class="btn go" id="fb-ok" onclick="fbOk()">Select</button></div>
   </div>
 </div>
+<!-- MediaInfo report -->
+<div class="ov" id="mi" onclick="if(event.target===this)closeMi()">
+  <div class="dlg" style="width:860px">
+    <div class="h"><span id="mi-title">MediaInfo</span><div class="grow"></div><button class="btn sm" onclick="copyMi()">Copy</button><button class="ib" onclick="closeMi()" style="margin-left:6px">✕</button></div>
+    <div class="c" style="padding:0"><pre id="mi-pre" style="margin:0;padding:14px 18px;font:12px/1.5 var(--mono);color:#d4d4d4;white-space:pre;overflow:auto;max-height:70vh"></pre></div>
+    <div class="ft"><span class="note" id="mi-path"></span><button class="btn" onclick="closeMi()">Close</button></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -355,7 +366,22 @@ const I={x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
   retry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
   open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
   folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
-  file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3h6l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/></svg>'};
+  file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3h6l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>'};
+async function clearAll(){
+  const n=pending.length, fin=jobs.filter(j=>!['queued','running'].includes(j.state)).length;
+  if(!n&&!fin){toast('Nothing to clear');return}
+  pending=[];checked.clear();selected=null;
+  const r=await post('/api/clear',{});
+  render();toast(`Cleared ${n} loaded file${n===1?'':'s'} and ${r.removed||0} finished job${r.removed===1?'':'s'}`);
+}
+async function showMi(path){
+  $('mi-title').textContent='MediaInfo — '+path.replace(/^.*[\\/]/,'');$('mi-path').textContent=path;$('mi-pre').textContent='reading…';$('mi').classList.add('open');
+  const r=await get('/api/mediainfo?path='+encodeURIComponent(path));
+  $('mi-pre').textContent=r.report||r.error||'no report';
+}
+function closeMi(){$('mi').classList.remove('open')}
+function copyMi(){navigator.clipboard?.writeText($('mi-pre').textContent).then(()=>toast('MediaInfo copied'))}
 let S={}, modes=[], ratios={}, ENC={}, pending=[], jobs=[], checked=new Set(), selected=null, lastVersion=-1, wasBusy=false, tab='job', appLog=[], logSeq=0, doctor={};
 const sessionStart=Date.now()/1000-1;
 
@@ -398,7 +424,7 @@ async function init(){
   $('workers').value=S.workers||2;$('overwrite').value=S.overwrite||'overwrite';
   $('br-mode').value=S.bitrate?'custom':'auto';$('br').value=S.bitrate||'';$('br').style.display=S.bitrate?'':'none';
   if(S.bitrate||S.overwrite!=='overwrite')$('adv').open=true;
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFb();closeSettings()}if(e.key==='Delete'&&!['INPUT','SELECT'].includes(document.activeElement.tagName))removeChecked()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFb();closeSettings();closeMi()}if(e.key==='Delete'&&!['INPUT','SELECT'].includes(document.activeElement.tagName))removeChecked()});
   initDrag();
   await loadDoctor();render();poll();pollUpdate();pollLog();setInterval(pollUpdate,5000);setInterval(pollLog,1200);
 }
@@ -533,12 +559,14 @@ function render(){
       <div>${enc?plan:`<select class="mini ${f.suggest&&f.suggest.conv_type?'suggested':''}" title="${esc(f.suggest?f.suggest.reason:'')}" onchange="setPendingMode(${i},this.value)">${modes.map(k=>`<option ${k===f.conv_type?'selected':''}>${k}</option>`).join('')}</select>${f.suggest?`<div class="why" title="${esc(f.suggest.reason)}">${f.suggest.conv_type?'suggested':'no change needed'}${f.suggest.delta?` · Δ ${f.suggest.delta}s`:''}</div>`:''}`}</div>
       <div><div class="bar2"><i></i></div><div class="det">waiting for Start</div></div>
       <div class="m">—</div><div class="m"></div><div class="st"><i></i>Ready</div>
-      <div class="acts"><button class="ib" title="Remove" onclick="removePending(${i})">${I.x}</button></div></div>`);
+      <div class="acts"><button class="ib" title="MediaInfo of the source" onclick='showMi(${esc(JSON.stringify(f.path))})'>${I.info}</button><button class="ib" title="Remove" onclick="removePending(${i})">${I.x}</button></div></div>`);
   });
   for(const j of jobs){
     const live=j.state==='queued'||j.state==='running';
-    const acts=live?`<button class="ib" title="Cancel" onclick="event.stopPropagation();post('/api/cancel',{id:'${j.id}'})">${I.x}</button>`
-      :`${['done','skipped'].includes(j.state)?`<button class="ib" title="Open output folder" onclick="event.stopPropagation();post('/api/open',{path:${esc(JSON.stringify(j.out_dir))}})">${I.open}</button>`:`<button class="ib" title="Retry" onclick="event.stopPropagation();post('/api/retry',{id:'${j.id}'})">${I.retry}</button>`}<button class="ib" title="Remove from list" onclick="event.stopPropagation();post('/api/remove',{id:'${j.id}'})">${I.x}</button>`;
+    const miPath=['done','skipped'].includes(j.state)&&j.out_path?j.out_path:j.source, miTitle=miPath===j.out_path?'MediaInfo of the encoded output':'MediaInfo of the source';
+    const mi=`<button class="ib" title="${miTitle}" onclick='event.stopPropagation();showMi(${esc(JSON.stringify(miPath))})'>${I.info}</button>`;
+    const acts=live?`${mi}<button class="ib" title="Cancel" onclick="event.stopPropagation();post('/api/cancel',{id:'${j.id}'})">${I.x}</button>`
+      :`${mi}${['done','skipped'].includes(j.state)?`<button class="ib" title="Open output folder" onclick="event.stopPropagation();post('/api/open',{path:${esc(JSON.stringify(j.out_dir))}})">${I.open}</button>`:`<button class="ib" title="Retry" onclick="event.stopPropagation();post('/api/retry',{id:'${j.id}'})">${I.retry}</button>`}<button class="ib" title="Remove from list" onclick="event.stopPropagation();post('/api/remove',{id:'${j.id}'})">${I.x}</button>`;
     const det=j.state==='running'?(j.detail||j.step):j.state==='failed'?j.error:j.state==='done'?'→ '+j.out_name:j.state==='skipped'?'skipped — '+j.error:j.state==='cancelled'?'cancelled':'queued';
     rows.push(`<div class="tr ${selected===j.id?'sel':''}" onclick="select('${j.id}')"><input type="checkbox" class="cb" ${checked.has(j.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleCheck('${j.id}',this.checked)">
       <div><div class="n" title="${esc(j.source)}">${esc(j.name)}</div><div class="s"><b>${esc(j.task==='encode'?(j.pretty||j.codec.toUpperCase()):(j.codec||'').toUpperCase())}</b>${j.codec&&j.task!=='encode'?' · '+j.bitrate+' kbps · '+j.channels+' ch':''}${j.out_name?' → '+esc(j.out_name):''}</div></div>

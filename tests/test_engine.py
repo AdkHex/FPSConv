@@ -256,6 +256,17 @@ class MediaInfoAtmos(unittest.TestCase):
         self.assertEqual(engine.pretty_codec({"codec_name": "pcm_s24le"}), "PCM")
 
 
+class MediaInfoReport(unittest.TestCase):
+    def test_json_fallback_renders_tracks(self):
+        text = engine._report_from_json({"media": {"track": [
+            {"@type": "General", "Format": "E-AC-3", "extra": {"x": 1}},
+            {"@type": "Audio", "Format": "E-AC-3", "Channels": "8", "Empty": ""}]}})
+        self.assertIn("General", text); self.assertIn("Channels", text); self.assertNotIn("extra", text); self.assertNotIn("Empty", text)
+
+    def test_missing_file_is_empty(self):
+        self.assertEqual(engine.mediainfo_report("/no/such/file.ec3"), "")
+
+
 class JobModel(unittest.TestCase):
     def test_old_history_defaults_to_fps(self):
         job = engine.Job.from_dict({"source": "/a.mkv", "conv_type": "24-25", "out_dir": "/o", "state": "done"})
