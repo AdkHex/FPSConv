@@ -29,6 +29,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import queue as _queue
 import re
 import shutil
 import subprocess
@@ -1144,16 +1145,33 @@ def run_deew_progress(cmd: list[str], job: Job, step_name: str, notify: Progress
 
 
 _DEEZY_LINE = re.compile(r"^(?:[\w-]+:\s*)?(.+?)\s*\((\d+) of (\d+)\)\s+(\d+(?:\.\d+)?)%")
+#: truehdd's own ``--progress`` output, relayed by DeeZy at debug level as ``[truehdd-err] …``.
+_TRUEHDD_PCT = re.compile(r"^\[truehdd[^\]]*\].*?(\d+(?:\.\d+)?)\s*%")
 #: DeeZy's Atmos stages and the share of the job each one gets on the progress bar.
-_DEEZY_STAGES = {"truehdd": (0, 35), "DEE measure": (35, 55), "DEE encode": (55, 100), "FFMPEG": (0, 20)}
+_DEEZY_STAGES = {"truehdd": (0, 35), "TrueHD extract & decode": (0, 35), "DEE measure": (35, 55),
+                 "DEE encode": (55, 100), "FFMPEG": (0, 20)}
 
 
-def run_deezy_progress(cmd: list[str], job: Job, step_name: str, notify: ProgressFn) -> bool:
-    """Run DeeZy and turn its progress lines into stage + percent.
+def _dir_size(path: str) -> int:
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.path.getsize(os.path.join(root, name))
+            except OSError:
+                pass
+    return total
+
+
+def run_deezy_progress(cmd: list[str], job: Job, step_name: str, notify: ProgressFn,
+                       work_dir: str = "") -> bool:
+    """Run DeeZy and turn its output into stage + percent + a live detail line.
 
     Without a terminal DeeZy logs plain lines such as ``truehdd (1 of 3)  42.0%``,
-    ``DEE measure (2 of 3) …`` and ``DEE encode (3 of 3) …``; ``DEEZY_NO_PROGRESS``
-    and ``--no-progress-bars`` make sure it never tries to draw rich bars.
+    ``DEE measure (2 of 3) …`` and ``DEE encode (3 of 3) …``. For a raw ``.thd``
+    DeeZy knows no duration, so the truehdd stage prints no percentage at all;
+    while DeeZy is silent the detail line shows how much truehdd / DEE have
+    written into ``work_dir`` so a long decode is visibly alive.
     """
     job.say(f"{step_name}: $ " + " ".join(cmd))
     env = dict(os.environ, DEEZY_NO_PROGRESS="1", NO_COLOR="1", PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
@@ -1173,33 +1191,73 @@ def run_deezy_progress(cmd: list[str], job: Job, step_name: str, notify: Progres
     tail: list[str] = []
     stage = ""
     stage_started = start
-    assert proc.stdout is not None
-    for raw in proc.stdout:
+    last_text = ""
+    lines: "_queue.Queue[Optional[bytes]]" = _queue.Queue()
+
+    def reader() -> None:
+        assert proc.stdout is not None
+        for raw in proc.stdout:
+            lines.put(raw)
+        lines.put(None)
+
+    threading.Thread(target=reader, daemon=True, name="deezy-reader").start()
+
+    def set_stage(name: str) -> None:
+        nonlocal stage, stage_started
+        if name != stage:
+            if stage:
+                job.say(f"deezy: {stage} finished in {fmt_time(time.time() - stage_started)}")
+            stage, stage_started = name, time.time()
+            job.say(f"deezy: {name} started")
+
+    def progress(name: str, pct: float) -> None:
+        nonlocal last
+        set_stage(name)
+        lo, hi = _DEEZY_STAGES.get(name, (0, 100))
+        job.percent = min(100.0, lo + (hi - lo) * pct / 100.0)
+        now = time.time()
+        job.elapsed = now - start
+        stage_el = now - stage_started
+        job.eta = (stage_el / pct) * (100 - pct) if pct > 0 else 0
+        job.detail = f"{name}  ·  {pct:.1f}%"
+        if now - last >= 1.0:
+            job.progress_line(f"deezy: {name}  {pct:.1f}%  ·  {fmt_time(stage_el)} in this stage")
+            notify(job.to_dict())
+            last = now
+
+    while True:
         if job._cancel.is_set():
             break
-        text = _ANSI_RE.sub("", raw.decode("utf-8", "ignore")).strip()
-        if not text:
-            continue
-        m = _DEEZY_LINE.match(text)
-        if m:
-            name, pct = m.group(1).strip(), float(m.group(4))
-            if name != stage:
-                if stage:
-                    job.say(f"deezy: {stage} finished in {fmt_time(time.time() - stage_started)}")
-                stage, stage_started = name, time.time()
-                job.say(f"deezy: {name} started")
-            lo, hi = _DEEZY_STAGES.get(name, (0, 100))
-            job.percent = min(100.0, lo + (hi - lo) * pct / 100.0)
+        try:
+            raw = lines.get(timeout=1.0)
+        except _queue.Empty:
+            # DeeZy is quiet (truehdd decoding a raw .thd): show that work is happening
             now = time.time()
             job.elapsed = now - start
-            stage_el = now - stage_started
-            job.eta = (stage_el / pct) * (100 - pct) if pct > 0 else 0
-            job.detail = f"{name}  ·  {pct:.1f}%"
-            if now - last >= 1.0:
-                job.progress_line(f"deezy: {name}  {pct:.1f}%  ·  {fmt_time(stage_el)} in this stage")
+            written = _dir_size(work_dir) if work_dir and os.path.isdir(work_dir) else 0
+            what = stage or "truehdd decode"
+            job.detail = f"{what}  ·  {hr_size(written)} written to temp  ·  {fmt_time(now - stage_started)} in this stage"
+            if now - last >= 5.0:
+                job.progress_line(f"deezy: {job.detail}")
                 notify(job.to_dict())
                 last = now
             continue
+        if raw is None:
+            break
+        text = _ANSI_RE.sub("", raw.decode("utf-8", "ignore")).strip()
+        if not text or text == last_text:          # debug level repeats every info line
+            continue
+        last_text = text
+        m = _DEEZY_LINE.match(text)
+        if m:
+            progress(m.group(1).strip(), float(m.group(4)))
+            continue
+        t = _TRUEHDD_PCT.match(text)
+        if t:
+            progress("truehdd", float(t.group(1)))
+            continue
+        if text.startswith("[truehdd") and not stage:
+            set_stage("truehdd")
         tail.append(text)
         tail = tail[-40:]
         job.say(f"deezy: {text}", "warning" if _ERR_RE.search(text) else "info")
@@ -1266,7 +1324,7 @@ def deezy_cmd_atmos(src: str, stream_index: int, enc: Encode, drc: str, work_dir
     folder: left alone, DeeZy creates ``deezy_work`` next to its own exe, which
     is Program Files for a normal install and not writable.
     """
-    cmd = deezy_cmd() + ["--no-progress-bars", "encode", "atmos"]
+    cmd = deezy_cmd() + ["--no-progress-bars", "--log-level", "debug", "encode", "atmos"]
     for flag in ("ffmpeg", "dee", "truehdd"):
         value = (tools or {}).get(flag) or ""
         if value:
@@ -1288,6 +1346,35 @@ def deezy_work_dir() -> str:
     except OSError:
         pass
     return str(path)
+
+
+def encode_plan(enc: Encode, stream: dict) -> list[str]:
+    """What the job is about to do, step by step, for the job log."""
+    src = stream.get("pretty") or stream.get("codec", "").upper()
+    if enc.atmos:
+        mode = "7.1 (Blu-ray mode)" if enc.atmos_mode == "bluray" else "5.1 (streaming mode)"
+        return [
+            f"1/4 ffmpeg copies the {src} stream unchanged into truehdd (no decode by ffmpeg)",
+            "2/4 truehdd decodes the bed and the Atmos objects into a Dolby Atmos master (DAMF: "
+            ".atmos / .atmos.audio / .atmos.metadata) in the job's temp folder — the slow step; "
+            "for a raw .thd no percentage is available, so the row shows how much has been written",
+            f"3/4 DEE measures loudness (dialnorm) on that master, then encodes DD+ JOC {mode} at "
+            f"{enc.bitrate} kbps, DRC profile as chosen",
+            "4/4 the .ec3 is moved to the output folder and the temp folder is deleted",
+        ]
+    decode = ("lossless decode" if stream.get("codec") in ("truehd",) or (stream.get("codec_name") or "") in ("dts", "flac", "mlp") or (stream.get("codec_name") or "").startswith("pcm")
+              else "decode (lossy source: quality can only stay the same)")
+    resample = "" if int(stream.get("sample_rate") or 48000) == 48000 else f", resampled from {stream.get('sample_rate')} Hz to 48 kHz"
+    dm = ""
+    if enc.out_channels < enc.wav_channels:
+        dm = f" with DEE's own {LAYOUT_NAMES[enc.wav_channels]} → {LAYOUT_NAMES[enc.out_channels]} downmix"
+    profile = " (Blu-ray profile)" if enc.fmt == "ddp" and enc.out_channels == 8 and enc.bitrate > 1024 else ""
+    return [
+        f"1/3 ffmpeg: {decode} of the {src} stream to 24-bit 48 kHz {LAYOUT_NAMES[enc.wav_channels]} WAV{resample}",
+        f"2/3 deew writes DEE's XML job; DEE measures loudness (dialnorm), then encodes "
+        f"{FORMAT_NAMES[enc.fmt]} {LAYOUT_NAMES[enc.out_channels]} at {enc.bitrate} kbps{profile}{dm}",
+        f"3/3 the {enc.ext} is moved to the output folder and the temp folder is deleted",
+    ]
 
 
 def deezy_tools() -> dict:
@@ -1464,6 +1551,8 @@ def convert_encode(job: Job, notify: ProgressFn, work_root: str = ".temp_jobs") 
     job.say(f"target: {enc.label}")
     for note in enc.notes:
         job.say(f"note: {note}")
+    for line in encode_plan(enc, stream):
+        job.say(f"plan: {line}")
     notify(job.to_dict())
 
     t0 = time.time()
@@ -1471,7 +1560,7 @@ def convert_encode(job: Job, notify: ProgressFn, work_root: str = ".temp_jobs") 
     try:
         if enc.atmos:
             cmd = deezy_cmd_atmos(file_path, job.stream_index, enc, job.drc, work_dir, out_path, deezy_tools())
-            ok = run_deezy_progress(cmd, job, "DeeZy Atmos (truehdd → DEE)", notify)
+            ok = run_deezy_progress(cmd, job, "DeeZy Atmos (truehdd → DEE)", notify, work_dir=work_dir)
             if ok and os.path.exists(out_path):
                 success = True
             elif ok:

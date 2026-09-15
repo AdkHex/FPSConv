@@ -170,7 +170,7 @@ class CommandBuilders(unittest.TestCase):
         with mock.patch.object(engine, "deezy_work_dir", return_value="/cfg/deezy-work"):
             cmd = engine.deezy_cmd_atmos("/in/m.mkv", 1, e, "film_standard", "/w", "/o/m.ec3",
                                          {"ffmpeg": "/bin/ffmpeg", "dee": r"C:\DEE\dee.exe", "truehdd": ""})
-        self.assertEqual(cmd, [r"C:\Tools\deezy.exe", "--no-progress-bars", "encode", "atmos",
+        self.assertEqual(cmd, [r"C:\Tools\deezy.exe", "--no-progress-bars", "--log-level", "debug", "encode", "atmos",
                                "--ffmpeg", "/bin/ffmpeg", "--dee", r"C:\DEE\dee.exe",
                                "--atmos-mode", "bluray", "--bitrate", "1536",
                                "--track-index", "a:1", "--drc-line-mode", "film_standard",
@@ -208,6 +208,18 @@ class CommandBuilders(unittest.TestCase):
         m = engine._DEEZY_LINE.match("W1: DEE encode (3 of 3) 80.0%")
         self.assertEqual((m.group(1), m.group(4)), ("DEE encode", "80.0"))
         self.assertIsNone(engine._DEEZY_LINE.match("Dee job: something 100% done"))
+        m = engine._TRUEHDD_PCT.match("[truehdd-err] Decoding 37.5% ...")
+        self.assertEqual(m.group(1), "37.5")
+        self.assertIsNone(engine._TRUEHDD_PCT.match("[ffmpeg] size=  1024kB time=00:00:10 bitrate=100%"))
+
+    def test_encode_plan_mentions_the_real_steps(self):
+        e = engine.resolve_encode("ddp", 8, True, 1536, 8, True, "truehd")
+        plan = engine.encode_plan(e, {"pretty": "TrueHD Atmos", "codec": "truehd", "sample_rate": 48000})
+        self.assertEqual(len(plan), 4)
+        self.assertIn("truehdd decodes", plan[1]); self.assertIn("Blu-ray mode", plan[2]); self.assertIn("1536 kbps", plan[2])
+        e = engine.resolve_encode("ddp", 6, True, 0, 8, False)
+        plan = engine.encode_plan(e, {"pretty": "DTS-HD MA", "codec": "aac", "codec_name": "dts", "sample_rate": 96000})
+        self.assertIn("lossless decode", plan[0]); self.assertIn("96000 Hz to 48 kHz", plan[0]); self.assertIn("7.1 → 5.1 downmix", plan[1])
 
 
 class MediaInfoAtmos(unittest.TestCase):
