@@ -275,7 +275,7 @@ class Flat71(unittest.TestCase):
 
     def test_patcher_parser_maps_dee_progress(self):
         p = engine._PatcherParser()
-        self.assertEqual(p("Run directory: /x"), ("preparing", None))
+        self.assertEqual(p("Run directory: /x"), ("Patching DEE", None))
         self.assertEqual(p("[2026] INFO: encode_to_atmos_ddp: Starting measurement."), ("DEE measure", 0.0))
         self.assertEqual(p("Overall progress: 20.0."), ("DEE measure", 50.0))
         self.assertEqual(p("[2026] INFO: encode_to_atmos_ddp: Measurement done. Final Integrated loudness: -21.8."), ("DEE encode", 0.0))

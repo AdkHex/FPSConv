@@ -460,6 +460,15 @@ def hr_size(size) -> str:
     return f"{size:.2f} PB"
 
 
+def parse_time(text) -> float:
+    """``HH:MM:SS`` (what fmt_time writes) back to seconds; anything else is 0."""
+    try:
+        parts = [float(p) for p in str(text or "0").split(":")]
+    except ValueError:
+        return 0.0
+    return sum(p * 60 ** i for i, p in enumerate(reversed(parts)))
+
+
 def fmt_time(sec) -> str:
     try:
         sec = max(0.0, float(sec))
@@ -971,6 +980,7 @@ class Job:
     started_at: float = 0.0
     finished_at: float = 0.0
     detail: str = ""                   # one-line "what is happening now"
+    stages: list[dict] = field(default_factory=list)   # the pipeline, stage by stage — see stage_begin()
     log: list[str] = field(default_factory=list)
     _proc: Optional[subprocess.Popen] = field(default=None, repr=False)
     _cancel: threading.Event = field(default_factory=threading.Event, repr=False)
@@ -983,6 +993,60 @@ class Job:
             base += (self.target, self.target_channels, bool(self.atmos), self.bitrate_override, self.drc,
                      self.atmos71, bool(self.bed_conform))
         return base
+
+    # -- stages ------------------------------------------------------------- #
+    # The Progress view: which stages the job goes through, which one runs now,
+    # how long each took. Declared up front with plan_stages() so the waiting
+    # ones are visible from the start; runners call stage_begin() as they go.
+
+    def plan_stages(self, names: list[str]) -> None:
+        self.stages = [_new_stage(n) for n in names]
+
+    def _stage(self, name: str) -> Optional[dict]:
+        return next((s for s in self.stages if s["name"] == name), None)
+
+    def stage_begin(self, name: str) -> None:
+        """``name`` runs now; whatever ran before is done. Unplanned names slot in before the waiting ones."""
+        now = time.time()
+        for s in self.stages:
+            if s["state"] == "running":
+                if s["name"] == name:
+                    return
+                s.update(state="done", finished=now, pct=100.0)
+        st = self._stage(name)
+        if st is None:
+            st = _new_stage(name)
+            idx = next((i for i, s in enumerate(self.stages) if s["state"] == "wait"), len(self.stages))
+            self.stages.insert(idx, st)
+        st.update(state="running", started=now, finished=0.0, pct=0.0)
+
+    def stage_skip(self, name: str, note: str) -> None:
+        st = self._stage(name)
+        if st:
+            st.update(state="skip", note=note)
+
+    def stage_progress(self, pct: float) -> None:
+        for s in self.stages:
+            if s["state"] == "running":
+                s["pct"] = max(0.0, min(100.0, pct))
+                return
+
+    def stage_close(self, ok: bool) -> None:
+        """The job is over: the running stage finished, or it is where the job failed / was cancelled."""
+        now = time.time()
+        for s in self.stages:
+            if s["state"] == "running":
+                s.update(state="done" if ok else ("cancelled" if self._cancel.is_set() else "failed"),
+                         finished=now, pct=100.0 if ok else s["pct"])
+
+    def overall(self) -> float:
+        """Whole-job percent from the stage weights (``percent`` restarts at 0 for every tool)."""
+        total = sum(s["weight"] for s in self.stages if s["state"] != "skip")
+        if not total:
+            return self.percent
+        done = sum(s["weight"] for s in self.stages if s["state"] == "done")
+        running = sum(s["weight"] * s["pct"] / 100.0 for s in self.stages if s["state"] == "running")
+        return min(100.0, (done + running) / total * 100.0)
 
     # -- log helpers -------------------------------------------------------- #
 
@@ -1018,6 +1082,7 @@ class Job:
             "out_name": os.path.basename(self.out_path) if self.out_path else "",
             "out_size": hr_size(self.out_size) if self.out_size else "",
             "error": self.error, "finished_at": self.finished_at, "log": self.log[-400:],
+            "stages": self.stages, "overall": round(self.overall(), 1), "now": time.time(),
         }
 
     @classmethod
@@ -1036,10 +1101,12 @@ class Job:
         job.percent = 100.0 if job.state == "done" else 0.0
         job.codec, job.bitrate, job.channels = d.get("codec", ""), int(d.get("bitrate", 0)), int(d.get("channels", 0))
         job.pretty, job.label = d.get("pretty", ""), d.get("label", "")
+        job.elapsed, job.duration = parse_time(d.get("elapsed")), parse_time(d.get("duration"))
         job.out_path = d.get("out_path", "")
         job.out_size = os.path.getsize(job.out_path) if job.out_path and os.path.exists(job.out_path) else 0
         job.error = d.get("error", "")
         job.finished_at = float(d.get("finished_at", 0))
+        job.stages = [dict(x) for x in d.get("stages", []) if isinstance(x, dict) and x.get("name")]
         job.log = list(d.get("log", []))
         return job
 
@@ -1063,6 +1130,25 @@ def _spawn(cmd: list[str]) -> subprocess.Popen:
 
 
 _ERR_RE = re.compile(r"not supported|no such|not found|no module|invalid|error|denied", re.IGNORECASE)
+
+#: Share of a job each stage usually takes — only for the overall percent, so rough is fine.
+STAGE_WEIGHT = {
+    "Extracting TrueHD": 5, "truehdd decode": 45, "Patching DEE": 1, "DEE measure": 14, "DEE encode": 31,
+    "Surround EX flag": 1, "TrueHD decode": 40, "Decoding to WAV": 35, "Extracting WAV": 35,
+    "ffmpeg": 5, "DEE: measure": 20, "DEE: encode": 37, "ffmpeg atempo + AAC": 97, "Finishing": 3,
+}
+_STEP_SUFFIX = re.compile(r"\s*\(\d+/\d+(?:[–-]\d+/\d+)?\)$")   # "Extracting TrueHD (1/5)" → "Extracting TrueHD"
+_STAGE_ALIAS = {"Encoding AAC Engine": "ffmpeg atempo + AAC"}
+
+
+def _new_stage(name: str) -> dict:
+    return {"name": name, "state": "wait", "weight": STAGE_WEIGHT.get(name, 10),
+            "started": 0.0, "finished": 0.0, "pct": 0.0, "note": ""}
+
+
+def stage_of(step_name: str) -> str:
+    """The stage a single-tool step shows as in the Progress view."""
+    return _STAGE_ALIAS.get(step_name) or _STEP_SUFFIX.sub("", step_name)
 
 
 def _pick_error(lines: list[str]) -> str:
@@ -1089,6 +1175,7 @@ def run_ffmpeg_progress(cmd: list[str], job: Job, step_name: str,
         return False
     job._proc = proc
     job.step = step_name
+    job.stage_begin(stage_of(step_name))
     job.detail = "starting ffmpeg"
     start = time.time()
     last = 0.0
@@ -1113,12 +1200,14 @@ def run_ffmpeg_progress(cmd: list[str], job: Job, step_name: str,
             except ValueError:
                 continue
             job.percent = min(100.0, cur / total_dur * 100) if total_dur > 0 else 0.0
+            job.stage_progress(job.percent)
             now = time.time()
             job.elapsed = now - start
             speed = cur / job.elapsed if job.elapsed > 0 else 0
             job.eta = (total_dur - cur) / speed if speed > 0 else 0
-            job.detail = (f"ffmpeg {fmt_time(cur)} / {fmt_time(total_dur)}"
-                          f"  ·  {state.get('speed', '')}  ·  {state.get('bitrate', '')}")
+            job.detail = "  ·  ".join(p for p in (f"ffmpeg {fmt_time(cur)} / {fmt_time(total_dur)}",
+                                                  state.get("speed", ""), state.get("bitrate", ""))
+                                     if p and p != "N/A")          # ffmpeg prints N/A for raw streams
             if now - last >= 1.0:
                 job.progress_line(f"{step_name}: {job.detail}  ·  {job.percent:.1f}%")
                 notify(job.to_dict())
@@ -1202,8 +1291,10 @@ def run_deew_progress(cmd: list[str], job: Job, step_name: str, notify: Progress
                         job.say(f"deew: {stage} finished in {fmt_time(time.time() - stage_started)}")
                     stage, stage_started = name, time.time()
                     job.say(f"deew: {name} started")
+                    job.stage_begin(name)
                 lo, hi = _DEEW_STAGES.get(name, (0, 100))
                 job.percent = min(100.0, lo + (hi - lo) * pct / 100.0)
+                job.stage_progress(pct)
                 now = time.time()
                 job.elapsed = now - start
                 stage_el = now - stage_started
@@ -1241,8 +1332,8 @@ _DEEZY_LINE = re.compile(r"^(?:[\w-]+:\s*)?(.+?)\s*\((\d+) of (\d+)\)\s+(\d+(?:\
 #: truehdd's own ``--progress`` output, relayed by DeeZy at debug level as ``[truehdd-err] …``.
 _TRUEHDD_PCT = re.compile(r"^\[truehdd[^\]]*\].*?(\d+(?:\.\d+)?)\s*%")
 #: DeeZy's Atmos stages and the share of the job each one gets on the progress bar.
-_DEEZY_STAGES = {"truehdd": (0, 35), "TrueHD extract & decode": (0, 35), "DEE measure": (35, 55),
-                 "DEE encode": (55, 100), "FFMPEG": (0, 20)}
+_DEEZY_STAGES = {"TrueHD decode": (0, 35), "DEE measure": (35, 55), "DEE encode": (55, 100), "ffmpeg": (0, 20)}
+_DEEZY_ALIAS = {"truehdd": "TrueHD decode", "TrueHD extract & decode": "TrueHD decode", "FFMPEG": "ffmpeg"}
 
 
 def _dir_size(path: str) -> int:
@@ -1262,12 +1353,13 @@ ParseFn = Callable[[str], Optional[tuple[str, Optional[float]]]]
 def _parse_deezy_line(text: str) -> Optional[tuple[str, Optional[float]]]:
     m = _DEEZY_LINE.match(text)
     if m:
-        return m.group(1).strip(), float(m.group(4))
+        name = m.group(1).strip()
+        return _DEEZY_ALIAS.get(name, name), float(m.group(4))
     t = _TRUEHDD_PCT.match(text)
     if t:
-        return "truehdd", float(t.group(1))
+        return "TrueHD decode", float(t.group(1))
     if text.startswith("[truehdd"):
-        return "truehdd", None
+        return "TrueHD decode", None
     return None
 
 
@@ -1293,6 +1385,7 @@ def run_tool_progress(cmd: list[str], job: Job, step_name: str, notify: Progress
         return False
     job._proc = proc
     job.step = step_name
+    job.stage_begin(idle_stage)
     job.detail = f"starting {tool_name}"
     job.percent = min(v[0] for v in stages.values()) if stages else 0.0
     start = time.time()
@@ -1318,12 +1411,14 @@ def run_tool_progress(cmd: list[str], job: Job, step_name: str, notify: Progress
                 job.say(f"{tool_name}: {stage} finished in {fmt_time(time.time() - stage_started)}")
             stage, stage_started = name, time.time()
             job.say(f"{tool_name}: {name} started")
+            job.stage_begin(name)
 
     def progress(name: str, pct: float) -> None:
         nonlocal last
         set_stage(name)
         lo, hi = stages.get(name, (0, 100))
         job.percent = min(100.0, lo + (hi - lo) * pct / 100.0)
+        job.stage_progress(pct)
         now = time.time()
         job.elapsed = now - start
         stage_el = now - stage_started
@@ -1388,7 +1483,7 @@ def run_deezy_progress(cmd: list[str], job: Job, step_name: str, notify: Progres
     drawing rich bars.
     """
     return run_tool_progress(cmd, job, step_name, notify, tool_name="deezy", parse=_parse_deezy_line,
-                             stages=_DEEZY_STAGES, work_dir=work_dir, idle_stage="truehdd decode",
+                             stages=_DEEZY_STAGES, work_dir=work_dir, idle_stage="TrueHD decode",
                              env_extra={"DEEZY_NO_PROGRESS": "1"})
 
 
@@ -1547,7 +1642,7 @@ def patcher_cmd(dee_exe: str, master_atmos: str, out_path: str, enc: "Encode", d
 _TRUEHDD_ANY_PCT = re.compile(r"(\d+(?:\.\d+)?)\s*%")
 _DEE_OVERALL = re.compile(r"Overall progress:\s*(\d+(?:\.\d+)?)")
 _TRUEHDD_STAGES = {"truehdd decode": (0, 100)}
-_PATCHER_STAGES = {"preparing": (0, 2), "DEE measure": (2, 40), "DEE encode": (40, 97), "Surround EX flag": (97, 100)}
+_PATCHER_STAGES = {"Patching DEE": (0, 2), "DEE measure": (2, 40), "DEE encode": (40, 97), "Surround EX flag": (97, 100)}
 
 
 def _parse_truehdd_line(text: str) -> Optional[tuple[str, Optional[float]]]:
@@ -1560,7 +1655,7 @@ class _PatcherParser:
     rest); the wrapper adds its own lines before and after."""
 
     def __init__(self) -> None:
-        self.stage = "preparing"
+        self.stage = "Patching DEE"
 
     def __call__(self, text: str) -> Optional[tuple[str, Optional[float]]]:
         if "Starting measurement" in text:
@@ -1581,7 +1676,7 @@ class _PatcherParser:
             self.stage = "Surround EX flag"
             return self.stage, 100.0
         if text.startswith(("Run directory", "Verified backup", "Generated ")):
-            return "preparing", None
+            return "Patching DEE", None
         return None
 
 
@@ -1771,6 +1866,8 @@ def convert(job: Job, notify: ProgressFn, work_root: Optional[str] = None) -> Jo
     job.say(f"job started: {os.path.basename(file_path)}  →  {os.path.basename(out_path)}")
     job.say(f"source: {codec.upper()} · {job.bitrate} kbps · {job.channels} ch · {fmt_time(job.duration)} · "
             f"stream #{job.stream_index} · mode {conv_type} (atempo {atempo_chain(ratio)})")
+    job.plan_stages(["ffmpeg atempo + AAC", "Finishing"] if codec == "aac"
+                    else ["Extracting WAV", "DEE: measure", "DEE: encode", "Finishing"])
     notify(job.to_dict())
 
     t0 = time.time()
@@ -1885,6 +1982,15 @@ def convert_encode(job: Job, notify: ProgressFn, work_root: Optional[str] = None
         job.say(f"note: {note}")
     for line in encode_plan(enc, stream):
         job.say(f"plan: {line}")
+    if enc.atmos and enc.flat71:
+        job.plan_stages(["Extracting TrueHD", "truehdd decode", "Patching DEE", "DEE measure", "DEE encode",
+                         "Surround EX flag", "Finishing"])
+        if (stream.get("format_name") or "") == "truehd":
+            job.stage_skip("Extracting TrueHD", "source is already a .thd")
+    elif enc.atmos:
+        job.plan_stages(["TrueHD decode", "DEE measure", "DEE encode", "Finishing"])
+    else:
+        job.plan_stages(["Decoding to WAV", "DEE: measure", "DEE: encode", "Finishing"])
     notify(job.to_dict())
 
     t0 = time.time()
@@ -1967,7 +2073,7 @@ def _encode_flat71(job: Job, stream: dict, enc: Encode, work_dir: str, out_path:
     os.makedirs(dee_temp, exist_ok=True)
     cmd = patcher_cmd(tools["dee"], master_atmos, out_path, enc, job.drc, dee_temp)
     ok = run_tool_progress(cmd, job, "DEE flat 7.1 (3/5–4/5)", notify, tool_name="patcher", parse=_PatcherParser(),
-                           stages=_PATCHER_STAGES, work_dir=dee_temp, idle_stage="DEE",
+                           stages=_PATCHER_STAGES, work_dir=dee_temp, idle_stage="Patching DEE",
                            cwd=str(patcher_script().parent) if patcher_script() else None)
     if not ok:
         return False
@@ -1980,7 +2086,11 @@ def _encode_flat71(job: Job, stream: dict, enc: Encode, work_dir: str, out_path:
 
 def _settle(job: Job, out_path: str, work_dir: str, t0: float, success: bool, notify: ProgressFn) -> None:
     """Common tail of a job: clean up, set the terminal state, remove partial output."""
+    ok = success and not job._cancel.is_set() and os.path.exists(out_path)
+    if ok:
+        job.stage_begin("Finishing")           # the temp folder can be many GB; deleting it is visible work
     shutil.rmtree(work_dir, ignore_errors=True)
+    job.stage_close(ok)
     job.elapsed = time.time() - t0
     job._proc = None
     job.finished_at = time.time()
