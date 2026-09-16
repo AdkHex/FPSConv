@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>FPSConv — redesign mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --bg:#f4f5f7; --bg2:#fafbfc; --card:#ffffff; --line:#e5e8ed; --line2:#d4d9e1; --line3:#b9c0cb;
+  --tx:#171a1f; --tx2:#565f6c; --tx3:#9099a6;
+  --ac:#3465e0; --ac-soft:#e9eefc;
+  --ok:#178a52; --ok-soft:#e2f4ea;
+  --warn:#b06a14; --warn-soft:#fdf1e0;
+  --bad:#c33d3d; --bad-soft:#fbeaea;
+  --ink:#16181d; --ink-tx:#fff;
+  --tile:#eef1f6; --hover:#f8f9fb; --sel:#eef2fc;
+  --shadow:0 14px 40px rgba(23,26,31,.16);
+  --backdrop:rgba(23,26,31,.3);
+}
+html[data-theme=dark]{
+  --bg:#0f1114; --bg2:#13161a; --card:#1a1d23; --line:#252930; --line2:#30353e; --line3:#3d434e;
+  --tx:#e9ebef; --tx2:#a7aeb9; --tx3:#6b7280;
+  --ac:#6c9bff; --ac-soft:#172139;
+  --ok:#3ecf7a; --ok-soft:#12291c;
+  --warn:#f0a44a; --warn-soft:#2b2113;
+  --bad:#f0585a; --bad-soft:#2c181a;
+  --ink:#e9ebef; --ink-tx:#101214;
+  --tile:#1c2026; --hover:#15181d; --sel:#151c2c;
+  --shadow:0 18px 48px rgba(0,0,0,.55);
+  --backdrop:rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.5 var(--sans);display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
+:root{--sans:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;--mono:"Cascadia Mono",ui-monospace,Consolas,Menlo,monospace}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+svg{flex:none}
+::selection{background:var(--ac-soft)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px;border:3px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:var(--line3)}
+::-webkit-scrollbar-corner{background:transparent}
+:focus-visible{outline:2px solid var(--ac);outline-offset:1px;border-radius:4px}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono)}
+.grow{flex:1}
+
+/* ── header ─────────────────────────────────────── */
+.top{height:54px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--card)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;letter-spacing:.1px}
+.logo{width:22px;height:22px;border-radius:6px;background:var(--ink);display:flex;align-items:center;justify-content:center}
+.logo svg{color:var(--ink-tx)}
+.chip{font:11px var(--mono);color:var(--tx3);padding:2.5px 8px;border:1px solid var(--line2);border-radius:999px;margin-left:2px;background:var(--bg)}
+.bar-btn{height:32px;padding:0 10px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--tx2);display:inline-flex;align-items:center;gap:7px;font-size:12.5px}
+.bar-btn:hover{background:var(--hover);color:var(--tx);border-color:var(--line)}
+.bar-btn svg{width:16px;height:16px}
+.live{min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--ac);color:#fff;font:600 10px/16px var(--mono);text-align:center}
+
+/* update banner */
+.banner{display:none;align-items:center;gap:10px;padding:7px 16px;border-bottom:1px solid var(--line);background:var(--warn-soft);font-size:12.5px;color:var(--tx2)}
+.banner.on{display:flex}
+.banner b{color:var(--tx);font-weight:600}
+.banner .grow{flex:1}
+
+/* ── setup bar ──────────────────────────────────── */
+.setup{flex:none;display:flex;align-items:center;gap:5px;padding:12px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.seg{display:flex;border:1px solid var(--line2);border-radius:9px;padding:3px;background:var(--card);gap:2px;flex:none}
+.seg button{height:28px;padding:0 7px;border:0;background:transparent;border-radius:7px;color:var(--tx2);font-size:12.5px;font-weight:500;transition:all .13s}
+.seg button:hover{color:var(--tx)}
+.seg button.on{background:var(--ink);color:var(--ink-tx)}
+.seg.small button{height:24px;padding:0 9px;font-size:12px}
+.sep{width:1px;height:22px;background:var(--line2);flex:none;margin:0 2px}
+.ctl{height:34px;flex:none;display:flex;align-items:center;gap:5px;padding:0 8px;background:var(--card);border:1px solid var(--line2);border-radius:9px;color:var(--tx2);font-size:11px;font-weight:500}
+.ctl:hover{border-color:var(--line3)}
+.ctl select{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:var(--tx);font-size:12.5px;font-weight:500;cursor:pointer;padding:0 16px 0 2px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%239099a6' stroke-width='1.8'%3E%3Cpath d='m3.5 5 2.5 2.5L8.5 5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 2px center;outline:none}
+.ctl select option{background:var(--card);color:var(--tx)}
+.ctl .ratio{font:11px var(--mono);color:var(--tx3)}
+.ctl.path{color:var(--tx3)}
+.ctl.path svg{width:14px;height:14px}
+.ctl.path .txt{font:12px var(--mono);color:var(--tx2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctl.path .x{width:18px;height:18px;border:0;background:transparent;border-radius:4px;color:var(--tx3);display:flex;align-items:center;justify-content:center;margin-right:-6px}
+.ctl.path .x:hover{background:var(--hover);color:var(--tx)}
+.ctl.path .x svg{width:10px;height:10px}
+.ctl.dashed{border-style:dashed;color:var(--tx3);cursor:pointer}
+.ctl.dashed:hover{color:var(--tx);border-color:var(--line3)}
+.switch{width:30px;height:18px;border-radius:999px;background:var(--line2);border:1px solid var(--line2);position:relative;flex:none;cursor:pointer;transition:background .15s,border-color .15s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.switch.on{background:var(--ac);border-color:var(--ac)}
+.switch.on::after{transform:translateX(12px)}
+.swlabel{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);flex:none;cursor:pointer;user-select:none}
+.ic2{width:32px;height:32px;flex:none;border:1px solid var(--line2);background:var(--card);border-radius:9px;color:var(--tx3);display:flex;align-items:center;justify-content:center}
+.ic2:hover{border-color:var(--line3);color:var(--tx)}
+.ic2 svg{width:15px;height:15px}
+
+/* more-options popover */
+.pop{position:fixed;top:0;left:0;width:280px;background:var(--card);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow);padding:14px;display:none;z-index:40;flex-direction:column;gap:14px}
+.pop.open{display:flex}
+.pop .plabel{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3)}
+.pop .pgroup{display:flex;flex-direction:column;gap:7px}
+.pop select,.pop input{height:30px;width:100%;background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:0 9px;font-size:12.5px;color:var(--tx);outline:none}
+.pop select:hover,.pop input:hover{border-color:var(--line3)}
+.pop .row{display:flex;gap:8px}
+.pop .row select,.pop .row input{flex:1}
+.step{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line2);border-radius:7px;background:var(--bg);padding:2px;height:30px;align-self:flex-start}
+.step button{width:24px;height:24px;border:0;background:transparent;border-radius:5px;color:var(--tx3);display:flex;align-items:center;justify-content:center}
+.step button:hover{background:var(--card);color:var(--tx)}
+.step button svg{width:11px;height:11px}
+.step .v{min-width:26px;text-align:center;font:600 12px var(--mono)}
+
+/* ── queue ──────────────────────────────────────── */
+.qhead{height:46px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--bg2)}
+.qhead h1{font-size:14px;font-weight:600;margin:0}
+.sum{color:var(--tx3);font-size:12.5px;font-variant-numeric:tabular-nums}
+.btn{height:31px;padding:0 12px;border-radius:8px;border:1px solid var(--line2);background:var(--card);display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:500;color:var(--tx);white-space:nowrap;transition:background .12s,border-color .12s}
+.btn:hover{background:var(--hover);border-color:var(--line3)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn:disabled:hover{background:var(--card);border-color:var(--line2)}
+.btn svg{width:14px;height:14px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--tx2)}
+.btn.ghost:hover{background:var(--hover);color:var(--tx)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--ink-tx);font-weight:600}
+.btn.primary:not(:disabled):hover{background:var(--tx);border-color:var(--tx)}
+.btn.danger{color:var(--bad)}
+.btn.sm{height:26px;padding:0 10px;font-size:12px;border-radius:7px}
+
+.qbody{flex:1;min-height:0;overflow:auto;padding:8px 16px 20px}
+.sec-h{position:sticky;top:0;z-index:2;height:30px;display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);background:var(--bg);margin:6px -8px 4px;padding:0 8px}
+.sec-h .cnt{font:600 10px var(--mono);color:var(--tx3);background:var(--line);border-radius:999px;padding:1px 7px}
+.trow{display:grid;grid-template-columns:26px minmax(220px,1.3fr) 190px minmax(150px,.95fr) 96px 108px;gap:12px;align-items:center;min-height:48px;padding:5px 10px 5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);margin-bottom:5px;transition:border-color .12s,background .12s}
+.trow:hover{border-color:var(--line3);background:var(--hover)}
+.trow.sel{border-color:var(--ac);background:var(--sel)}
+.cb{width:15px;height:15px;border:1.5px solid var(--line3);border-radius:4.5px;background:var(--card);appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;flex:none;position:relative;transition:background .12s,border-color .12s}
+.cb:hover{border-color:var(--tx3)}
+.cb:checked{background:var(--ac);border-color:var(--ac)}
+.cb:checked::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(45deg)}
+.cell{display:flex;align-items:center;gap:10px;min-width:0}
+.fps-txt{font:11.5px var(--mono);color:var(--tx3);flex:none}
+.fps-txt.hit{color:var(--ok)}
+.st{font-size:12.5px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;color:var(--tx2)}
+.st i{width:7px;height:7px;border-radius:50%;background:var(--tx3);flex:none}
+.st.running{color:var(--tx)}
+.st.running i{background:var(--ac);animation:pulse 1.6s ease-out infinite}
+.st.done,.st.skipped{color:var(--tx)}
+.st.done i,.st.skipped i{background:var(--ok)}
+.st.failed{color:var(--bad)}
+.st.failed i{background:var(--bad)}
+.st.cancelled i{background:var(--warn)}
+.fcol{min-width:0}
+.n{font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.s{font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;display:flex;align-items:center;gap:7px;min-width:0}
+.s .grow{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.s b{font-weight:500;color:var(--tx2)}
+.tracksel{border:0;background:transparent;color:var(--tx2);font:500 11px var(--mono);cursor:pointer;border-bottom:1px dashed var(--line3);padding:0 0 1px;outline:none}
+select.mini{height:26px;width:100%;background:var(--card);border:1px solid var(--line2);border-radius:7px;color:var(--tx);font:12px var(--mono);padding:0 22px 0 8px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%239099a6' stroke-width='1.8'%3E%3Cpath d='m3.5 5 2.5 2.5L8.5 5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;cursor:pointer}
+select.mini option{background:var(--card)}
+select.mini.suggested{border-color:var(--ok)}
+.why{font:11px var(--mono);color:var(--ok);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.why.warn{color:var(--warn)}
+.plan{font:12px var(--mono);color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plan .why{color:var(--warn)}
+.bar2{height:4px;border-radius:2px;background:var(--line2);overflow:hidden;position:relative}
+.bar2 i{display:block;height:100%;width:0;background:var(--ac);border-radius:2px;transition:width .35s;position:relative}
+.bar2 i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);transform:translateX(-100%);animation:shimmer 2.2s linear infinite}
+.bar2.done i,.bar2.skipped i{background:var(--ok)}
+.bar2.failed i{background:var(--bad)}
+.bar2.cancelled i{background:var(--warn)}
+.bar2.wait i{width:100%;background:var(--line);animation:none}
+.bar2.wait i::after{display:none}
+@keyframes shimmer{to{transform:translateX(100%)}}
+.det{font:11px var(--mono);color:var(--tx3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+.det .out{color:var(--ok)}
+.det .err{color:var(--bad)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--tx3);display:inline-block;flex:none}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}.dot.warn{background:var(--warn)}.dot.ac{background:var(--ac)}
+.dot.pulse{animation:pulse 1.6s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--ac)}70%{box-shadow:0 0 0 5px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.acts{display:flex;gap:2px;justify-content:flex-end;opacity:0;transition:opacity .12s}
+.trow:hover .acts,.trow.sel .acts{opacity:1}
+.ib{width:27px;height:27px;border:0;background:transparent;border-radius:6px;color:var(--tx3);display:inline-flex;align-items:center;justify-content:center}
+.ib:hover{background:var(--card);color:var(--tx);box-shadow:inset 0 0 0 1px var(--line2)}
+.ib:hover.danger{color:var(--bad)}
+.ib svg{width:13px;height:13px}
+.ib svg.r{width:15px;height:15px}
+
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--tx3);text-align:center;padding:60px}
+.empty .drop{width:140px;height:90px;border:1.5px dashed var(--line3);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--tx3);background:var(--bg2)}
+.empty .drop svg{width:22px;height:22px}
+.empty .drop span{font-size:11px}
+.empty b{color:var(--tx2);font-weight:500;font-size:14px}
+.empty .row{margin-top:12px;display:flex;gap:8px}
+
+/* ── drawers ────────────────────────────────────── */
+.backdrop{position:fixed;inset:0;background:var(--backdrop);opacity:0;pointer-events:none;transition:opacity .18s;z-index:30}
+.backdrop.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:480px;max-width:92vw;background:var(--card);border-left:1px solid var(--line2);box-shadow:var(--shadow);display:flex;flex-direction:column;transform:translateX(102%);transition:transform .22s cubic-bezier(.3,.8,.3,1);z-index:31}
+.drawer.open{transform:none}
+.drawer .h{height:48px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--line);font-weight:600;font-size:13.5px}
+.drawer .h .sub{font-weight:400;font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.drawer .body{flex:1;min-height:0;display:flex;flex-direction:column}
+.drawer .ft{height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-top:1px solid var(--line)}
+.ic{width:28px;height:28px;border:0;background:transparent;border-radius:6px;color:var(--tx3);display:inline-flex;align-items:center;justify-content:center}
+.ic:hover{background:var(--hover);color:var(--tx)}
+.ic svg{width:13px;height:13px}
+
+/* activity drawer */
+.tabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--line);flex:none}
+.tab{height:38px;padding:0 12px;border:0;background:transparent;color:var(--tx3);font-size:12.5px;font-weight:500;border-bottom:2px solid transparent}
+.tab:hover{color:var(--tx)}
+.tab.on{color:var(--tx);border-bottom-color:var(--ink)}
+.filterbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);flex:none}
+.filterbar input[type=text]{height:28px;flex:1;background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:0 10px;font-size:12.5px;color:var(--tx);outline:none}
+.filterbar input[type=text]:focus{border-color:var(--ac)}
+.filterbar label{font-size:12px;color:var(--tx3);display:flex;align-items:center;gap:5px;cursor:pointer}
+.logv{flex:1;overflow:auto;padding:10px 14px 14px;font:12px/1.6 var(--mono);color:var(--tx2)}
+.logv .l{white-space:pre-wrap;word-break:break-all}
+.logv .t{color:var(--tx3)}
+.logv .WARNING{color:var(--warn)}
+.logv .ERROR{color:var(--bad)}
+.logv .src{color:var(--tx3)}
+
+/* settings drawer */
+.drawer.settings{width:640px}
+.snav{width:150px;flex:none;border-right:1px solid var(--line);padding:8px 6px;display:flex;flex-direction:column;gap:1px;overflow:auto}
+.snav button{height:31px;padding:0 10px;border:0;background:transparent;border-radius:7px;color:var(--tx2);font-size:12.5px;text-align:left;display:flex;align-items:center;gap:9px}
+.snav button:hover{background:var(--hover);color:var(--tx)}
+.snav button.on{background:var(--ac-soft);color:var(--ac);font-weight:600}
+.snav button svg{width:14px;height:14px}
+.sbody{flex:1;min-width:0;overflow:auto;padding:18px 20px 22px;display:flex;flex-direction:column;gap:22px}
+.ssec h3{margin:0 0 12px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3)}
+.toolrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.toolrow:last-child{border-bottom:0}
+.toolrow .name{width:92px;flex:none;display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--tx);font-weight:500}
+.toolrow .val{flex:1;font:11.5px var(--mono);color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kvrow{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.kvrow label{width:120px;flex:none;font-size:12.5px;color:var(--tx2)}
+.kvrow .in{height:30px;flex:1;background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:0 10px;font:12px var(--mono);color:var(--tx);outline:none}
+.kvrow .in:hover{border-color:var(--line3)}
+.ssec .help{margin-top:8px;font-size:12px;color:var(--tx3);line-height:1.5}
+.ssec .help code{font-family:var(--mono);font-size:11px;color:var(--tx2)}
+.ssec .help b{color:var(--tx2);font-weight:500}
+.ssec .help a{color:var(--ac);text-decoration:none}
+.tgrow{display:flex;align-items:center;gap:9px;font-size:13px;cursor:pointer;color:var(--tx2);margin-bottom:12px;user-select:none}
+.tgrow:hover{color:var(--tx)}
+.callout{display:flex;align-items:center;gap:10px;border:1px solid var(--line2);border-left:3px solid var(--warn);border-radius:8px;background:var(--bg);padding:10px 12px;font-size:12.5px;color:var(--tx2);margin-bottom:14px}
+.callout.ok{border-left-color:var(--ok)}
+.callout .grow{flex:1}
+.info2 .kv{display:flex;gap:14px;font-size:12.5px;margin-bottom:9px}
+.info2 .kv span:first-child{width:120px;flex:none;color:var(--tx3)}
+.info2 .kv .v{font-family:var(--mono);font-size:12px;color:var(--tx2)}
+
+/* ── status bar ─────────────────────────────────── */
+.status{height:30px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;border-top:1px solid var(--line);background:var(--card);font-size:12px;color:var(--tx3)}
+.status .it{display:inline-flex;align-items:center;gap:6px}
+.status .out{font-family:var(--mono);font-size:11.5px;color:var(--tx3)}
+.status a{color:var(--tx3);cursor:pointer;text-decoration:underline dotted}
+.status a:hover{color:var(--tx)}
+
+/* ── toast ──────────────────────────────────────── */
+.toast{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--ink-tx);padding:9px 16px;border-radius:9px;display:none;z-index:50;font-size:13px;box-shadow:var(--shadow)}
+.toast.bad{background:var(--bad);color:#fff}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><span class="logo"><svg viewBox="0 0 24 24" width="11" height="11"><path d="M9.6 8.1v7.8l6.4-3.9z" fill="currentColor"/></svg></span>FPSConv<span class="chip">v1.4.2 · mockup</span></div>
+  <div class="grow"></div>
+  <button class="bar-btn" id="btn-act" onclick="toggleAct()" title="Activity">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12.5 15H17"/></svg>Activity<span class="live" id="act-live" style="display:none">1</span>
+  </button>
+  <button class="bar-btn" id="btn-theme" onclick="toggleTheme()" title="Switch theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+  </button>
+  <button class="bar-btn" onclick="openSettings()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings
+  </button>
+</header>
+
+<div class="banner on" id="banner">
+  <span class="dot warn"></span><span>Update <b>1.5.0</b> is downloaded — installs when no job is running.</span>
+  <span class="grow"></span>
+  <button class="btn sm primary" onclick="toast('Demo — no installer behind this button')">Restart to update</button>
+  <button class="ic" onclick="$('banner').classList.remove('on')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+</div>
+
+<div class="setup">
+  <div class="seg" id="seg-task">
+    <button class="on" data-task="fps">FPS change</button>
+    <button data-task="encode">Audio encode</button>
+  </div>
+  <div class="sep"></div>
+  <div class="seg small" id="seg-mode" title="Single file: adding a file replaces the previous one. Batch: files run N at a time.">
+    <button onclick="setMode(this,'single')">Single</button>
+    <button class="on" onclick="setMode(this,'batch')">Batch</button>
+  </div>
+  <div class="sep"></div>
+
+  <div class="ctl" id="ctl-mode">
+    <select id="sel-mode">
+      <option selected>23.976 → 25 fps</option>
+      <option>23.976 → 24 fps</option>
+      <option>24 → 23.976 fps</option>
+      <option>24 → 25 fps</option>
+      <option>25 → 23.976 fps</option>
+      <option>25 → 24 fps</option>
+    </select>
+  </div>
+  <span class="ratio mono" id="ratio" style="font:11px var(--mono);color:var(--tx3)">×1.0427 · atempo=1.042709</span>
+
+  <div class="ctl" id="ctl-format" hidden>Format
+    <select id="sel-fmt"><option title="DDP (E-AC-3)">DDP</option><option title="DD (AC-3)">DD</option></select>
+  </div>
+  <div class="ctl" id="ctl-ch" hidden>Channels
+    <select id="sel-ch"><option>Same as source</option><option>7.1</option><option>5.1</option><option>2.0</option><option>1.0</option></select>
+  </div>
+  <div class="ctl" id="ctl-br" hidden>Bitrate
+    <select id="sel-br" title="Auto = DEE default for the layout"><option>Auto</option><option>1536 kbps</option><option>1024 kbps</option><option>768 kbps</option><option>640 kbps</option><option>448 kbps</option><option>256 kbps</option></select>
+  </div>
+  <label class="swlabel" id="ctl-atmos" hidden><span class="switch on" onclick="toggleSwitch(this)"></span>Atmos</label>
+  <div class="ctl" id="ctl-layout" hidden>7.1 layout
+    <select title="Flat 7.1 — Lb Rb (patched DEE) · truehdd → patched DEE 5.2.1 → Surround EX. DEE default renders 5.1 + 2 heights (Tfl Tfr)."><option>Flat 7.1</option><option>DEE default</option></select>
+  </div>
+  <div class="ctl" id="ctl-drc" hidden>DRC
+    <select><option>film light</option><option>film standard</option><option>none</option></select>
+  </div>
+
+  <div class="grow"></div>
+
+  <button class="ctl path dashed" id="ctl-ref" onclick="toast('Demo — no file picker in the mockup')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></svg>
+    <span class="txt" id="ref-txt">+ Target video</span>
+    <span class="x" id="ref-x" style="display:none" onclick="event.stopPropagation();clearRef()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+  </button>
+  <button class="ctl path" onclick="toast('Demo — no folder picker in the mockup')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    <span class="txt">D:\Encodes\out</span>
+  </button>
+  <button class="ic2" onclick="togglePop(event)" title="More options">
+    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+  </button>
+</div>
+
+<div class="pop" id="pop">
+  <div class="pgroup" id="pop-workers">
+    <div class="plabel">Parallel jobs <span style="text-transform:none;letter-spacing:0;font-weight:400">(batch)</span></div>
+    <div class="step">
+      <button onclick="step(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></button>
+      <span class="v" id="workers">2</span>
+      <button onclick="step(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+  </div>
+  <div class="pgroup" id="pop-br">
+    <div class="plabel">Output bitrate</div>
+    <div class="row"><select><option>Same as source</option><option>Custom</option></select><input class="num" type="number" placeholder="kbps"></div>
+  </div>
+  <div class="pgroup">
+    <div class="plabel">If the output already exists</div>
+    <select><option>Overwrite it</option><option>Skip the file</option><option>Write a numbered copy</option></select>
+  </div>
+</div>
+
+<div class="qhead">
+  <h1>Queue</h1><span class="sum" id="sum"></span>
+  <div class="grow"></div>
+  <button class="btn" onclick="toast('Demo — no file picker in the mockup')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 12v6M9 15h6"/></svg>Add files
+  </button>
+  <button class="btn" onclick="toast('Demo — no folder picker in the mockup')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></svg>Add folder
+  </button>
+  <button class="btn ghost" id="btn-clear" onclick="toast('Demo — this drops every loaded file and finished job')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg>Clear
+  </button>
+  <button class="btn ghost danger" id="btn-cancel" onclick="toast('Demo — this kills the running job and removes the partial file')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>Cancel
+  </button>
+  <button class="btn primary" id="btn-start" onclick="toast('Demo — this is a mockup with sample data')">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg><span id="start-lbl">Start</span>
+  </button>
+</div>
+
+<div class="qbody" id="qbody"></div>
+
+<div class="status">
+  <span class="it" title="ffmpeg + ffprobe found"><span class="dot ok"></span>ffmpeg</span>
+  <span class="it" title="Dolby Encoding Engine 5.2.1-5994839 — flat-7.1 patch ready"><span class="dot ok"></span>DEE</span>
+  <span class="it" title="truehdd + deezy found"><span class="dot ok"></span>Atmos</span>
+  <div class="grow"></div>
+  <span class="it"><span class="dot warn"></span>v1.4.2 is up to date</span>
+  <span class="out">→ D:\Encodes\out</span>
+  <a onclick="openSettings()">Settings</a>
+</div>
+
+<!-- activity drawer -->
+<div class="backdrop" id="backdrop" onclick="closeDrawers()"></div>
+<div class="drawer" id="act">
+  <div class="h">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="15" height="15"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12.5 15H17"/></svg>Activity
+    <span class="sub" id="act-sub"></span>
+    <div class="grow"></div>
+    <button class="ic" onclick="closeDrawers()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" id="tab-job" onclick="setTab('job')">Job log</button>
+      <button class="tab" id="tab-app" onclick="setTab('app')">App log</button>
+    </div>
+    <div class="filterbar">
+      <input type="text" id="flt" placeholder="filter…" oninput="renderLog()">
+      <label><input type="checkbox" class="cb" id="follow" checked>follow</label>
+    </div>
+    <div class="logv" id="logv"></div>
+  </div>
+  <div class="ft">
+    <span class="sum">1 running job · workers = 2</span>
+    <div class="grow"></div>
+    <button class="btn sm" onclick="toast('Copied to clipboard')">Copy</button>
+    <button class="btn sm" onclick="toast('Demo — opens the log folder')">Open folder</button>
+  </div>
+</div>
+
+<!-- settings drawer -->
+<div class="drawer settings" id="settings">
+  <div class="h">Settings<div class="grow"></div><button class="ic" onclick="closeDrawers()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="body" style="flex-direction:row">
+    <nav class="snav" id="snav">
+      <button class="on" data-sec="tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.8-.7-.7-2.8z"/></svg>Tools</button>
+      <button data-sec="dee"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 9.5 12 4l9 5.5M3 14.5 12 19l9-4.5M3 9.5v10L12 24l9-4.5v-10"/></svg>Dolby Engine</button>
+      <button data-sec="patch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 5h6M16 2v6M12 6h2M12 2v6"/><rect x="3" y="12" width="18" height="9" rx="2"/></svg>7.1 patcher</button>
+      <button data-sec="folders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Folders</button>
+      <button data-sec="updates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 12a9 9 0 1 1-2.6-6.3L21 8"/><path d="M21 3v5h-5"/></svg>Updates</button>
+      <button data-sec="about"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>About</button>
+    </nav>
+    <div class="sbody">
+      <div class="ssec" data-pane="tools">
+        <h3>Status</h3>
+        <div>
+          <div class="toolrow"><span class="name"><span class="dot ok"></span>ffmpeg</span><span class="val">gyan.dev static build 7.1 — auto-downloaded</span><button class="btn sm" onclick="toast('Demo')">Change…</button></div>
+          <div class="toolrow"><span class="name"><span class="dot ok"></span>ffprobe</span><span class="val">gyan.dev static build 7.1</span><button class="btn sm" onclick="toast('Demo')">Change…</button></div>
+          <div class="toolrow"><span class="name"><span class="dot ok"></span>deew</span><span class="val">bundled</span></div>
+          <div class="toolrow"><span class="name"><span class="dot ok"></span>DEE</span><span class="val">C:\Dolby\DEE\dee.exe · build 5.2.1-5994839</span><button class="btn sm" onclick="toast('Demo')">Change…</button></div>
+          <div class="toolrow"><span class="name"><span class="dot ok"></span>mediainfo</span><span class="val">pymediainfo (bundled)</span></div>
+          <div class="toolrow"><span class="name"><span class="dot ok"></span>deezy</span><span class="val">C:\Tools\deezy.exe</span><button class="btn sm" onclick="toast('Demo')">Change…</button></div>
+          <div class="toolrow"><span class="name"><span class="dot ok"></span>truehdd</span><span class="val">C:\Tools\truehdd.exe</span><button class="btn sm" onclick="toast('Demo')">Change…</button></div>
+        </div>
+        <div class="callout ok"><span class="dot ok"></span><span class="grow">Everything needed is present. Atmos encodes will run with the flat-7.1 patch.</span></div>
+        <h3 style="margin-top:22px">Paths (empty = PATH / bundled)</h3>
+        <div class="kvrow"><label>ffmpeg</label><input class="in" placeholder="ffmpeg.exe"><button class="btn sm" onclick="toast('Demo')">Browse</button></div>
+        <div class="kvrow"><label>ffprobe</label><input class="in" placeholder="ffprobe.exe"><button class="btn sm" onclick="toast('Demo')">Browse</button></div>
+        <div class="kvrow"><label>python for deew</label><input class="in" placeholder="only to use an external deew"><button class="btn sm" onclick="toast('Demo')">Browse</button></div>
+        <div class="kvrow"><label>truehdd</label><input class="in" placeholder="truehdd.exe"><button class="btn sm" onclick="toast('Demo')">Browse</button></div>
+        <div class="kvrow"><label>deezy.exe</label><input class="in" placeholder="standalone DeeZy build"><button class="btn sm" onclick="toast('Demo')">Browse</button></div>
+        <div class="kvrow"><label>mediainfo</label><input class="in" placeholder="mediainfo.exe"><button class="btn sm" onclick="toast('Demo')">Browse</button></div>
+      </div>
+      <div class="ssec" data-pane="dee" hidden>
+        <h3>Dolby Encoding Engine</h3>
+        <div class="kvrow"><label>dee.exe</label><input class="in" value="C:\Dolby\DEE\dee.exe"><button class="btn sm" onclick="toast('Demo')">Browse</button><button class="btn sm primary" onclick="toast('Saved')">Apply</button></div>
+        <div class="help">FPSConv writes deew's <code>config.toml</code> from this path. deew itself is bundled — nothing else to install.</div>
+        <div class="toolrow" style="margin-top:18px"><span class="name"><span class="dot ok"></span>DEE build</span><span class="val">5.2.1-5994839 — supported by the flat-7.1 patch</span></div>
+      </div>
+      <div class="ssec" data-pane="patch" hidden>
+        <h3>DD+ 7.1 Atmos (flat 7.1, Lb Rb)</h3>
+        <div class="toolrow"><span class="name"><span class="dot ok"></span>patcher</span><span class="val">installed in %LOCALAPPDATA%\FPSConv\tools</span></div>
+        <div class="kvrow"><label>patcher folder</label><input class="in" placeholder="empty = the in-app download"><button class="btn sm" onclick="toast('Demo')">Browse</button><button class="btn sm" onclick="toast('Demo — downloads the release zip, SHA-256 verified')">Download</button></div>
+        <label class="tgrow" style="margin-top:14px"><input type="checkbox" class="cb" checked>truehdd --bed-conform <span style="color:var(--tx3)">(conform the Atmos bed to 7.1.2)</span></label>
+        <div class="help">DEE 5.2.1 renders the legacy 7.1 of a Blu-ray DD+ Atmos encode as 5.1 + 2 <b>height</b> channels (MediaInfo: Tfl Tfr). The <a href="https://github.com/LumaVistaLab/DEE_DDPlusJOC_7.1_Patcher" target="_blank">DD+ 7.1 patcher</a> (LumaVistaLab, GPL-3.0) patches DEE's <code>dee_audio_filter_ddp_atmos.dll</code> for the run so the encode is a real flat 7.1 with a Pro Logic IIx 5.1 core and Surround EX flag — MediaInfo: L R C LFE Ls Rs <b>Lb Rb</b>. Validated for DEE build 5.2.1-5994839 only; the DLL hash is checked before every run. <b>Listen to your first encode on your own AVR.</b></div>
+      </div>
+      <div class="ssec" data-pane="folders" hidden>
+        <h3>Folders (empty = default)</h3>
+        <div class="kvrow"><label>Output</label><input class="in" placeholder="where finished files go"><button class="btn sm" onclick="toast('Demo')">Browse</button><button class="btn sm" onclick="toast('Demo')">Open</button></div>
+        <div class="kvrow"><label>Temp</label><input class="in" placeholder="%LOCALAPPDATA%\FPSConv\temp"><button class="btn sm" onclick="toast('Demo')">Browse</button><button class="btn sm" onclick="toast('Demo')">Open</button></div>
+        <div class="kvrow"><label>Working</label><input class="in" placeholder="%LOCALAPPDATA%\FPSConv\work"><button class="btn sm" onclick="toast('Demo')">Browse</button><button class="btn sm" onclick="toast('Demo')">Open</button></div>
+        <div class="kvrow"><label>Logs</label><input class="in" placeholder="%APPDATA%\FPSConv\logs"><button class="btn sm" onclick="toast('Demo')">Browse</button><button class="btn sm" onclick="toast('Demo')">Open</button></div>
+        <div class="help"><b>Temp</b>: one sub-folder per job for the big intermediates (decoded WAVs, truehdd Atmos masters, deew / DEE temp) — put it on a fast drive with room for ~3× the source. Deleted when the job ends. <b>Working</b>: DeeZy's logs and batch results. <b>Logs</b>: FPSConv's own log files (applies at the next start).</div>
+      </div>
+      <div class="ssec" data-pane="updates" hidden>
+        <h3>Updates &amp; window</h3>
+        <label class="tgrow"><input type="checkbox" class="cb" checked>Install updates automatically when no job is running</label>
+        <label class="tgrow"><input type="checkbox" class="cb" checked>Open in a desktop window <span style="color:var(--tx3)">(takes effect on next start)</span></label>
+        <div class="row" style="display:flex;gap:8px;align-items:center"><span class="help" style="flex:1">v1.4.2 is up to date — checked 14:05:12</span><button class="btn sm" onclick="toast('Demo — checks github.com/AdkHex/FPSConv releases')">Check now</button></div>
+      </div>
+      <div class="ssec" data-pane="about" hidden>
+        <h3>About</h3>
+        <div class="info2">
+          <div class="kv"><span>Version</span><span class="v">1.4.2 (build 214)</span></div>
+          <div class="kv"><span>Settings folder</span><span class="v">%APPDATA%\FPSConv</span></div>
+          <div class="kv"><span>GUI</span><span class="v">pywebview · Edge WebView2</span></div>
+          <div class="kv"><span>Source</span><span class="v">github.com/AdkHex/FPSConv · MIT</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span class="note" style="flex:1;color:var(--tx3);font-size:12px"></span><button class="btn danger" onclick="toast('Demo — running jobs would be cancelled')">Quit FPSConv</button><button class="btn" onclick="closeDrawers()">Close</button><button class="btn primary" onclick="toast('Saved');closeDrawers()">Save</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+let toastT;
+function toast(m,bad){const t=$('toast');t.textContent=m;t.className='toast'+(bad?' bad':'');t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',3200)}
+
+const I={
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  retry:'<svg class="r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+  open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v4M10 13h4"/></svg>',
+};
+
+let task='fps', tab='job', selected=0, rows=[];
+const DATA={
+fps:[
+ {sec:'running', st:'running', name:'Dune.Part2.ac3', path:'D:\\Rips\\Dune.Part2.ac3',
+  fps:'23.976', meta:'<b>AC-3</b> · 5.1 ch · 640 kbps · 2:45:49 · 759 MB',
+  track:{multi:false,val:'#1'}, mode:'23.976-25', why:'',
+  prog:42, det:'42% · <span class="eta">0:47 left</span>'},
+ {sec:'queued', st:'queued', name:'fallout.mkv', path:'D:\\Rips\\fallout.mkv',
+  fps:'24', meta:'<b>FLAC</b> · 7.1 ch · 48 kHz · 1:59:03 · 4.1 GB',
+  track:{multi:false,val:'#1'}, mode:'24-25', why:'',
+  prog:0, det:'queued'},
+ {sec:'ready', st:'ready', name:'The.Batman.2022.BluRay.mka', path:'D:\\Rips\\The.Batman.2022.BluRay.mka',
+  fps:'23.976', meta:'<b>TRUEHD</b> · 7.1 ch · 48 kHz · 2:56:11 · 5.4 GB',
+  track:{multi:true,opts:['#1 TrueHD 7.1 eng','#2 AC-3 5.1 eng','#3 AC-3 5.1 spa']},
+  mode:'23.976-25', why:'suggested · Δ 0.6 s',
+  prog:0, det:'waiting for Start'},
+ {sec:'ready', st:'ready', name:'score_25fps.wav', path:'D:\\Mixes\\score_25fps.wav',
+  fps:'25', tilde:true, hit:true, meta:'<b>PCM</b> · 5.1 ch · 96 kHz · 0:41:07 · 6.1 GB',
+  track:{multi:false,val:'#1'}, mode:'25-23.976', why:'suggested · Δ -0.4 s',
+  prog:0, det:'waiting for Start'},
+ {sec:'finished', st:'done', name:'Godzilla.2014.TrueHD.mka', path:'D:\\Rips\\Godzilla.2014.TrueHD.mka',
+  fps:'23.976', meta:'<b>TRUEHD</b> · 7.1 ch · 2:03:07 · 4.9 GB',
+  track:{multi:false,val:'#1'}, mode:'23.976-25', why:'',
+  prog:100, det:'→ <span class="out">Godzilla_23.976-25.thd</span> · 1.2 GB'},
+ {sec:'finished', st:'failed', name:'bad_file.mka', path:'D:\\Rips\\bad_file.mka',
+  fps:null, meta:'<b>AC-3</b> · 2.0 ch · 384 kbps · 0:18:02 · 50 MB',
+  track:{multi:false,val:'#1'}, mode:'23.976-25', why:'',
+  prog:100, det:'<span class="err">dee.exe exited with code 3</span>'},
+ {sec:'finished', st:'skipped', name:'title_10.mka', path:'D:\\Rips\\title_10.mka',
+  fps:'24', tilde:true, meta:'<b>E-AC-3</b> · 5.1 ch · 1:52:11 · 3.9 GB',
+  track:{multi:false,val:'#1'}, mode:'24-25', why:'',
+  prog:100, det:'skipped — output already exists'},
+],
+encode:[
+ {sec:'running', st:'running', name:'Oppenheimer.TrueHD.mka', path:'D:\\Rips\\Oppenheimer.TrueHD.mka',
+  meta:'<b>TRUEHD</b> Atmos · 7.1 ch · 48 kHz · 3:00:22 · 5.8 GB',
+  track:{multi:false,val:'#1'}, plan:'DDP 7.1 Atmos 1536k', note:'',
+  prog:42, det:'42% · <span class="eta">1:12 left</span>'},
+ {sec:'ready', st:'ready', name:'The.Batman.2022.BluRay.mka', path:'D:\\Rips\\The.Batman.2022.BluRay.mka',
+  meta:'<b>TRUEHD</b> Atmos · 7.1 ch · 48 kHz · 2:56:11 · 5.4 GB',
+  track:{multi:true,opts:['#1 TrueHD 7.1 Atmos eng','#2 AC-3 5.1 eng','#3 AC-3 5.1 spa']},
+  plan:'DDP 7.1 Atmos 1536k', note:'',
+  prog:0, det:'waiting for Start'},
+ {sec:'ready', st:'ready', name:'song.m4a', path:'D:\\Music\\song.m4a',
+  meta:'<b>AAC</b> · 2.0 ch · 44.1 kHz · 0:03:42 · 8.9 MB',
+  track:{multi:false,val:'#1'}, plan:'DDP 2.0 256k', note:'lossy → lossy — quality can only stay the same',
+  prog:0, det:'waiting for Start'},
+ {sec:'ready', st:'ready', name:'concert.mka', path:'D:\\Rips\\concert.mka',
+  meta:'<b>DTS-HD MA</b> · 5.1 ch · 48 kHz · 1:38:20 · 3.2 GB',
+  track:{multi:false,val:'#1'}, plan:'DDP 5.1 1024k', note:'no upmix: 7.1 requested, source is 5.1',
+  prog:0, det:'waiting for Start'},
+ {sec:'finished', st:'done', name:'movie.thd', path:'D:\\Rips\\movie.thd',
+  meta:'<b>TRUEHD</b> · 7.1 ch · 48 kHz · 1:44:55 · 3.6 GB',
+  track:{multi:false,val:'#1'}, plan:'DDP 7.1 Atmos 1536k', note:'',
+  prog:100, det:'→ <span class="out">movie_DDP7.1Atmos_1536k.ec3</span> · 1.5 GB'},
+ {sec:'finished', st:'failed', name:'old.mkv', path:'D:\\Rips\\old.mkv',
+  meta:'<b>TRUEHD</b> Atmos · 7.1 ch · 48 kHz · 2:02:09 · 4.7 GB',
+  track:{multi:false,val:'#1'}, plan:'DDP 7.1 Atmos 1536k', note:'',
+  prog:100, det:'<span class="err">truehdd not found on PATH</span>'},
+],
+};
+const JOBLOG=[
+ ['14:02:11','ffmpeg -y -i Dune.Part2.ac3 -map 0:a:0 -af atempo=1.042709 -c:a aac -b:a 640k D:\\Encodes\\out\\Dune.Part2_23.976-25.aac'],
+ ['14:02:11','ffmpeg version n7.1-essential … gyan.dev'],
+ ['14:02:12','Input #0, ac3, from Dune.Part2.ac3: 640 kb/s, 48 kHz, 5.1'],
+ ['14:02:12','Stream mapping: #0:0 -> #0:0 (ac3 → aac)'],
+ ['14:02:20','size= 120432kB time=00:31:42.02 bitrate= 519.4kbits/s speed= 42.1x'],
+ ['14:02:30','WARNING: atempo ratio 1.042709 — pitch preserved, duration will change','WARNING'],
+ ['14:02:38','size= 352190kB time=01:32:44.10 bitrate= 518.2kbits/s speed= 41.8x'],
+];
+const APPLOG=[
+ ['14:01:02','app','FPSConv 1.4.2 started · GUI at http://127.0.0.1:8765/'],
+ ['14:01:02','updater','v1.4.2 is up to date (build 214)'],
+ ['14:01:03','app','deew config written from DEE 5.2.1-5994839'],
+ ['14:01:03','app','flat-7.1 patcher: DLL hash verified'],
+ ['14:02:11','queue','job 4/7 started: Dune.Part2.ac3'],
+];
+const SECORDER={running:'Running',queued:'Queued',ready:'Ready',finished:'Finished'};
+
+function render(){
+  const qb=$('qbody');
+  if(!rows.length){
+    qb.innerHTML=`<div class="empty"><div class="drop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span>drag &amp; drop</span></div><b>Drop audio files here or add them</b><span>Each row shows what it will really become before you press Start.</span><div class="row"><button class="btn" onclick="toast('Demo')">Add files</button><button class="btn" onclick="toast('Demo')">Add folder</button></div></div>`;
+  }else{
+    let html='';
+    for(const sec of ['running','queued','ready','finished']){
+      const list=rows.filter(r=>r.sec===sec);
+      if(!list.length)continue;
+      html+=`<div class="sec-h">${SECORDER[sec]}<span class="cnt">${list.length}</span></div>`;
+      for(const r of list)html+=rowHtml(r);
+    }
+    qb.innerHTML=html;
+  }
+  const ready=rows.filter(r=>r.st==='ready').length,
+        run=rows.filter(r=>r.st==='running').length,
+        q=rows.filter(r=>r.st==='queued').length,
+        fin=rows.length-ready-run-q;
+  const parts=[];
+  if(ready)parts.push(ready+' ready'); if(run)parts.push(run+' running'); if(q)parts.push(q+' queued'); if(fin)parts.push(fin+' finished');
+  $('sum').textContent=rows.length?parts.join(' · '):'empty';
+  $('start-lbl').textContent='Start'+(ready>1?' '+ready:'');
+  $('btn-start').disabled=!ready;
+  $('btn-cancel').disabled=!run&&!q;
+  $('btn-clear').style.visibility=rows.length?'':'hidden';
+  $('act-live').style.display=run?'':'none';
+  $('act-live').textContent=run;
+  renderLog();
+}
+function rowHtml(r){
+  const enc=task==='encode';
+  const fps=enc?'':(r.fps
+    ?`<span class="fps-txt ${r.hit?'hit':''}" title="fps ${r.tilde?'taken from the file name':'taken from the video track'}">${esc(r.fps)} fps${r.tilde?' ~':''}</span>`
+    :`<span class="fps-txt" title="audio-only file with nothing to go on">fps ?</span>`);
+  const track=r.track.multi
+    ?`<select class="tracksel" onchange="toast('Demo — switches the audio stream')">${r.track.opts.map(o=>`<option>${o}</option>`).join('')}</select>`
+    :`<span class="tracksel" style="border-bottom:0;cursor:default">${r.track.val}</span>`;
+  const mode=enc
+    ?`<div class="plan">${esc(r.plan)}${r.note?`<div class="why warn">${esc(r.note)}</div>`:''}</div>`
+    :(r.st==='ready'
+      ?`<select class="mini ${r.why?'suggested':''}" title="${esc(r.why||'')}">${['23.976-24','23.976-25','24-23.976','24-25','25-23.976','25-24'].map(k=>`<option ${k===r.mode?'selected':''}>${k}</option>`).join('')}</select>${r.why?`<div class="why">${esc(r.why)}</div>`:''}`
+      :`<span class="plan">${esc(r.mode)}</span>`);
+  const barCls=({'ready':'wait','queued':'wait','running':'','done':'done','skipped':'skipped','failed':'failed'})[r.st]||'';
+  const bar=`<div class="bar2 ${barCls}"><i style="width:${['done','skipped','failed'].includes(r.st)?100:r.prog}%"></i></div>`;
+  const stlabel={ready:'Ready',queued:'Queued',running:'Running',done:'Done',skipped:'Skipped',failed:'Failed'}[r.st];
+  let acts;
+  if(['running','queued'].includes(r.st)) acts=`<button class="ib" title="MediaInfo of the source" onclick="toast('Demo — MediaInfo report')">${I.info}</button><button class="ib danger" title="Cancel" onclick="toast('Demo — kills the process and removes the partial file')">${I.x}</button>`;
+  else if(['done','skipped'].includes(r.st)) acts=`<button class="ib" title="MediaInfo of the encoded output" onclick="toast('Demo — MediaInfo report')">${I.info}</button><button class="ib" title="Open output folder" onclick="toast('Demo — opens the output folder')">${I.open}</button><button class="ib danger" title="Remove from list" onclick="removeRow(${rows.indexOf(r)})">${I.x}</button>`;
+  else if(r.st==='failed') acts=`<button class="ib" title="MediaInfo" onclick="toast('Demo — MediaInfo report')">${I.info}</button><button class="ib" title="Retry" onclick="toast('Demo — re-queues the job')">${I.retry}</button><button class="ib danger" title="Remove from list" onclick="removeRow(${rows.indexOf(r)})">${I.x}</button>`;
+  else acts=`<button class="ib" title="MediaInfo of the source" onclick="toast('Demo — MediaInfo report')">${I.info}</button><button class="ib danger" title="Remove" onclick="removeRow(${rows.indexOf(r)})">${I.x}</button>`;
+  return `<div class="trow ${rows.indexOf(r)===selected?'sel':''}" onclick="select(${rows.indexOf(r)})">
+    <input type="checkbox" class="cb" ${r.ck?'checked':''} onclick="event.stopPropagation()" onchange="toggleCk(${rows.indexOf(r)},this.checked)">
+    <div class="fcol"><div class="n" title="${esc(r.path)}">${esc(r.name)}</div><div class="s">${fps}${fps?' · ':''}<span class="grow">${r.meta}</span>${track}</div></div>
+    <div>${mode}</div>
+    <div>${bar}<div class="det">${r.det}</div></div>
+    <div class="st ${r.st}"><i></i>${stlabel}</div>
+    <div class="acts">${acts}</div>
+  </div>`;
+}
+function removeRow(i){rows.splice(i,1);selected=Math.min(selected,rows.length-1);render()}
+function toggleCk(i,on){rows[i].ck=on}
+function select(i){selected=i;tab='job';$('tab-job').classList.add('on');$('tab-app').classList.remove('on');openAct();render()}
+function toggleAll(on){rows.forEach(r=>r.ck=on);render()}
+
+function setTask(t){
+  task=t;
+  document.querySelectorAll('#seg-task button').forEach(b=>b.classList.toggle('on',b.dataset.task===t));
+  const enc=t==='encode';
+  ['ctl-format','ctl-ch','ctl-br','ctl-atmos','ctl-layout','ctl-drc'].forEach(id=>$(id).hidden=!enc);
+  $('pop-br').hidden=enc;
+  $('ctl-mode').hidden=enc;$('ratio').style.display=enc?'none':'';
+  $('ctl-ref').style.display=enc?'none':'';
+  rows=JSON.parse(JSON.stringify(DATA[t]));
+  selected=0;render();
+}
+document.querySelectorAll('#seg-task button').forEach(b=>b.onclick=()=>setTask(b.dataset.task));
+
+function toggleSwitch(el){el.classList.toggle('on')}
+function setMode(btn,m){
+  document.querySelectorAll('#seg-mode button').forEach(b=>b.classList.toggle('on',b===btn));
+  toast('Demo — '+(m==='batch'?'files run 2 at a time':'adding a file replaces the previous one'));
+}
+function step(d){const el=$('workers');el.textContent=Math.max(1,Math.min(8,+el.textContent+d))}
+function togglePop(e){const p=$('pop');if(p.classList.contains('open')){p.classList.remove('open');return}const b=e.currentTarget.getBoundingClientRect();p.style.top=(b.bottom+8)+'px';p.style.left=(b.right-280)+'px';p.classList.add('open')}
+function clearRef(){$('ref-txt').textContent='+ Target video';$('ref-x').style.display='none';$('ctl-ref').classList.add('dashed');toast('Target video cleared — suggestions recomputed per file')}
+
+function openAct(){const d=$('act');d.classList.add('open');$('backdrop').classList.add('on')}
+function toggleAct(){const d=$('act');if(d.classList.contains('open')){closeDrawers()}else openAct()}
+function openSettings(){$('settings').classList.add('open');$('backdrop').classList.add('on')}
+function closeDrawers(){$('act').classList.remove('open');$('settings').classList.remove('open');$('backdrop').classList.remove('on');$('pop').classList.remove('open')}
+function setTab(t){tab=t;$('tab-job').classList.toggle('on',t==='job');$('tab-app').classList.toggle('on',t==='app');renderLog()}
+function renderLog(){
+  const v=$('logv'),f=$('flt').value.toLowerCase();
+  let html;
+  if(tab==='job'){
+    const r=rows[selected];
+    $('act-sub').textContent=r?r.name:'select a job';
+    html=JOBLOG.filter(l=>!f||l[0].toLowerCase().includes(f)||l[1].toLowerCase().includes(f))
+      .map(l=>`<div class="l ${l[2]||''}"><span class="t">${l[0]}</span>  ${esc(l[1])}</div>`).join('')
+      ||'<div class="l t">'+(r?'no output yet':'Click a row to see its log; the App log tab shows everything else.')+'</div>';
+  }else{
+    $('act-sub').textContent=APPLOG.length+' lines';
+    html=APPLOG.filter(l=>!f||l[2].toLowerCase().includes(f)||l[1].toLowerCase().includes(f))
+      .map(l=>`<div class="l ${l[2]||''}"><span class="t">${l[0]}</span>  <span class="src">${esc(l[1].padEnd(8))}</span> ${esc(l[2])}</div>`).join('')
+      ||'<div class="l t">nothing logged yet</div>';
+  }
+  v.innerHTML=html;
+  v.scrollTop=v.scrollHeight;
+}
+
+document.querySelectorAll('#snav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#snav button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('[data-pane]').forEach(p=>p.hidden=p.dataset.pane!==b.dataset.sec)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawers()});
+document.addEventListener('click',e=>{if(!$('pop').contains(e.target)&&!e.target.closest('.ic2'))$('pop').classList.remove('open')});
+function toggleTheme(){const h=document.documentElement;const next=h.dataset.theme==='light'?'dark':'light';h.dataset.theme=next;try{localStorage.setItem('fpsconv-theme',next)}catch(e){}}
+
+try{const saved=localStorage.getItem('fpsconv-theme');if(saved==='dark')document.documentElement.dataset.theme='dark'}catch(e){}
+
+rows=JSON.parse(JSON.stringify(DATA.fps));
+selected=0;render();
+</script>
+</body>
+</html>
