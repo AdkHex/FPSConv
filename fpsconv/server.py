@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import socketserver
+import sys
 import threading
 import webbrowser
 from http import HTTPStatus
@@ -206,7 +208,7 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
                 dee = (data.get("dee_path") or "").strip()
                 if not dee:
                     return self._json({"error": "give the path to dee.exe"}, HTTPStatus.BAD_REQUEST)
-                if not (os.path.isfile(dee) or __import__("shutil").which(dee)):
+                if not (os.path.isfile(dee) or shutil.which(dee)):
                     return self._json({"error": f"not found: {dee}"}, HTTPStatus.BAD_REQUEST)
                 path = engine.write_deew_config(dee)
                 self._json({"ok": True, "config": str(path), "doctor": engine.doctor()})
@@ -283,10 +285,15 @@ def make_handler(queue: JobQueue, httpd_ref: dict, updater: Updater):
 
         @staticmethod
         def _pick(kind: str, start: str) -> dict:
-            """Native picker: pywebview window → Windows PowerShell dialog → none."""
+            """Native picker: pywebview window → the OS's own dialog → none (in-page browser)."""
             paths = window.pick(kind, start)
-            if paths is None and os.name == "nt":
-                paths = _powershell_pick(kind, start)
+            if paths is None:
+                if os.name == "nt":
+                    paths = _powershell_pick(kind, start)
+                elif sys.platform == "darwin":
+                    paths = _osascript_pick(kind, start)
+                elif shutil.which("zenity"):
+                    paths = _zenity_pick(kind, start)
             if paths is None:
                 return {"native": False, "paths": []}
             return {"native": True, "paths": paths}
@@ -372,6 +379,63 @@ def _powershell_pick(kind: str, start: str) -> list[str] | None:
                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except Exception:  # noqa: BLE001
         return None
+    if out.returncode != 0:
+        return None
+    return [line.strip() for line in out.stdout.splitlines() if line.strip()]
+
+
+def _osascript_pick(kind: str, start: str) -> list[str] | None:
+    """macOS fallback when the GUI runs in a browser: the system Open panel via AppleScript.
+
+    ``[]`` when the user cancels, ``None`` when the dialog could not be shown at all.
+    """
+    import subprocess
+
+    lines = []
+    if start and os.path.isdir(start):
+        lines.append(f'set startDir to POSIX file "{_as_quote(start)}"')
+        where = " default location startDir"
+    else:
+        where = ""
+    # osascript itself owns the panel: "tell me to activate" brings it in front of the browser,
+    # and the panel disappears with the process (no orphaned dialog if the request times out)
+    lines.append("tell me to activate")
+    if kind == "folder":
+        lines.append(f'set picked to {{choose folder with prompt "Choose a folder"{where}}}')
+    else:
+        lines.append(f'set picked to choose file with prompt "Add files" with multiple selections allowed{where}')
+    lines += ["set out to \"\"", "repeat with p in picked", "set out to out & POSIX path of p & linefeed",
+              "end repeat", "out"]
+    cmd = ["osascript"]
+    for line in lines:
+        cmd += ["-e", line]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    except Exception:  # noqa: BLE001
+        return None
+    if out.returncode != 0:
+        return [] if "User cancelled" in out.stderr or "-128" in out.stderr else None
+    return [line.strip().rstrip("/") or "/" for line in out.stdout.splitlines() if line.strip()]
+
+
+def _as_quote(text: str) -> str:
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _zenity_pick(kind: str, start: str) -> list[str] | None:
+    """Linux fallback (GTK): zenity's file chooser. ``[]`` on cancel, ``None`` when it fails."""
+    import subprocess
+
+    cmd = ["zenity", "--file-selection", "--separator=\n"]
+    cmd += ["--directory", "--title=Choose a folder"] if kind == "folder" else ["--multiple", "--title=Add files"]
+    if start and os.path.isdir(start):
+        cmd.append(f"--filename={start.rstrip('/')}/")
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    except Exception:  # noqa: BLE001
+        return None
+    if out.returncode == 1:          # cancelled
+        return []
     if out.returncode != 0:
         return None
     return [line.strip() for line in out.stdout.splitlines() if line.strip()]

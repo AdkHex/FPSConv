@@ -8,6 +8,7 @@ caller falls back to the default browser; nothing else changes.
 
 from __future__ import annotations
 
+import json
 from typing import Callable, Optional
 
 from . import APP_NAME, __version__
@@ -79,6 +80,33 @@ def pick(kind: str, start: str = "") -> Optional[list[str]]:
     return [str(p) for p in (res if isinstance(res, (list, tuple)) else [res])]
 
 
+def _forward_drops(window) -> None:
+    """Hand files dropped on the window to the page, with their full paths.
+
+    A browser never reveals where a dropped file lives; pywebview adds the path
+    on the Python side of the ``drop`` event only. The page's ``onNativeDrop``
+    then adds the files exactly like "Add files" would.
+    """
+    try:
+        from webview.dom import DOMEventHandler
+    except Exception:  # noqa: BLE001 - pywebview without DOM support
+        return
+
+    def on_drop(event) -> None:
+        files = (event.get("dataTransfer") or {}).get("files") or []
+        paths = [f.get("pywebviewFullPath") for f in files if f.get("pywebviewFullPath")]
+        if paths:
+            window.evaluate_js(f"window.onNativeDrop && onNativeDrop({json.dumps(paths)})")
+
+    def bind() -> None:            # the JS side of the listener dies with every page load
+        try:
+            window.dom.document.events.drop += DOMEventHandler(on_drop, True, True)
+        except Exception:  # noqa: BLE001
+            pass
+
+    window.events.loaded += bind
+
+
 def show_window(url: str, on_close: Callable[[], None]) -> bool:
     """Open ``url`` in a native window and block until it is closed.
 
@@ -95,6 +123,7 @@ def show_window(url: str, on_close: Callable[[], None]) -> bool:
             width=1320, height=860, min_size=(960, 640), background_color="#141414",
         )
         window.events.closed += on_close
+        _forward_drops(window)
         _window = window
         webview.start()
         _window = None
