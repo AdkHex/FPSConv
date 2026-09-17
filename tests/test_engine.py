@@ -295,6 +295,15 @@ class Flat71(unittest.TestCase):
              mock.patch.object(engine, "dee_dll_status", return_value={"state": "unsupported", "sha256": "ab" * 32, "dll": "/d/x.dll"}):
             self.assertIn("not the one the 7.1 patcher is validated for", engine.flat71_ready()[1])
 
+    def test_flat71_ready_accepts_a_dll_left_patched_and_doctor_reports_the_verdict(self):
+        # an interrupted run leaves the patched bytes in place; the wrapper restores from backup, so that is fine
+        with mock.patch.object(engine, "patcher_script", return_value=__import__("pathlib").Path("/p/w.py")), \
+             mock.patch.object(engine, "deezy_tools", return_value={"ffmpeg": "f", "dee": "/d/dee.exe", "truehdd": "t"}), \
+             mock.patch.object(engine, "dee_dll_status", return_value={"state": "patched", "sha256": "cd" * 32, "dll": "/d/x.dll"}):
+            self.assertEqual(engine.flat71_ready(), (True, ""))
+        with mock.patch.object(engine, "flat71_ready", return_value=(False, "why not")):
+            self.assertEqual(engine.doctor()["flat71"], {"ok": False, "reason": "why not"})
+
 
 class MediaInfoAtmos(unittest.TestCase):
     FIXTURE = {"media": {"track": [

@@ -178,7 +178,7 @@ def _cli_doctor() -> int:
     print(f"deezy       : {'ok (' + d['deezy_via'] + ')' if d['deezy'] else 'NOT FOUND — needed for DDP Atmos: DeeZy standalone exe (github.com/jessielw/DeeZy), set its path in Settings'}")
     print(f"truehdd     : {d['truehdd'] or 'NOT FOUND — needed for DDP Atmos (github.com/truehdd/truehdd)'}")
     dll = d["dee_dll"]
-    print(f"7.1 patcher : {d['patcher'] or 'not installed (Settings → DD+ 7.1 Atmos → Download, or: patcher)'}")
+    print(f"7.1 patcher : {d['patcher'] or 'not installed (Settings → 7.1 patcher → Download, or: patcher)'}")
     dll_text = {"supported": "DEE 5.2.1 build supported by the flat-7.1 patch",
                 "patched": "DLL currently patched (the patcher restores it from its backup on the next run)",
                 "unsupported": "this DEE build is NOT supported by the flat-7.1 patch (needs 5.2.1-5994839)",

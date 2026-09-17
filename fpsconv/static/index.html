@@ -671,11 +671,11 @@ async function loadDoctor(){
   $('t-mediainfo').value=S.tools?.mediainfo||'';$('t-truehdd').value=S.tools?.truehdd||'';$('t-deezy').value=S.tools?.deezy||'';
   const dd=d.dirs?.defaults||{};$('d-out').value=S.out_dir||'';for(const k of ['temp','work','logs']){const el=$('d-'+k);el.value=S.dirs?.[k]||'';el.placeholder=dd[k]||''}
   $('t-patcher').value=S.tools?.patcher||'';$('t-bedconform').checked=S.encode?.bed_conform!==false;
-  const dl=d.dee_dll||{},dlTxt={supported:['ok','DEE 5.2.1-5994839 — supported by the flat-7.1 patch'],patched:['warn','DLL is currently patched; the patcher restores it from its backup on the next run'],unsupported:['bad','this DEE build is NOT the one the patch is validated for (needs 5.2.1-5994839) — flat 7.1 will refuse to run'],'no-dll':['bad','dee_audio_filter_ddp_atmos.dll is not next to dee.exe'],'no-dee':['warn','DEE not configured'],unreadable:['bad','DLL unreadable']}[dl.state]||['warn','?'];
+  const dl=d.dee_dll||{},dlTxt={supported:['ok','DEE 5.2.1-5994839 — supported by the flat-7.1 patch'],patched:['ok','DEE 5.2.1-5994839 — DLL left patched by an interrupted run; the patcher restores it from its backup before the next encode'],unsupported:['bad','this DEE build is NOT the one the patch is validated for (needs 5.2.1-5994839) — flat 7.1 will refuse to run'],'no-dll':['bad','dee_audio_filter_ddp_atmos.dll is not next to dee.exe'],'no-dee':['warn','DEE not configured'],unreadable:['bad','DLL unreadable']}[dl.state]||['warn','?'];
   const buildRow=`<div class="toolrow"><span class="name"><span class="dot ${dlTxt[0]}"></span>DEE build</span><span class="val" title="${esc(dl.sha256||'')}">${esc(dlTxt[1])}</span></div>`;
   $('dee-build').innerHTML=buildRow;
   $('patcher-kv').innerHTML=`<div class="toolrow"><span class="name"><span class="dot ${d.patcher?'ok':'warn'}"></span>patcher</span><span class="val" title="${esc(d.patcher||d.patcher_dir)}">${esc(d.patcher?'installed in '+d.patcher_dir:'not installed — press Download (goes to '+d.patcher_dir+')')}</span></div>`+buildRow;
-  const atmosOk=d.dee&&d.deezy&&d.truehdd, flatOk=d.patcher&&dl.state==='supported';
+  const atmosOk=d.dee&&d.deezy&&d.truehdd, flatOk=!!(d.flat71&&d.flat71.ok);
   const co=$('tools-callout');let cls,txt;
   if(!(d.ffmpeg&&d.ffprobe)){cls='bad';txt='ffmpeg is missing — nothing can run. Download it above or set a path below.'}
   else if(!d.dee){cls='warn';txt='FPS change is ready. DD / DDP encodes need dee.exe — set it in the Dolby Engine tab.'}
@@ -737,10 +737,10 @@ function encSettings(){return{target:$('enc-target').value,channels:+$('enc-chan
 function updateAtmos71Help(){
   const enc=S.task==='encode', show=$('enc-target').value==='ddp'&&$('enc-atmos').checked&&![6,2,1].includes(+$('enc-channels').value);
   $('ctl-layout').hidden=!(enc&&show);
-  const flat=$('enc-atmos71').value==='flat', d=doctor||{}, dl=(d.dee_dll||{}).state;
-  let warn='';noticeSec=!d.patcher?'patch':'dee';
-  if(enc&&show&&flat&&!(d.patcher&&dl==='supported'))
-    warn=`Flat 7.1 Atmos needs ${!d.patcher?'the 7.1 patcher (Settings → 7.1 patcher → Download)':dl==='unsupported'?'DEE build 5.2.1-5994839 — yours is not supported by the patch':dl==='no-dee'?'DEE configured in Settings':'a full DEE 5.2.1 install'} — Atmos 7.1 jobs will refuse to run until then.`;
+  const flat=$('enc-atmos71').value==='flat', d=doctor||{}, f=d.flat71||{};
+  // the same verdict the job preflight gives (engine.flat71_ready), so the notice never disagrees with it
+  let warn='';
+  if(enc&&show&&flat&&f.ok===false){warn=`Flat 7.1 Atmos: ${f.reason} — jobs will refuse to run until then.`;noticeSec=/dee\.exe|Encoding Engine|\.dll/.test(f.reason)?'dee':/patcher/.test(f.reason)?'patch':'tools'}
   $('notice').hidden=!warn;$('notice-text').textContent=warn;
   $('ctl-layout').title=flat?'Flat 7.1 — Lb Rb: truehdd → patched DEE 5.2.1 → Surround EX flag. MediaInfo shows L R C LFE Ls Rs Lb Rb.':'DEE default — its own Blu-ray JOC: MediaInfo shows Tfl Tfr; legacy 7.1 decoders get heights, not back surrounds.';
 }

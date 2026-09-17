@@ -920,6 +920,8 @@ def doctor() -> dict:
     out["patcher"] = str(script) if script else None
     out["patcher_dir"] = str(patcher_dir())
     out["dee_dll"] = dee_dll_status()
+    ok, why = flat71_ready()
+    out["flat71"] = {"ok": ok, "reason": why}
     try:
         import importlib.util
         out["pymediainfo"] = importlib.util.find_spec("pymediainfo") is not None
@@ -1593,12 +1595,12 @@ def script_runner() -> list[str]:
 def flat71_ready() -> tuple[bool, str]:
     """(ok, reason) — everything the flat-7.1 path needs, checked up front."""
     if not patcher_script():
-        return False, "the DD+ 7.1 patcher is not installed: Settings (⚙) → DD+ 7.1 Atmos → Download"
+        return False, "the DD+ 7.1 patcher is not installed: Settings → 7.1 patcher → Download"
     tools = deezy_tools()
     if not tools["dee"]:
-        return False, "Dolby Encoding Engine is not configured: set the dee.exe path in Settings (⚙)"
+        return False, "Dolby Encoding Engine is not configured: set the dee.exe path in Settings → Dolby Engine"
     if not tools["truehdd"]:
-        return False, "truehdd is not found: set its path in Settings (⚙)"
+        return False, "truehdd is not found: set its path in Settings → Tools"
     st = dee_dll_status(tools["dee"])
     if st["state"] == "no-dll":
         return False, f"{PATCHER_DLL} is not next to dee.exe — the patcher needs a full DEE 5.2.1 install"
