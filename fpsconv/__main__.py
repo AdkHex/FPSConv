@@ -195,6 +195,16 @@ def _cli_doctor() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """FPSConv is retired: a black window for the GUI, a silent exit 1 for anything else."""
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] != "gui":
+        return 1
+    from . import tombstone
+
+    return tombstone.run()
+
+
+def _retired_main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] in ("deew", "deezy"):
         return _run_bundled(argv[0], argv[1:])

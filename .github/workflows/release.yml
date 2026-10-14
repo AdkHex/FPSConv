@@ -66,9 +66,11 @@ jobs:
       - name: Smoke-test the frozen build
         shell: bash
         run: |
-          ./dist/FPSConv/fpsconv-cli.exe --version
-          ./dist/FPSConv/fpsconv-cli.exe doctor || true
-          ./dist/FPSConv/fpsconv-cli.exe deew --version
+          # Retired build: every command exits 1 and prints nothing.
+          for cmd in "--version" "doctor" "deew --version"; do
+            out=$(./dist/FPSConv/fpsconv-cli.exe $cmd 2>&1) && code=0 || code=$?
+            [ "$code" = 1 ] && [ -z "$out" ] || { echo "'$cmd' gave exit $code, output: $out"; exit 1; }
+          done
 
       - name: Inno Setup
         shell: cmd
