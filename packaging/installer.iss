@@ -48,6 +48,7 @@ Source: "..\dist\FPSConv\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdi
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
+Name: "{group}\{#AppName} command line"; Filename: "{app}\fpsconv-cli.exe"; Parameters: "doctor"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Run]
