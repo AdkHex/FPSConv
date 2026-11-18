@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>FPSConv — Windows UI mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+html[data-theme=dark]{
+  --mica:#202020; --layer:#272727; --card:#2b2b2b; --card-stroke:rgba(255,255,255,.055);
+  --div:rgba(255,255,255,.0837); --div2:rgba(255,255,255,.045);
+  --ctl:rgba(255,255,255,.061); --ctl-h:rgba(255,255,255,.084); --ctl-p:rgba(255,255,255,.033); --ctl-dis:rgba(255,255,255,.042);
+  --ctl-stroke:rgba(255,255,255,.07); --ctl-stroke-b:rgba(255,255,255,.035); --tb-bottom:rgba(255,255,255,.544); --tb-focus:#1f1f1f;
+  --subtle-h:rgba(255,255,255,.061); --subtle-p:rgba(255,255,255,.042); --sel:rgba(255,255,255,.07);
+  --tx:#ffffff; --tx2:rgba(255,255,255,.786); --tx3:rgba(255,255,255,.6); --txd:rgba(255,255,255,.363);
+  --ac:#60cdff; --ac-h:rgba(96,205,255,.9); --ac-p:rgba(96,205,255,.8); --on-ac:#000; --ac-tx:#99ebff;
+  --ac-dis:rgba(255,255,255,.158); --on-ac-dis:rgba(255,255,255,.53);
+  --ok:#6ccb5f; --warn:#fce100; --bad:#ff99a4; --on-st:#000;
+  --ib-warn:#433519; --ib-bad:#442726; --ib-stroke:rgba(0,0,0,.1);
+  --mono-bg:#1c1c1c; --shadow:0 8px 16px rgba(0,0,0,.26);
+  --track:rgba(255,255,255,.544);
+  color-scheme:dark;
+}
+html[data-theme=light]{
+  --mica:#f3f3f3; --layer:#f9f9f9; --card:#ffffff; --card-stroke:rgba(0,0,0,.0578);
+  --div:rgba(0,0,0,.0803); --div2:rgba(0,0,0,.045);
+  --ctl:rgba(255,255,255,.7); --ctl-h:rgba(249,249,249,.5); --ctl-p:rgba(249,249,249,.3); --ctl-dis:rgba(249,249,249,.3);
+  --ctl-stroke:rgba(0,0,0,.0578); --ctl-stroke-b:rgba(0,0,0,.1622); --tb-bottom:rgba(0,0,0,.4458); --tb-focus:#ffffff;
+  --subtle-h:rgba(0,0,0,.0373); --subtle-p:rgba(0,0,0,.0241); --sel:rgba(0,0,0,.0373);
+  --tx:rgba(0,0,0,.896); --tx2:rgba(0,0,0,.62); --tx3:rgba(0,0,0,.58); --txd:rgba(0,0,0,.361);
+  --ac:#005fb8; --ac-h:rgba(0,95,184,.9); --ac-p:rgba(0,95,184,.8); --on-ac:#fff; --ac-tx:#005fb8;
+  --ac-dis:rgba(0,0,0,.217); --on-ac-dis:#fff;
+  --ok:#0f7b0f; --warn:#9d5d00; --bad:#c42b1c; --on-st:#fff;
+  --ib-warn:#fff4ce; --ib-bad:#fde7e9; --ib-stroke:rgba(0,0,0,.0578);
+  --mono-bg:#ffffff; --shadow:0 8px 16px rgba(0,0,0,.14);
+  --track:rgba(0,0,0,.4458);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;background:#000;font:14px/20px "Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-width:960px}
+button,input,select{font:inherit;color:inherit;margin:0}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--tx);outline-offset:1px;border-radius:4px}
+.flex{flex:1}
+svg.i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
+.num{font-variant-numeric:tabular-nums}
+
+/* Windows 11 style thin scrollbars */
+::-webkit-scrollbar{width:12px;height:12px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--track);border-radius:6px;border:4px solid transparent;background-clip:padding-box;opacity:.6}
+::-webkit-scrollbar-thumb:hover{border-width:3px}
+::-webkit-scrollbar-corner{background:transparent}
+
+/* window chrome */
+.win{flex:1;min-height:0;display:grid;grid-template-rows:32px 48px 1fr 28px;background:var(--mica);color:var(--tx);overflow:hidden}
+.titlebar{display:flex;align-items:center;gap:12px;padding-left:14px;font-size:12px;user-select:none}
+.appico{width:16px;height:16px;border-radius:4px;background:var(--ac);color:var(--on-ac);display:grid;place-items:center}
+.appico svg{width:12px;height:12px;stroke-width:2}
+.caps{display:flex;margin-left:auto;align-self:stretch}
+.caps span{width:46px;display:grid;place-items:center}
+.caps svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:1}
+.caps span:hover{background:var(--subtle-h)}
+.caps .close:hover{background:#c42b1c;color:#fff}
+
+/* toolbar */
+.toolbar{display:flex;align-items:center;gap:2px;padding:0 10px 0 8px}
+.sb{display:flex;gap:2px}
+.sb button{position:relative;height:36px;padding:0 12px;border:0;border-radius:4px;background:transparent;color:var(--tx2);cursor:default}
+.sb button:hover{background:var(--subtle-h);color:var(--tx)}
+.sb button.on{color:var(--tx);font-weight:600}
+.sb button.on::after{content:"";position:absolute;left:50%;bottom:2px;width:16px;height:3px;margin-left:-8px;border-radius:2px;background:var(--ac)}
+.sb.sm button{height:32px;padding:0 10px;font-size:13px}
+.abb{height:36px;display:inline-flex;align-items:center;gap:8px;padding:0 11px;border:0;border-radius:4px;background:transparent;cursor:default;white-space:nowrap}
+.abb:hover:not(:disabled){background:var(--subtle-h)}
+.abb:active:not(:disabled){background:var(--subtle-p)}
+.abb:disabled{color:var(--txd)}
+.abb.on{background:var(--subtle-h)}
+.abb.iconly{width:36px;padding:0;justify-content:center}
+.vsep{width:1px;height:20px;background:var(--div);margin:0 6px}
+
+/* main */
+.main{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:0;background:var(--layer);border-top:1px solid var(--div)}
+.opts{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--div)}
+.opts-scroll{flex:1;overflow:auto;padding:0 20px 20px}
+.sec{font-size:14px;font-weight:600;margin:18px 0 0}
+.fld{margin-top:10px}
+.fld>label:not(.tg):not(.ckl),.fld>.l{display:flex;justify-content:space-between;margin-bottom:5px}
+.fld>.tg,.fld>.ckl{display:inline-flex}
+.opt{font-size:12px;color:var(--tx3)}
+.cap{font-size:12px;line-height:16px;color:var(--tx2);margin-top:6px}
+.pair{display:flex;gap:8px}
+.opts-foot{padding:14px 20px 16px;border-top:1px solid var(--div);display:grid;gap:10px}
+.fsum{display:flex;justify-content:space-between;font-size:12px;color:var(--tx2)}
+.fsum b{font-weight:600;color:var(--tx)}
+
+/* controls */
+.btn{height:32px;padding:0 12px;border-radius:4px;border:1px solid var(--ctl-stroke);border-bottom-color:var(--ctl-stroke-b);background:var(--ctl);display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;cursor:default}
+.btn:hover:not(:disabled){background:var(--ctl-h)}
+.btn:active:not(:disabled){background:var(--ctl-p);color:var(--tx2)}
+.btn:disabled{background:var(--ctl-dis);color:var(--txd)}
+.btn.accent{background:var(--ac);color:var(--on-ac);border-color:rgba(255,255,255,.08);border-bottom-color:rgba(0,0,0,.14)}
+.btn.accent:hover:not(:disabled){background:var(--ac-h)}
+.btn.accent:active:not(:disabled){background:var(--ac-p);color:var(--on-ac)}
+.btn.accent:disabled{background:var(--ac-dis);color:var(--on-ac-dis);border-color:transparent}
+.btn.big{height:36px;width:100%}
+.btn.sq{width:32px;padding:0}
+.cbx{position:relative}
+.cbx select{appearance:none;-webkit-appearance:none;width:100%;height:32px;padding:0 32px 0 11px;border-radius:4px;border:1px solid var(--ctl-stroke);border-bottom-color:var(--ctl-stroke-b);background:var(--ctl);cursor:default}
+.cbx select:hover:not(:disabled){background:var(--ctl-h)}
+.cbx select:disabled{color:var(--txd);background:var(--ctl-dis)}
+.cbx svg{position:absolute;right:11px;top:8px;width:16px;height:16px;color:var(--tx2);pointer-events:none}
+.tb{width:100%;min-width:0;height:32px;padding:0 11px;border-radius:4px;border:1px solid var(--ctl-stroke);border-bottom-color:var(--tb-bottom);background:var(--ctl)}
+.tb:hover{background:var(--ctl-h)}
+.tb:focus{background:var(--tb-focus);border-bottom:2px solid var(--ac);padding-bottom:1px}
+.tb::placeholder{color:var(--tx3)}
+.tb[readonly]{color:var(--tx2)}
+.nb{display:flex;align-items:center;width:120px;height:32px;border-radius:4px;border:1px solid var(--ctl-stroke);border-bottom-color:var(--tb-bottom);background:var(--ctl)}
+.nb span{flex:1;padding:0 11px}
+.nb button{width:28px;height:28px;border:0;border-radius:4px;background:transparent;display:grid;place-items:center;color:var(--tx2);cursor:default}
+.nb button:hover{background:var(--subtle-h)}
+.nb button svg{width:12px;height:12px}
+.tg{display:inline-flex;align-items:center;gap:12px;cursor:default;user-select:none}
+.tg input{position:absolute;opacity:0;width:1px;height:1px}
+.tg .trk{width:40px;height:20px;border-radius:10px;border:1px solid var(--track);background:var(--ctl);position:relative;transition:background .1s}
+.tg .trk::after{content:"";position:absolute;top:4px;left:4px;width:10px;height:10px;border-radius:50%;background:var(--tx2);transition:left .12s,width .12s}
+.tg input:checked + .trk{background:var(--ac);border-color:var(--ac)}
+.tg input:checked + .trk::after{left:23px;width:12px;height:12px;top:3px;background:var(--on-ac)}
+.tg input:focus-visible + .trk{outline:2px solid var(--tx);outline-offset:2px}
+.tg input:disabled + .trk{opacity:.4}
+.tg.dis{color:var(--txd)}
+.ck{appearance:none;-webkit-appearance:none;width:18px;height:18px;border-radius:4px;border:1px solid var(--track);background:var(--ctl);display:inline-grid;place-items:center;vertical-align:middle;cursor:default;flex:none}
+.ck:checked,.ck:indeterminate{background:var(--ac);border-color:var(--ac)}
+.ck:checked::after{content:"";width:9px;height:5px;border-left:1.5px solid var(--on-ac);border-bottom:1.5px solid var(--on-ac);transform:translateY(-1px) rotate(-45deg)}
+.ck:indeterminate::after{content:"";width:8px;height:1.5px;background:var(--on-ac)}
+.ckl{display:inline-flex;align-items:center;gap:8px;cursor:default}
+.pb{position:relative;height:3px;flex:1;min-width:40px}
+.pb::before{content:"";position:absolute;left:0;right:0;top:1px;height:1px;background:var(--track);opacity:.6}
+.pb i{position:absolute;left:0;top:0;height:3px;border-radius:2px;background:var(--ac);transition:width .45s ease}
+.pb.ok i{background:var(--ok)}
+
+/* content */
+.content{display:flex;flex-direction:column;gap:12px;padding:16px;min-width:0;min-height:0}
+.card{background:var(--card);border:1px solid var(--card-stroke);border-radius:8px}
+.infobar{display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 8px 8px 16px;border-radius:4px;border:1px solid var(--ib-stroke);background:var(--ib-warn);flex:none}
+.infobar b{font-weight:600;margin-right:10px}
+.infobar .msg{flex:1}
+.si{width:16px;height:16px;flex:none}
+.grid{flex:1;min-height:150px;display:flex;flex-direction:column;overflow:hidden}
+.cols{display:grid;grid-template-columns:44px minmax(0,1fr) 84px 124px 72px 76px 120px 104px 120px;align-items:center}
+.gh{height:32px;border-bottom:1px solid var(--div);font-size:12px;font-weight:600;color:var(--tx2);flex:none}
+.gh .c{display:flex;align-items:center;gap:4px}
+.gh svg{width:12px;height:12px}
+.gb{flex:1;overflow:auto}
+.gr{position:relative;height:36px;font-size:13px;border-bottom:1px solid var(--div2);cursor:default}
+.gr:hover{background:var(--subtle-h)}
+.gr.sel{background:var(--sel)}
+.gr.sel::before{content:"";position:absolute;left:3px;top:10px;bottom:10px;width:3px;border-radius:2px;background:var(--ac)}
+.c{padding:0 10px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c:first-child{padding:0 0 0 14px;display:flex;align-items:center}
+.name{display:flex;align-items:center;gap:8px}
+.name svg{color:var(--tx2)}
+.name span{overflow:hidden;text-overflow:ellipsis}
+.dim{color:var(--tx2)}
+.trkbtn{height:24px;display:inline-flex;align-items:center;gap:4px;padding:0 6px;margin-left:-6px;border:0;border-radius:4px;background:transparent;font-size:13px;cursor:default}
+.trkbtn:hover{background:var(--subtle-h)}
+.trkbtn svg{width:12px;height:12px;color:var(--tx2)}
+.stc{display:flex;align-items:center;gap:6px}
+.stc .si{width:14px;height:14px}
+.prg{display:flex;align-items:center;gap:8px}
+.prg .v{width:32px;text-align:right;font-size:12px;color:var(--tx2)}
+.gempty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--tx2);padding:24px}
+.gempty svg{width:32px;height:32px;stroke-width:1;color:var(--tx3);margin-bottom:8px}
+.gempty b{color:var(--tx);font-weight:600}
+.gempty .pair{margin-top:12px}
+
+/* details */
+.details{height:224px;flex:none;display:flex;flex-direction:column;overflow:hidden}
+.details.closed{height:auto}
+.dh{display:flex;align-items:center;gap:8px;padding:4px 6px 0 8px;border-bottom:1px solid var(--div);height:41px;flex:none}
+.dh .fn{font-size:12px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40%}
+.details.closed .dh{border-bottom:0}
+.db{flex:1;overflow:auto;padding:12px 16px}
+.dprog{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px}
+.kv{display:grid;grid-template-columns:90px minmax(0,1fr);gap:6px 12px;margin:0;font-size:13px}
+.kv dt{color:var(--tx2)} .kv dd{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.steps{list-style:none;margin:0;padding:0;font-size:13px}
+.steps li{display:flex;align-items:center;gap:10px;height:26px;color:var(--tx2)}
+.steps li.done,.steps li.run{color:var(--tx)}
+.steps li.fail{color:var(--bad)}
+.steps .t{margin-left:auto;font-size:12px;color:var(--tx2)}
+.steps .pend{width:14px;height:14px;border-radius:50%;border:1px solid var(--track);flex:none}
+.spin{width:14px;height:14px;flex:none;animation:rot 1s linear infinite}
+.spin circle{fill:none;stroke:var(--ac);stroke-width:2;stroke-linecap:round;stroke-dasharray:22 40}
+@keyframes rot{to{transform:rotate(360deg)}}
+.log{margin:0;font:12px/18px "Cascadia Mono",Consolas,ui-monospace,Menlo,monospace;color:var(--tx2);white-space:pre-wrap;word-break:break-all}
+.log .t{color:var(--tx3)} .log .e{color:var(--bad)} .log .o{color:var(--ok)}
+.hint{color:var(--tx2);font-size:13px;padding:8px 0}
+
+/* status bar */
+.status{display:flex;align-items:center;gap:18px;padding:0 14px;font-size:12px;color:var(--tx2);border-top:1px solid var(--div)}
+.sbi{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;padding:0;font-size:12px;color:inherit;cursor:default}
+button.sbi:hover{color:var(--tx);text-decoration:underline}
+.d{width:6px;height:6px;border-radius:50%}
+.d.ok{background:var(--ok)} .d.bad{background:var(--bad)}
+
+/* settings page */
+.spage{background:var(--layer);border-top:1px solid var(--div);overflow:auto;min-height:0}
+.sin{max-width:1000px;margin:0 auto;padding:20px 40px 40px}
+.shead{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.shead h1{margin:0;font-size:28px;line-height:36px;font-weight:600}
+.back{width:36px;height:36px;border:0;border-radius:4px;background:transparent;display:grid;place-items:center;cursor:default}
+.back:hover{background:var(--subtle-h)}
+.sgroup{font-size:14px;font-weight:600;margin:28px 0 8px}
+.scard{display:flex;align-items:center;gap:16px;min-height:64px;padding:10px 16px;margin-bottom:4px;background:var(--card);border:1px solid var(--card-stroke);border-radius:4px}
+.scard > svg{width:20px;height:20px;color:var(--tx)}
+.scard .tx{min-width:0}
+.scard .tx div{font-size:14px}
+.scard .tx span{display:block;font-size:12px;line-height:16px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scard .tx span.path{font-family:"Cascadia Mono",Consolas,ui-monospace,Menlo,monospace}
+.scard .r{margin-left:auto;display:flex;align-items:center;gap:12px;flex:none}
+.scard .cbx{width:200px}
+.state{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--tx2)}
+.state .si{width:14px;height:14px}
+a.link{color:var(--ac-tx);text-decoration:none;cursor:default}
+a.link:hover{text-decoration:underline}
+
+/* mockup-only strip, outside the app window */
+.mockbar{height:30px;flex:none;display:flex;align-items:center;gap:4px;padding:0 12px;background:#0b0b0b;color:#8a8a8a;font:12px/1 -apple-system,system-ui,sans-serif;border-top:1px solid #222}
+.mockbar b{color:#bbb;font-weight:600;margin-right:8px}
+.mockbar button{border:0;background:transparent;color:#a8a8a8;padding:5px 7px;border-radius:3px;font-size:12px;cursor:pointer}
+.mockbar button:hover{color:#fff}
+.mockbar button.on{color:#fff;background:#2a2a2a}
+.mockbar label{display:flex;align-items:center;gap:5px;margin-left:12px;cursor:pointer;color:#a8a8a8}
+.mockbar .r{margin-left:auto}
+</style>
+</head>
+<body>
+<div class="win" id="win">
+  <div class="titlebar" aria-hidden="true">
+    <span class="appico" id="appico"></span><span>FPSConv</span>
+    <span class="caps">
+      <span><svg viewBox="0 0 10 10"><path d="M0 5.5h10"/></svg></span>
+      <span><svg viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9" rx="1.5"/></svg></span>
+      <span class="close"><svg viewBox="0 0 10 10"><path d="M.5.5l9 9M9.5.5l-9 9"/></svg></span>
+    </span>
+  </div>
+  <div class="toolbar" id="toolbar"></div>
+  <div class="main" id="main">
+    <aside class="opts" aria-label="Options"><div class="opts-scroll" id="opts"></div><div class="opts-foot" id="foot"></div></aside>
+    <section class="content" aria-label="Files">
+      <div id="info"></div>
+      <div class="grid card" role="grid" aria-label="Files" id="grid"></div>
+      <div class="details card" id="details"></div>
+    </section>
+  </div>
+  <div class="spage" id="spage" hidden></div>
+  <div class="status" id="status" role="status"></div>
+</div>
+<div class="mockbar" id="mockbar"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const P={
+  wave:'<path d="M2 10h2.5l2-5 3.5 10 3-7.5 1.5 2.5H18"/>',
+  docAdd:'<path d="M10.5 17.5H6A1.5 1.5 0 0 1 4.5 16V4A1.5 1.5 0 0 1 6 2.5h5l4.5 4.5v3"/><path d="M11 2.5V7h4.5"/><path d="M15 12.5v5M12.5 15h5"/>',
+  folderAdd:'<path d="M10 16H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 4h3.5L9 5.5h7A1.5 1.5 0 0 1 17.5 7v2.5"/><path d="M15 12v5M12.5 14.5h5"/>',
+  remove:'<path d="M3.5 5.5h13M8 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5M5 5.5l.8 10.6A1.5 1.5 0 0 0 7.3 17.5h5.4a1.5 1.5 0 0 0 1.5-1.4L15 5.5"/>',
+  clear:'<path d="M3 5.5h9M3 10h7M3 14.5h5"/><path d="M13 11.5l4 4M17 11.5l-4 4"/>',
+  play:'<path d="M6.5 4.6v10.8a.6.6 0 0 0 .9.5l8.6-5.4a.6.6 0 0 0 0-1L7.4 4.1a.6.6 0 0 0-.9.5z"/>',
+  stop:'<rect x="5.5" y="5.5" width="9" height="9" rx="1.5"/>',
+  gear:'<circle cx="10" cy="10" r="2.5"/><path d="M8.6 2.6h2.8l.4 2a5.6 5.6 0 0 1 1.5.9l1.9-.7 1.4 2.4-1.5 1.3a5.6 5.6 0 0 1 0 1.8l1.5 1.3-1.4 2.4-1.9-.7a5.6 5.6 0 0 1-1.5.9l-.4 2H8.6l-.4-2a5.6 5.6 0 0 1-1.5-.9l-1.9.7-1.4-2.4 1.5-1.3a5.6 5.6 0 0 1 0-1.8L3.4 7.2l1.4-2.4 1.9.7a5.6 5.6 0 0 1 1.5-.9z"/>',
+  log:'<rect x="3" y="3.5" width="14" height="13" rx="1.5"/><path d="M6 7.5h8M6 10.5h8M6 13.5h5"/>',
+  chevDown:'<path d="M5.5 8l4.5 4.5L14.5 8"/>',
+  chevUp:'<path d="M5.5 12.5 10 8l4.5 4.5"/>',
+  back:'<path d="M16.5 10h-13M8.5 5l-5 5 5 5"/>',
+  folder:'<path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3.5L9 5.5h7A1.5 1.5 0 0 1 17.5 7v7.5A1.5 1.5 0 0 1 16 16H4a1.5 1.5 0 0 1-1.5-1.5z"/>',
+  copy:'<rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M13 7V4.5A1.5 1.5 0 0 0 11.5 3h-7A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13H7"/>',
+  clock:'<circle cx="10" cy="10" r="7"/><path d="M10 6.5v3.7l2.4 1.5"/>',
+  audio:'<path d="M11 2.5H6A1.5 1.5 0 0 0 4.5 4v12A1.5 1.5 0 0 0 6 17.5h8a1.5 1.5 0 0 0 1.5-1.5V7z"/><path d="M11 2.5V7h4.5"/><path d="M10 14V9.5l2.5-.8"/><circle cx="8.8" cy="14" r="1.2"/>',
+  video:'<rect x="2.5" y="5" width="11" height="10" rx="1.5"/><path d="M13.5 8.7l4-2.2v7l-4-2.2"/>',
+  wrench:'<path d="M12.3 4.2a3.5 3.5 0 0 0-4.6 4.4L3.2 13.1a1.4 1.4 0 0 0 2 2l4.5-4.5a3.5 3.5 0 0 0 4.4-4.6l-2 2-1.8-.4-.4-1.8z"/>',
+  layers:'<path d="M10 3 2.5 7 10 11l7.5-4z"/><path d="M2.5 10.5 10 14.5l7.5-4"/><path d="M2.5 14 10 18l7.5-4"/>',
+  patch:'<rect x="2.5" y="6" width="15" height="8" rx="2"/><path d="M7.5 6v8M12.5 6v8"/>',
+  sync:'<path d="M16.5 9a6.5 6.5 0 0 0-12-2.5M3.5 11a6.5 6.5 0 0 0 12 2.5"/><path d="M4 3.5V7h3.5M16 16.5V13h-3.5"/>',
+  paint:'<circle cx="10" cy="10" r="7"/><path d="M10 3v14"/><path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor" stroke="none"/>',
+  info:'<circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.6v.2"/>',
+  power:'<path d="M10 3v6.5"/><path d="M6 5.5a6 6 0 1 0 8 0"/>',
+  up:'<path d="M5 12.5 10 7.5l5 5"/>', down:'<path d="M5 7.5l5 5 5-5"/>',
+  dismiss:'<path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/>',
+  open:'<path d="M11 3.5h5.5V9M16.5 3.5 9.5 10.5"/><path d="M14 11.5v4A1.5 1.5 0 0 1 12.5 17h-8A1.5 1.5 0 0 1 3 15.5v-8A1.5 1.5 0 0 1 4.5 6h4"/>',
+};
+const ic=(n,cls='')=>`<svg class="i ${cls}" viewBox="0 0 20 20" aria-hidden="true">${P[n]}</svg>`;
+const okI=`<svg class="si" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.5" fill="var(--ok)"/><path d="M5 8.3l2 2 4-4.3" fill="none" stroke="var(--on-st)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const badI=`<svg class="si" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.5" fill="var(--bad)"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" fill="none" stroke="var(--on-st)" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+const warnI=`<svg class="si" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.5" fill="var(--warn)"/><path d="M8 4.5v4.2" stroke="var(--on-st)" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.2" r=".9" fill="var(--on-st)"/></svg>`;
+const spinI=`<svg class="spin" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg>`;
+
+/* ── data ── */
+const FILES=[
+  {id:0,name:'Northern.Lights.2024.2160p.mkv',dir:'D:\\Rips\\Northern Lights',codec:'TrueHD',ch:'7.1',dur:'2:46:12',atmos:true,tracks:3,track:1,size:'1.21 GB',video:true},
+  {id:1,name:'Harbor.Story.S01E03.eac3',dir:'D:\\Rips\\Harbor Story',codec:'E-AC-3',ch:'5.1',dur:'0:52:10',size:'250 MB'},
+  {id:2,name:'Concert_LiveSet.thd',dir:'D:\\Masters',codec:'TrueHD',ch:'5.1',dur:'1:31:47',size:'412 MB'},
+  {id:3,name:'Interview_master.wav',dir:'D:\\Masters',codec:'PCM',ch:'2.0',dur:'0:12:08',size:'36.4 MB'},
+  {id:4,name:'Trailer_v3.aac',dir:'D:\\Promo',codec:'AAC',ch:'2.0',dur:'0:02:31',size:'4.1 MB'},
+];
+const FPS=['23.976','24','25'];
+const fv=v=>v==='23.976'?24000/1001:+v;
+const DRC=[['film_light','Film light'],['film_standard','Film standard'],['music_light','Music light'],['music_standard','Music standard'],['speech','Speech']];
+const BR=[['auto','DEE default'],['192','192 kb/s'],['256','256 kb/s'],['384','384 kb/s'],['448','448 kb/s'],['640','640 kb/s'],['768','768 kb/s'],['1024','1024 kb/s']];
+
+const S={theme:'dark',task:'fps',from:'23.976',to:'25',match:false,out:'D:\\Audio\\Converted',exists:'overwrite',srcbr:'src',brc:640,
+  mode:'batch',jobs:2,subdirs:true,fmt:'ddp',ch:'auto',br:'auto',drc:'film_light',atmos:true,layout71:'flat',bedconform:true,
+  autoupd:true,themeSel:'system',preset:'ready',missing:false,files:[],sel:null,checked:new Set(),dtab:'progress',detailsOpen:true,page:'main'};
+
+const mk=(f,st,p=0,x={})=>Object.assign({},f,{st,p},x);
+let timer=null;
+function setPreset(p){
+  if(timer){clearInterval(timer);timer=null}
+  S.preset=p;S.checked.clear();S.page='main';
+  if(p==='empty'){S.files=[];S.sel=null}
+  if(p==='ready'){S.files=FILES.map(f=>mk(f,'ready'));S.sel=0}
+  if(p==='running'){S.files=[mk(FILES[0],'done',100),mk(FILES[1],'running',64),mk(FILES[2],'running',18),mk(FILES[3],'queued'),mk(FILES[4],'queued')];S.sel=1;ensureSim()}
+  if(p==='done'){S.files=[mk(FILES[0],'done',100),mk(FILES[1],'done',100),mk(FILES[2],'failed',60,{err:'Dolby Encoding Engine not found'}),mk(FILES[3],'done',100),mk(FILES[4],'done',100)];S.sel=2}
+  render();
+}
+
+/* ── helpers ── */
+const files=()=>S.mode==='batch'?S.files:S.files.slice(0,1);
+const base=n=>n.replace(/\.[^.]+$/,''), ext=n=>(n.match(/\.[^.]+$/)||[''])[0];
+const ratio=()=>fv(S.to)/fv(S.from);
+function outTxt(f){
+  if(S.task==='fps')return `${S.to} fps`;
+  const ch=S.ch==='auto'?f.ch:S.ch;
+  return `${S.fmt==='ddp'?'DD+':'DD'} ${ch}${S.fmt==='ddp'&&S.atmos&&f.atmos?' Atmos':''}`;
+}
+function outName(f){
+  if(S.task==='fps')return `${base(f.name)} [${S.to}fps]${ext(f.name)==='.mkv'?'.mka':ext(f.name)}`;
+  return base(f.name)+(S.fmt==='ddp'?'.ec3':'.ac3');
+}
+const mins=p=>Math.max(1,Math.round((100-p)/9));
+function stages(f){
+  const dec=['TrueHD','E-AC-3','AC-3'].includes(f.codec);
+  if(S.task==='fps')return [['Read source','0:02'],...(dec?[['Decode','0:41']]:[]),[`Time-stretch ${S.from} → ${S.to}`,'1:12'],[`Encode ${f.codec}`,'0:35'],['Write output','0:03']];
+  if(S.fmt==='ddp'&&S.atmos&&f.atmos)return [['Read source','0:02'],['Extract Atmos (truehdd)','1:48'],['Encode DD+ Atmos (DEE)','3:10'],['Write output','0:04']];
+  return [['Read source','0:02'],...(dec?[['Decode','0:41']]:[]),[`Encode ${S.fmt==='ddp'?'DD+':'DD'} (DEE)`,'1:05'],['Write output','0:03']];
+}
+const cbx=(k,opts,dis=false)=>`<div class="cbx"><select id="o-${k}" data-set="${k}" ${dis?'disabled':''}>${opts.map(([v,t])=>`<option value="${v}" ${String(S[k])===String(v)?'selected':''}>${t}</option>`).join('')}</select>${ic('chevDown')}</div>`;
+const tog=(k,dis=false)=>`<label class="tg ${dis?'dis':''}"><input type="checkbox" data-set="${k}" ${S[k]&&!dis?'checked':''} ${dis?'disabled':''}><span class="trk" aria-hidden="true"></span><span>${S[k]&&!dis?'On':'Off'}</span></label>`;
+const nbox=(k,unit='',min=1,max=8,step=1)=>`<div class="nb" role="spinbutton" aria-valuenow="${S[k]}" aria-label="${k}"><span class="num">${S[k]}${unit?' '+unit:''}</span><button data-act="nb" data-k="${k}" data-v="${step}" data-min="${min}" data-max="${max}" aria-label="Increase">${ic('up')}</button><button data-act="nb" data-k="${k}" data-v="${-step}" data-min="${min}" data-max="${max}" aria-label="Decrease">${ic('down')}</button></div>`;
+
+/* ── render ── */
+function render(){
+  document.documentElement.dataset.theme=S.theme;
+  $('appico').innerHTML=ic('wave');
+  renderToolbar();
+  const inSet=S.page==='settings';
+  $('main').hidden=inSet;$('spage').hidden=!inSet;
+  if(inSet)renderSettings();else{renderOpts();renderFoot();renderInfo();renderGrid();renderDetails()}
+  renderStatus();renderMock();
+}
+
+function renderToolbar(){
+  const anySel=S.checked.size>0||S.sel!==null&&files()[S.sel];
+  const busy=files().some(f=>f.st==='running'||f.st==='queued');
+  $('toolbar').innerHTML=`
+    <div class="sb" role="tablist" aria-label="Task">
+      <button role="tab" aria-selected="${S.task==='fps'}" class="${S.task==='fps'&&S.page==='main'?'on':''}" data-act="task" data-v="fps">FPS change</button>
+      <button role="tab" aria-selected="${S.task==='encode'}" class="${S.task==='encode'&&S.page==='main'?'on':''}" data-act="task" data-v="encode">Audio encode</button>
+    </div>
+    <span class="flex"></span>
+    ${S.page==='settings'?'':`<button class="abb" data-act="addfiles" title="Add files (Ctrl+O)">${ic('docAdd')}Add files</button>
+    <button class="abb" data-act="addfolder" title="Add folder">${ic('folderAdd')}Add folder</button>
+    <span class="vsep"></span>
+    <button class="abb" data-act="remove" ${anySel&&!busy?'':'disabled'} title="Remove selected (Del)">${ic('remove')}Remove</button>
+    <button class="abb" data-act="clear" ${files().length?'':'disabled'} title="Clear finished and ready files">${ic('clear')}Clear</button>
+    <span class="vsep"></span>
+    <button class="abb ${S.detailsOpen?'on':''}" data-act="toggledetails" aria-pressed="${S.detailsOpen}" title="Show details and log">${ic('log')}Details</button>`}
+    <button class="abb iconly ${S.page==='settings'?'on':''}" data-act="settings" aria-label="Settings" title="Settings">${ic('gear')}</button>`;
+}
+
+function renderOpts(){
+  let h='';
+  if(S.task==='fps'){
+    const r=ratio(),rt=((1/r-1)*100);
+    h=`<div class="sec">Frame rate</div>
+      <div class="fld"><label for="o-from">Source</label>${cbx('from',FPS.map(v=>[v,v+' fps']),S.match)}</div>
+      <div class="fld"><label for="o-to">Target</label>${cbx('to',FPS.filter(v=>v!==S.from).map(v=>[v,v+' fps']),S.match)}
+        <div class="cap num">${S.match?'Chosen per file from the video':`Speed ×${r.toFixed(6)} · runtime ${rt>0?'+':''}${rt.toFixed(2)}%`}</div></div>
+      <div class="fld"><label for="o-match">Match to video <span class="opt">Optional</span></label>
+        <div class="pair"><input id="o-match" class="tb" readonly placeholder="None" value="${S.match?'Northern.Lights.2024.2160p.mkv':''}"><button class="btn" data-act="match">${S.match?'Clear':'Browse…'}</button></div></div>
+      <div class="sec">Output</div>
+      <div class="fld"><label for="o-out">Folder</label><div class="pair"><input id="o-out" class="tb" value="${S.out}"><button class="btn sq" data-act="noop" aria-label="Browse for folder" title="Browse">${ic('folder')}</button></div></div>
+      <div class="fld"><label for="o-srcbr">Bitrate</label>${cbx('srcbr',[['src','Same as source'],['custom','Custom']])}</div>
+      ${S.srcbr==='custom'?`<div class="fld">${nbox('brc','kb/s',64,6144,32)}</div>`:''}
+      <div class="fld"><label for="o-exists">If the file exists</label>${cbx('exists',[['overwrite','Overwrite'],['skip','Skip'],['rename','Save a numbered copy']])}</div>`;
+  }else{
+    const dd=S.fmt==='dd';
+    h=`<div class="sec">Encoding</div>
+      <div class="fld"><label for="o-fmt">Format</label>${cbx('fmt',[['ddp','Dolby Digital Plus (DD+)'],['dd','Dolby Digital (DD)']])}</div>
+      <div class="fld"><label for="o-ch">Channels</label>${cbx('ch',[['auto','Same as source'],['1.0','1.0'],['2.0','2.0'],['5.1','5.1'],['7.1','7.1']])}<div class="cap">Never upmixes</div></div>
+      <div class="fld"><label for="o-br">Bitrate</label>${cbx('br',BR)}</div>
+      <div class="fld"><label for="o-drc">Dynamic range</label>${cbx('drc',DRC)}</div>
+      <div class="sec">Atmos</div>
+      <div class="fld"><span class="l">Keep Atmos</span>${tog('atmos',dd)}</div>
+      <div class="fld"><label for="o-layout71">7.1 layout</label>${cbx('layout71',[['flat','Flat 7.1 (Lb Rb)'],['dee','DEE 5.1.2 (Tfl Tfr)']],dd||!S.atmos)}</div>
+      <div class="fld"><label class="ckl"><input type="checkbox" class="ck" data-set="bedconform" ${S.bedconform?'checked':''} ${dd||!S.atmos?'disabled':''}>Bed conform</label></div>
+      <div class="sec">Output</div>
+      <div class="fld"><label for="o-out">Folder</label><div class="pair"><input id="o-out" class="tb" value="${S.out}"><button class="btn sq" data-act="noop" aria-label="Browse for folder" title="Browse">${ic('folder')}</button></div></div>
+      <div class="fld"><label for="o-exists">If the file exists</label>${cbx('exists',[['overwrite','Overwrite'],['skip','Skip'],['rename','Save a numbered copy']])}</div>`;
+  }
+  h+=`<div class="sec">Queue</div>
+    <div class="fld"><label for="o-mode">Mode</label>${cbx('mode',[['batch','Batch'],['single','Single file']])}</div>
+    ${S.mode==='batch'?`<div class="fld"><span class="l">Parallel jobs</span>${nbox('jobs')}</div>`:''}
+    <div class="fld"><span class="l">Include subfolders</span>${tog('subdirs')}</div>`;
+  $('opts').innerHTML=h;
+}
+
+function counts(){const fs=files(),c=k=>fs.filter(f=>f.st===k).length;return {n:fs.length,run:c('running'),q:c('queued'),done:c('done'),fail:c('failed'),ready:c('ready')}}
+function overall(){const fs=files();return fs.length?fs.reduce((a,f)=>a+(f.st==='done'?100:f.st==='running'?f.p:0),0)/fs.length:0}
+function left(){const fs=files();const r=fs.filter(f=>f.st==='running').map(f=>mins(f.p));return (r.length?Math.max(...r):0)+fs.filter(f=>f.st==='queued').length*3}
+
+function renderFoot(){
+  const c=counts(),busy=c.run+c.q>0;let h;
+  if(busy)h=`<div class="fsum"><span><b>Converting</b> · ${c.done} of ${c.n} done</span><span class="num">About ${left()} min left</span></div>
+    <div class="pb"><i style="width:${overall()}%"></i></div>
+    <button class="btn big" data-act="stop">${ic('stop')}Stop</button>`;
+  else if(c.ready)h=`<div class="fsum"><span><b>${c.ready}</b> file${c.ready>1?'s':''} ready</span>${S.missing?'<span>ffmpeg required</span>':''}</div>
+    <button class="btn accent big" data-act="start" ${S.missing?'disabled':''}>${ic('play')}Start</button>`;
+  else if(c.n)h=`<div class="fsum"><span><b>${c.done}</b> done${c.fail?`, <b>${c.fail}</b> failed`:''}</span></div>
+    ${c.fail?`<button class="btn accent big" data-act="retryall">Retry failed</button>`:''}<button class="btn big" data-act="openout">${ic('open')}Open output folder</button>`;
+  else h=`<div class="fsum"><span>No files</span></div><button class="btn accent big" disabled>${ic('play')}Start</button>`;
+  $('foot').innerHTML=h;
+}
+
+function renderInfo(){
+  $('info').innerHTML=S.missing?`<div class="infobar" role="alert">${warnI}<div class="msg"><b>ffmpeg not found</b>FPSConv needs ffmpeg to read and write audio.</div><button class="btn" data-act="fixffmpeg">Download ffmpeg</button><button class="btn" data-act="settings">Settings</button></div>`:'';
+  $('info').style.display=S.missing?'':'none';
+}
+
+function statusCell(f){
+  if(f.st==='ready')return `<span class="dim">Ready</span>`;
+  if(f.st==='queued')return `<span class="stc dim">${ic('clock')}Queued</span>`;
+  if(f.st==='running')return `<span class="stc">${spinI}Converting</span>`;
+  if(f.st==='done')return `<span class="stc">${okI}Done</span>`;
+  return `<span class="stc" title="${f.err}">${badI}Failed</span>`;
+}
+function progCell(f){
+  if(f.st==='running')return `<div class="prg"><div class="pb" role="progressbar" aria-label="Progress" aria-valuenow="${Math.round(f.p)}"><i style="width:${f.p}%"></i></div><span class="v num">${Math.round(f.p)}%</span></div>`;
+  if(f.st==='done')return `<span class="dim num">${f.size}</span>`;
+  if(f.st==='failed')return `<span class="dim">—</span>`;
+  return '';
+}
+function renderGrid(){
+  const fs=files();
+  const all=fs.length&&S.checked.size===fs.length, some=S.checked.size>0&&!all;
+  let body;
+  if(!fs.length)body=`<div class="gempty">${ic('docAdd')}<b>No files</b><span>Drag audio or video files here</span><div class="pair"><button class="btn" data-act="addfiles">Add files…</button><button class="btn" data-act="addfolder">Add folder…</button></div></div>`;
+  else body=fs.map((f,i)=>`<div class="gr cols ${S.sel===i?'sel':''}" role="row" aria-selected="${S.sel===i}" data-act="sel" data-i="${i}">
+      <div class="c" role="gridcell"><input type="checkbox" class="ck" data-act="chk" data-i="${i}" ${S.checked.has(i)?'checked':''} aria-label="Select ${f.name}"></div>
+      <div class="c name" role="gridcell" title="${f.dir}\\${f.name}">${ic(f.video?'video':'audio')}<span>${f.name}</span></div>
+      <div class="c" role="gridcell">${f.tracks?`<button class="trkbtn num" data-act="track" data-i="${i}" title="Audio track">${f.track} of ${f.tracks}${ic('chevDown')}</button>`:'<span class="dim">1</span>'}</div>
+      <div class="c" role="gridcell">${f.codec}${f.atmos?' Atmos':''}</div>
+      <div class="c" role="gridcell">${f.ch}</div>
+      <div class="c num" role="gridcell">${f.dur}</div>
+      <div class="c" role="gridcell">${outTxt(f)}</div>
+      <div class="c" role="gridcell">${statusCell(f)}</div>
+      <div class="c" role="gridcell">${progCell(f)}</div></div>`).join('');
+  $('grid').innerHTML=`<div class="gh cols" role="row">
+      <div class="c"><input type="checkbox" class="ck" data-act="chkall" ${all?'checked':''} ${fs.length?'':'disabled'} aria-label="Select all"></div>
+      <div class="c">Name ${ic('chevUp')}</div><div class="c">Track</div><div class="c">Format</div><div class="c">Channels</div><div class="c">Duration</div><div class="c">Output</div><div class="c">Status</div><div class="c">Progress</div></div>
+    <div class="gb">${body}</div>`;
+  const ca=$('grid').querySelector('[data-act=chkall]');if(ca)ca.indeterminate=some;
+}
+
+function renderDetails(){
+  const d=$('details');d.classList.toggle('closed',!S.detailsOpen);
+  const f=S.sel!==null?files()[S.sel]:null;
+  const tabs=[['progress','Progress'],['job','Job log'],['app','App log']];
+  let body='';
+  if(S.detailsOpen){
+    if(S.dtab==='app')body=`<pre class="log"><span class="t">09:40:58</span>  FPSConv 1.3.26 started
+<span class="t">09:40:58</span>  ${S.missing?'<span class="e">ffmpeg: not found</span>':'ffmpeg 7.1, ffprobe 7.1: <span class="o">found</span>'}
+<span class="t">09:40:58</span>  deew 3.4, truehdd 0.4, deezy 1.2: <span class="o">found</span>
+<span class="t">09:40:59</span>  Dolby Encoding Engine 5.2.1: flat 7.1 supported
+<span class="t">09:41:00</span>  Update check: 1.3.26 is the latest version
+<span class="t">09:41:02</span>  ${files().length} files added</pre>`;
+    else if(!f)body=`<div class="hint">Select a file to see its ${S.dtab==='job'?'log':'progress'}.</div>`;
+    else if(S.dtab==='job')body=`<pre class="log"><span class="t">09:41:02</span>  Source  ${f.dir}\\${f.name}
+<span class="t">09:41:02</span>  Stream  #${f.track||1} ${f.codec} ${f.ch}${f.atmos?' Atmos':''}, 48 kHz, ${f.dur}
+<span class="t">09:41:03</span>  Output  ${S.out}\\${outName(f)}
+${f.st!=='ready'&&f.st!=='queued'&&f.p>20?`<span class="t">09:41:44</span>  ${S.task==='fps'?`atempo=${ratio().toFixed(6)}`:'dee: encode started'}\n`:''}${f.st==='running'?`<span class="t">09:42:56</span>  progress ${Math.round(f.p)}%`:''}${f.st==='done'?`<span class="t">09:43:35</span>  <span class="o">Finished, ${f.size}</span>`:''}${f.st==='failed'?`<span class="t">09:42:10</span>  <span class="e">Error: ${f.err}. Set dee.exe in Settings.</span>`:''}${f.st==='ready'||f.st==='queued'?'<span class="t">—</span>  Not started':''}</pre>`;
+    else{
+      const st=stages(f),n=st.length;
+      const steps=st.map(([nm,t],k)=>{const a=k/n*100,b=(k+1)/n*100;
+        const s=f.st==='done'||f.p>=b?'done':f.st==='running'&&f.p>=a?'run':f.st==='failed'&&f.p>=a?'fail':'';
+        return `<li class="${s}">${s==='done'?okI:s==='run'?spinI:s==='fail'?badI:'<span class="pend"></span>'}${nm}<span class="t num">${s==='done'?t:s==='run'?Math.round((f.p-a)/(b-a)*100)+'%':''}</span></li>`}).join('');
+      const stTxt={ready:'Ready',queued:'Queued',running:`Converting, ${Math.round(f.p)}%`,done:'Done',failed:'Failed'}[f.st];
+      body=`<div class="dprog"><dl class="kv">
+        <dt>Source</dt><dd title="${f.dir}\\${f.name}">${f.dir}\\${f.name}</dd>
+        <dt>Output</dt><dd title="${S.out}\\${outName(f)}">${S.out}\\${outName(f)}</dd>
+        <dt>Status</dt><dd>${stTxt}</dd>
+        <dt>${f.st==='done'?'Size':f.st==='failed'?'Error':'Remaining'}</dt><dd class="num">${f.st==='done'?f.size:f.st==='failed'?f.err:f.st==='running'?`About ${mins(f.p)} min`:'—'}</dd>
+      </dl><ul class="steps">${steps}</ul></div>`;
+    }
+  }
+  d.innerHTML=`<div class="dh"><div class="sb sm" role="tablist">${tabs.map(([k,t])=>`<button role="tab" class="${S.dtab===k&&S.detailsOpen?'on':''}" data-act="dtab" data-v="${k}">${t}</button>`).join('')}</div>
+    <span class="flex"></span>${f&&S.dtab!=='app'&&S.detailsOpen?`<span class="fn">${f.name}</span>`:''}
+    ${S.detailsOpen&&S.dtab!=='progress'?`<button class="abb iconly" data-act="copied" aria-label="Copy log" title="Copy log">${ic('copy')}</button>`:''}
+    <button class="abb iconly" data-act="toggledetails" aria-label="${S.detailsOpen?'Collapse':'Expand'} details" title="${S.detailsOpen?'Collapse':'Expand'}">${ic(S.detailsOpen?'chevDown':'chevUp')}</button></div>
+    ${S.detailsOpen?`<div class="db">${body}</div>`:''}`;
+}
+
+function renderStatus(){
+  const c=counts(),busy=c.run+c.q>0;
+  const left_=busy?`Converting · ${c.done} of ${c.n} done · about ${left()} min left`:c.n&&!c.ready?`Finished · ${c.done} done${c.fail?`, ${c.fail} failed`:''}`:c.n?`${c.n} file${c.n>1?'s':''}`:'Ready';
+  $('status').innerHTML=`<span>${left_}</span><span class="flex"></span>
+    <button class="sbi" data-act="settings" title="Tools">${S.missing?'<i class="d bad"></i>ffmpeg missing':'<i class="d ok"></i>ffmpeg 7.1'}</button>
+    <button class="sbi" data-act="settings" title="Dolby Encoding Engine"><i class="d ok"></i>DEE 5.2.1</button>
+    <span>v1.3.26</span>`;
+}
+
+function renderSettings(){
+  const T='C:\\Program Files\\FPSConv\\tools\\';
+  const tools=[['ffmpeg',T+'ffmpeg.exe','7.1',!S.missing],['ffprobe',T+'ffprobe.exe','7.1',!S.missing],['mediainfo',T+'mediainfo.exe','24.06',true],['deew','Bundled with FPSConv','3.4',true],['truehdd',T+'truehdd.exe','0.4',true],['deezy',T+'deezy.exe','1.2',true]];
+  const card=(icon,title,desc,right,mono)=>`<div class="scard">${ic(icon)}<div class="tx"><div>${title}</div>${desc?`<span class="${mono?'path':''}" title="${desc}">${desc}</span>`:''}</div><div class="r">${right}</div></div>`;
+  const st=(ok,txt)=>`<span class="state">${ok?okI:badI}${txt}</span>`;
+  $('spage').innerHTML=`<div class="sin">
+    <div class="shead"><button class="back" data-act="back" aria-label="Back" title="Back">${ic('back')}</button><h1>Settings</h1></div>
+    <div class="sgroup">Tools</div>
+    ${tools.map(([n,p,v,ok])=>card('wrench',n,ok?p:'Not found',`${st(ok,ok?v:'Missing')}${!ok&&n==='ffmpeg'?`<button class="btn accent" data-act="fixffmpeg">Download</button>`:`<button class="btn" data-act="noop">Browse…</button>`}`,ok)).join('')}
+    <div class="sgroup">Dolby Encoding Engine</div>
+    ${card('layers','dee.exe','C:\\Dolby\\DEE\\dee.exe',`<button class="btn" data-act="noop">Browse…</button>`,true)}
+    ${card('info','Version','5.2.1 (build 5994839)',st(true,'Flat 7.1 supported'))}
+    <div class="sgroup">DD+ 7.1 Atmos patcher</div>
+    ${card('patch','Patcher','LumaVistaLab, GPL-3.0 · installed 2026-10-02',`<button class="btn" data-act="noop">Check for update</button>`)}
+    ${card('sync','Bed conform','Passed to truehdd for flat 7.1',tog('bedconform'))}
+    <div class="sgroup">Folders</div>
+    ${[['Output',S.out],['Temporary files','D:\\Temp\\FPSConv'],['Working files','%LOCALAPPDATA%\\FPSConv\\work'],['Logs','%LOCALAPPDATA%\\FPSConv\\logs']].map(([t,p])=>card('folder',t,p,`<button class="btn" data-act="noop">Browse…</button>`,true)).join('')}
+    <div class="sgroup">Appearance</div>
+    ${card('paint','Theme','',cbx('themeSel',[['system','Use system setting'],['light','Light'],['dark','Dark']]))}
+    <div class="sgroup">Updates</div>
+    ${card('sync','Install updates automatically','Only when nothing is converting',tog('autoupd'))}
+    ${card('info','FPSConv 1.3.26','You’re up to date · last checked today at 09:41',`<button class="btn" data-act="checkupd">Check for updates</button>`)}
+    <div class="sgroup">About</div>
+    ${card('folder','Settings folder','%APPDATA%\\FPSConv',`<a class="link" href="#" data-act="noop">Open</a>`,true)}
+    ${card('power','Quit FPSConv','Stops running jobs and closes the app',`<button class="btn" data-act="noop">Quit</button>`)}
+  </div>`;
+}
+
+function renderMock(){
+  const st=[['empty','Empty'],['ready','Files added'],['running','Converting'],['done','Finished']];
+  $('mockbar').innerHTML=`<b>Mockup</b>${st.map(([k,t])=>`<button class="${S.preset===k?'on':''}" data-act="preset" data-v="${k}">${t}</button>`).join('')}
+    <label><input type="checkbox" data-set="missing" ${S.missing?'checked':''}> Tools missing</label>
+    <label><input type="checkbox" data-set="lightmock" ${S.theme==='light'?'checked':''}> Light theme</label>
+    <span class="r">Title bar is the standard Windows one</span>`;
+}
+
+/* ── simulation ── */
+function pump(){const fs=files();let free=(S.mode==='batch'?S.jobs:1)-fs.filter(f=>f.st==='running').length;for(const f of fs){if(free<=0)break;if(f.st==='queued'){f.st='running';free--}}}
+function ensureSim(){if(!timer)timer=setInterval(tick,500)}
+function tick(){
+  const fs=files();
+  fs.forEach(f=>{if(f.st==='running'){f.p=Math.min(100,f.p+1.5+Math.random()*3.5);if(f.p>=100){f.st='done';f.p=100}}});
+  pump();
+  if(!fs.some(f=>f.st==='running'||f.st==='queued')){clearInterval(timer);timer=null;S.preset='done'}
+  if(S.page==='main'){renderToolbar();renderFoot();renderGrid();renderDetails()}
+  renderStatus();renderMock();
+}
+function addFiles(all){
+  const have=new Set(S.files.map(f=>f.id));
+  const add=FILES.filter(f=>!have.has(f.id)).slice(0,all?5:S.mode==='batch'?3:1).map(f=>mk(f,'ready'));
+  if(S.mode!=='batch')S.files=[];
+  S.files.push(...add);if(S.sel===null&&S.files.length)S.sel=0;S.preset='ready';S.page='main';render();
+}
+
+/* ── events ── */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act,v=b.dataset.v,i=+b.dataset.i;
+  if(a==='noop'||a==='copied'||a==='checkupd'||a==='openout'){e.preventDefault();return}
+  switch(a){
+    case 'preset':setPreset(v);return;
+    case 'task':S.task=v;S.page='main';break;
+    case 'match':S.match=!S.match;if(S.match){S.from='23.976';S.to='25'}break;
+    case 'nb':{const k=b.dataset.k;S[k]=Math.max(+b.dataset.min,Math.min(+b.dataset.max,S[k]+(+v)));break}
+    case 'addfiles':addFiles(false);return;
+    case 'addfolder':addFiles(true);return;
+    case 'sel':S.sel=i;break;
+    case 'chk':S.checked.has(i)?S.checked.delete(i):S.checked.add(i);break;
+    case 'chkall':{const n=files().length;if(S.checked.size===n)S.checked.clear();else for(let k=0;k<n;k++)S.checked.add(k);break}
+    case 'track':{const f=files()[i];f.track=f.track%f.tracks+1;S.sel=i;break}
+    case 'remove':{const idx=S.checked.size?[...S.checked]:[S.sel];const keep=files().filter((f,k)=>!idx.includes(k));S.files=keep;S.checked.clear();S.sel=keep.length?0:null;if(!keep.length)S.preset='empty';break}
+    case 'clear':S.files=S.files.filter(f=>f.st==='running'||f.st==='queued');S.checked.clear();S.sel=S.files.length?0:null;if(!S.files.length)S.preset='empty';break;
+    case 'start':files().forEach(f=>{if(f.st==='ready'){f.st='queued';f.p=0}});pump();ensureSim();S.preset='running';break;
+    case 'stop':files().forEach(f=>{if(f.st==='running'||f.st==='queued'){f.st='ready';f.p=0}});S.preset='ready';break;
+    case 'retryall':files().forEach(f=>{if(f.st==='failed'){f.st='queued';f.p=0}});pump();ensureSim();S.preset='running';break;
+    case 'toggledetails':S.detailsOpen=!S.detailsOpen;break;
+    case 'dtab':S.dtab=v;S.detailsOpen=true;break;
+    case 'settings':S.page=S.page==='settings'?'main':'settings';break;
+    case 'back':S.page='main';break;
+    case 'fixffmpeg':S.missing=false;break;
+  }
+  render();
+});
+document.addEventListener('change',e=>{
+  const k=e.target.dataset.set;if(!k)return;
+  const val=e.target.type==='checkbox'?e.target.checked:e.target.value;
+  if(k==='lightmock'){S.theme=val?'light':'dark';S.themeSel=S.theme}
+  else if(k==='themeSel'){S.themeSel=val;S.theme=val==='light'?'light':'dark'}
+  else{S[k]=val;if(k==='from'&&S.to===val)S.to=FPS.find(x=>x!==val)}
+  render();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.page==='settings'){S.page='main';render()}});
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();addFiles(false)});
+
+setPreset('ready');
+</script>
+</body>
+</html>

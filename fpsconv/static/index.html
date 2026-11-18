@@ -5,650 +5,608 @@
 <title>FPSConv</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-:root{
-  --bg:#f4f5f7; --bg2:#fafbfc; --card:#ffffff; --line:#e5e8ed; --line2:#d4d9e1; --line3:#b9c0cb;
-  --tx:#171a1f; --tx2:#565f6c; --tx3:#9099a6;
-  --ac:#3465e0; --ac-soft:#e9eefc;
-  --ok:#178a52; --ok-soft:#e2f4ea;
-  --warn:#b06a14; --warn-soft:#fdf1e0;
-  --bad:#c33d3d; --bad-soft:#fbeaea;
-  --ink:#16181d; --ink-tx:#fff;
-  --hover:#f8f9fb; --sel:#eef2fc;
-  --shadow:0 14px 40px rgba(23,26,31,.16);
-  --backdrop:rgba(23,26,31,.3);
-  --sans:"Segoe UI Variable Text","Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
-  --mono:"Cascadia Mono",ui-monospace,Consolas,Menlo,monospace;
-  color-scheme:light;
-}
 html[data-theme=dark]{
-  --bg:#0f1114; --bg2:#13161a; --card:#1a1d23; --line:#252930; --line2:#30353e; --line3:#3d434e;
-  --tx:#e9ebef; --tx2:#a7aeb9; --tx3:#6b7280;
-  --ac:#6c9bff; --ac-soft:#172139;
-  --ok:#3ecf7a; --ok-soft:#12291c;
-  --warn:#f0a44a; --warn-soft:#2b2113;
-  --bad:#f0585a; --bad-soft:#2c181a;
-  --ink:#e9ebef; --ink-tx:#101214;
-  --hover:#15181d; --sel:#151c2c;
-  --shadow:0 18px 48px rgba(0,0,0,.55);
-  --backdrop:rgba(0,0,0,.5);
+  --chrome:#131417; --bg:#0e0f11; --surface:#16171a; --card:#18191c; --well:#0c0d0f; --pop:#1d1e22;
+  --raised:#1f2024; --raised-h:#26282c; --hover:#1b1c20; --hi:rgba(255,255,255,.05);
+  --line:#24262a; --line2:#2f3237; --line3:#43464c;
+  --tx:#e8e9eb; --tx2:#a3a6ad; --tx3:#868a94;
+  --ac:#f2a33a; --ac-tx:#f2a33a; --on-ac:#1b1206; --ac-soft:rgba(242,163,58,.13); --ac-line:rgba(242,163,58,.45);
+  --ac-top:#f7b552; --ac-bot:#ec9626; --ac-edge:#b8721a;
+  --btn-top:#26282d; --btn-bot:#1f2125; --btn-top-h:#2c2f34; --btn-bot-h:#25272b; --btn-edge:#34373d;
+  --sw-off:#3a3d44; --knob:#f4f4f5;
+  --ok:#4cc38a; --ok-soft:rgba(76,195,138,.14); --bad:#f0716b; --bad-soft:rgba(240,113,107,.13); --warn:#e8b64c;
+  --warn-bg:rgba(242,163,58,.08); --warn-line:rgba(242,163,58,.3); --bad-bg:rgba(240,113,107,.08); --bad-line:rgba(240,113,107,.3);
+  --shadow:0 16px 40px rgba(0,0,0,.5); --inset:inset 0 1px 2px rgba(0,0,0,.35); --drop:0 1px 2px rgba(0,0,0,.35);
+  --backdrop:rgba(0,0,0,.55);
   color-scheme:dark;
 }
+html[data-theme=light]{
+  --chrome:#f3f3f4; --bg:#e9e9eb; --surface:#f8f8f9; --card:#ffffff; --well:#f3f3f5; --pop:#ffffff;
+  --raised:#ffffff; --raised-h:#f4f4f5; --hover:#f7f7f8; --hi:rgba(255,255,255,.9);
+  --line:#e2e2e5; --line2:#d2d3d7; --line3:#b4b6bc;
+  --tx:#16171a; --tx2:#53575f; --tx3:#666a73;
+  --ac:#ef9a2a; --ac-tx:#9a5200; --on-ac:#1b1206; --ac-soft:rgba(239,154,42,.12); --ac-line:rgba(154,82,0,.4);
+  --ac-top:#f6ae4a; --ac-bot:#ec961f; --ac-edge:#c97c14;
+  --btn-top:#ffffff; --btn-bot:#f4f4f6; --btn-top-h:#ffffff; --btn-bot-h:#ececef; --btn-edge:#cfd0d5;
+  --sw-off:#c9cacf; --knob:#ffffff;
+  --ok:#13804f; --ok-soft:rgba(19,128,79,.1); --bad:#c2352f; --bad-soft:rgba(194,53,47,.08); --warn:#9a5b00;
+  --warn-bg:#fff6e8; --warn-line:rgba(166,88,0,.28); --bad-bg:#fdeeed; --bad-line:rgba(194,53,47,.28);
+  --shadow:0 16px 40px rgba(20,22,28,.16); --inset:inset 0 1px 2px rgba(0,0,0,.05); --drop:0 1px 2px rgba(20,22,28,.08);
+  --backdrop:rgba(20,22,28,.3);
+  color-scheme:light;
+}
+:root{--ui:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif;--mono:"Cascadia Mono","Cascadia Code",Consolas,ui-monospace,"SF Mono",Menlo,monospace}
 *{box-sizing:border-box}
-[hidden]{display:none !important}
-html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.5 var(--sans);display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
-button,input,select{font:inherit;color:inherit}
-button{cursor:pointer}
-svg{flex:none}
-b{font-weight:600}
-::selection{background:var(--ac-soft)}
-::-webkit-scrollbar{width:10px;height:10px}
-::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px;border:3px solid var(--bg)}
-::-webkit-scrollbar-thumb:hover{background:var(--line3)}
-::-webkit-scrollbar-corner{background:transparent}
-:focus-visible{outline:2px solid var(--ac);outline-offset:1px;border-radius:4px}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);color:var(--tx);font:13.5px/1.45 var(--ui);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit;margin:0}
+button{cursor:default}
+a{color:var(--ac-tx);cursor:pointer;text-decoration:none}
+a:hover{text-decoration:underline}
+code{font:12px var(--mono);background:var(--well);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:6px}
+svg.i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .grow{flex:1}
-.mono{font-family:var(--mono)}
 .muted{color:var(--tx3)}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--tx3);display:inline-block;flex:none}
-.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}.dot.warn{background:var(--warn)}.dot.ac{background:var(--ac)}
-@keyframes pulse{0%{box-shadow:0 0 0 0 var(--ac)}70%{box-shadow:0 0 0 5px transparent}100%{box-shadow:0 0 0 0 transparent}}
-@keyframes shimmer{to{transform:translateX(100%)}}
-@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+::-webkit-scrollbar{width:12px;height:12px}
+::-webkit-scrollbar-thumb{background:var(--line3);border-radius:6px;border:4px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent}
 
-/* ── header ─────────────────────────────────────── */
-.top{height:54px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--card)}
-.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;letter-spacing:.1px}
-.logo{width:22px;height:22px;border-radius:6px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
-.logo svg{color:var(--ink-tx)}
-.chip{font:11px var(--mono);color:var(--tx3);padding:2.5px 8px;border:1px solid var(--line2);border-radius:999px;margin-left:2px;background:var(--bg)}
-.bar-btn{height:32px;padding:0 10px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--tx2);display:inline-flex;align-items:center;gap:7px;font-size:12.5px}
-.bar-btn:hover{background:var(--hover);color:var(--tx);border-color:var(--line)}
-.bar-btn.on{background:var(--hover);color:var(--tx);border-color:var(--line2)}
-.bar-btn svg{width:16px;height:16px}
-.live{min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--ac);color:#fff;font:600 10px/16px var(--mono);text-align:center}
-
-/* update banner + notice line */
-.banner,.notice{display:flex;align-items:center;gap:10px;padding:7px 16px;border-bottom:1px solid var(--line);background:var(--warn-soft);font-size:12.5px;color:var(--tx2)}
-.banner b,.notice b{color:var(--tx);font-weight:600}
-.notice{padding:6px 16px}
-.notice a{color:var(--tx);cursor:pointer;text-decoration:underline dotted}
-
-/* ── setup bar ──────────────────────────────────── */
-.setup{flex:none;display:flex;align-items:center;gap:4px;padding:12px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap;row-gap:8px}
-.seg{display:flex;border:1px solid var(--line2);border-radius:9px;padding:3px;background:var(--card);gap:2px;flex:none}
-.seg button{height:28px;padding:0 9px;border:0;background:transparent;border-radius:7px;color:var(--tx2);font-size:12.5px;font-weight:500;transition:background .13s,color .13s;white-space:nowrap}
-.seg button:hover{color:var(--tx)}
-.seg button.on{background:var(--ink);color:var(--ink-tx)}
-.seg.small button{height:24px;padding:0 9px;font-size:12px}
-.sep{width:1px;height:22px;background:var(--line2);flex:none;margin:0 2px}
-.ctl{height:34px;flex:none;display:flex;align-items:center;gap:5px;padding:0 7px;background:var(--card);border:1px solid var(--line2);border-radius:9px;color:var(--tx2);font-size:11px;font-weight:500;white-space:nowrap}
-.ctl:hover{border-color:var(--line3)}
-.ctl select{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:var(--tx);font-size:12.5px;font-weight:500;cursor:pointer;padding:0 16px 0 2px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%239099a6' stroke-width='1.8'%3E%3Cpath d='m3.5 5 2.5 2.5L8.5 5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 2px center;outline:none;max-width:210px;text-overflow:ellipsis}
-.ctl select option{background:var(--card);color:var(--tx)}
-.ratio{font:11px var(--mono);color:var(--tx3);flex:none;padding:0 2px}
-.ctl.path{color:var(--tx3);min-width:0;flex:0 1 auto}
-.ctl.path svg{width:14px;height:14px}
-.ctl.path .txt{font:12px var(--mono);color:var(--tx2);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:0 1 auto}
-#outbtn{flex:1 1 120px;max-width:max-content}   /* shrinks and ellipsizes before the strip wraps */
-.ctl.path .x{width:18px;height:18px;border:0;background:transparent;border-radius:4px;color:var(--tx3);display:flex;align-items:center;justify-content:center;margin-right:-6px;padding:0}
-.ctl.path .x:hover{background:var(--hover);color:var(--tx)}
-.ctl.path .x svg{width:10px;height:10px}
-.ctl.dashed{border-style:dashed;color:var(--tx3);cursor:pointer}
-.ctl.dashed .txt{color:var(--tx3);font-family:var(--sans);font-size:12.5px}
-.ctl.dashed:hover{color:var(--tx);border-color:var(--line3)}
-.ctl.dashed:hover .txt{color:var(--tx)}
-.ctl.dashed.need{border-color:var(--warn)}
-.ctl.dashed.need .txt{color:var(--warn)}
-.switch{appearance:none;-webkit-appearance:none;width:30px;height:18px;border-radius:999px;background:var(--line2);border:1px solid var(--line2);position:relative;flex:none;cursor:pointer;margin:0;transition:background .15s,border-color .15s}
-.switch::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
-.switch:checked{background:var(--ac);border-color:var(--ac)}
-.switch:checked::after{transform:translateX(12px)}
-.swlabel{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);flex:none;cursor:pointer;user-select:none;height:34px;padding:0 3px}
-.ic2{width:32px;height:32px;flex:none;border:1px solid var(--line2);background:var(--card);border-radius:9px;color:var(--tx3);display:flex;align-items:center;justify-content:center}
-.ic2:hover,.ic2.on{border-color:var(--line3);color:var(--tx)}
-.ic2 svg{width:15px;height:15px}
-
-/* more-options popover */
-.pop{position:fixed;top:0;left:0;width:290px;background:var(--card);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow);padding:14px;display:none;z-index:40;flex-direction:column;gap:14px}
-.pop.open{display:flex}
-.plabel{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3)}
-.plabel .plain{text-transform:none;letter-spacing:0;font-weight:400}
-.pgroup{display:flex;flex-direction:column;gap:7px}
-.pgroup .hint{font-size:11.5px;color:var(--tx3);line-height:1.4}
-.pop select,.pop input{height:30px;width:100%;background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:0 9px;font-size:12.5px;color:var(--tx);outline:none}
-.pop select:hover,.pop input:hover{border-color:var(--line3)}
-.pop select:focus,.pop input:focus{border-color:var(--ac)}
-.pop .row{display:flex;gap:8px}
-.pop .row select,.pop .row input{flex:1}
-.step{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line2);border-radius:7px;background:var(--bg);padding:2px;height:30px;align-self:flex-start}
-.step button{width:24px;height:24px;border:0;background:transparent;border-radius:5px;color:var(--tx3);display:flex;align-items:center;justify-content:center;padding:0}
-.step button:hover{background:var(--card);color:var(--tx)}
-.step button svg{width:11px;height:11px}
-.step .v{min-width:26px;text-align:center;font:600 12px var(--mono)}
-
-/* ── work area: queue + activity pane ───────────── */
-.work{flex:1;min-height:0;display:flex;flex-direction:column}
-.queue{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
-.qhead{height:46px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px 0 25px;border-bottom:1px solid var(--line);background:var(--bg2)}
-.qhead h1{font-size:14px;font-weight:600;margin:0 0 0 4px}
-.sum{color:var(--tx3);font-size:12.5px;font-variant-numeric:tabular-nums}
-.selinfo{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);margin-left:6px;padding-left:10px;border-left:1px solid var(--line2)}
-.btn{height:31px;padding:0 12px;border-radius:8px;border:1px solid var(--line2);background:var(--card);display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:500;color:var(--tx);white-space:nowrap;transition:background .12s,border-color .12s}
-.btn:hover{background:var(--hover);border-color:var(--line3)}
-.btn:disabled{opacity:.4;cursor:default}
-.btn:disabled:hover{background:var(--card);border-color:var(--line2)}
-.btn svg{width:14px;height:14px}
-.btn.ghost{border-color:transparent;background:transparent;color:var(--tx2)}
-.btn.ghost:hover{background:var(--hover);color:var(--tx);border-color:transparent}
-.btn.ghost:disabled:hover{background:transparent}
-.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--ink-tx);font-weight:600}
-.btn.primary:not(:disabled):hover{background:var(--tx);border-color:var(--tx)}
+/* ── buttons ─────────────────────────────────────── */
+.btn{height:32px;padding:0 13px;border-radius:7px;border:1px solid var(--btn-edge);background:linear-gradient(var(--btn-top),var(--btn-bot));box-shadow:inset 0 1px 0 var(--hi),var(--drop);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:550;white-space:nowrap;color:var(--tx);transition:border-color .12s,box-shadow .12s,transform .06s,filter .12s}
+.btn:hover:not(:disabled){background:linear-gradient(var(--btn-top-h),var(--btn-bot-h));border-color:var(--line3)}
+.btn:active:not(:disabled){transform:translateY(1px);box-shadow:inset 0 1px 2px rgba(0,0,0,.28)}
+.btn:disabled{opacity:.42}
+.btn .i{width:15px;height:15px}
+.btn.primary{background:linear-gradient(var(--ac-top),var(--ac-bot));border-color:var(--ac-edge);color:var(--on-ac);font-weight:650;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 1px 2px rgba(0,0,0,.3),0 4px 14px -6px rgba(242,163,58,.55)}
+.btn.primary:hover:not(:disabled){background:linear-gradient(var(--ac-top),var(--ac-bot));border-color:var(--ac-edge);filter:brightness(1.06)}
+.btn.primary:active:not(:disabled){filter:brightness(.95);box-shadow:inset 0 1px 3px rgba(0,0,0,.25)}
+.btn.ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--tx2)}
+.btn.ghost:hover:not(:disabled){background:var(--raised);border-color:var(--line2);color:var(--tx)}
 .btn.danger{color:var(--bad)}
-.btn.sm{height:26px;padding:0 10px;font-size:12px;border-radius:7px}
-.total{height:2px;flex:none;background:var(--line);opacity:0;transition:opacity .2s}
-.total.on{opacity:1}
-.total i{display:block;height:100%;width:0;background:var(--ac);transition:width .4s}
-
-.qbody{flex:1;min-height:0;overflow:auto;padding:8px 16px 20px;position:relative}
-.sec-h{position:sticky;top:0;z-index:2;height:30px;display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);background:var(--bg);margin:6px -8px 4px;padding:0 8px}
-.sec-h .cnt{font:600 10px var(--mono);color:var(--tx3);background:var(--line);border-radius:999px;padding:1px 7px}
-.trow{display:grid;grid-template-columns:26px minmax(200px,1.3fr) 190px minmax(150px,.9fr) 92px 108px;gap:12px;align-items:center;min-height:48px;padding:5px 10px 5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);margin-bottom:5px;transition:border-color .12s,background .12s}
-.trow:hover{border-color:var(--line3);background:var(--hover)}
-.trow.job{cursor:pointer}
-.trow.sel{border-color:var(--ac);background:var(--sel)}
-.cb{width:15px;height:15px;border:1.5px solid var(--line3);border-radius:4.5px;background:var(--card);appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;flex:none;position:relative;transition:background .12s,border-color .12s}
-.cb:hover{border-color:var(--tx3)}
-.cb:checked,.cb:indeterminate{background:var(--ac);border-color:var(--ac)}
-.cb:checked::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(45deg)}
-.cb:indeterminate::after{content:"";position:absolute;left:3px;right:3px;top:5.5px;height:1.8px;background:#fff}
-.fcol{min-width:0}
-.n{font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.s{font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;display:flex;align-items:center;gap:7px;min-width:0}
-.s .grow{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.s b{font-weight:500;color:var(--tx2)}
-.s .warn{color:var(--warn)}
-.fps-txt{font:11.5px var(--mono);color:var(--tx3)}
-.fps-txt.hit{color:var(--ok)}
-.tracksel{border:0;background:transparent;color:var(--tx2);font:500 11px var(--mono);cursor:pointer;border-bottom:1px dashed var(--line3);padding:0 0 1px;outline:none;max-width:170px;text-overflow:ellipsis;flex:none;appearance:none;-webkit-appearance:none}
-.tracksel option{background:var(--card);color:var(--tx)}
-.tracksel.plain{border-bottom:0;cursor:default}
-select.mini{height:26px;width:100%;background:var(--card);border:1px solid var(--line2);border-radius:7px;color:var(--tx);font:12px var(--mono);padding:0 22px 0 8px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%239099a6' stroke-width='1.8'%3E%3Cpath d='m3.5 5 2.5 2.5L8.5 5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;cursor:pointer;outline:none}
-select.mini:hover{border-color:var(--line3)}
-select.mini option{background:var(--card)}
-select.mini.suggested{border-color:var(--ok)}
-.why{font:11px var(--mono);color:var(--ok);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.why.warn{color:var(--warn)}
-.plan{font:12px var(--mono);color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar2{height:4px;border-radius:2px;background:var(--line2);overflow:hidden;position:relative}
-.bar2 i{display:block;height:100%;width:0;background:var(--ac);border-radius:2px;transition:width .35s;position:relative}
-.bar2.running i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);transform:translateX(-100%);animation:shimmer 2.2s linear infinite}
-.bar2.done i,.bar2.skipped i{background:var(--ok)}
-.bar2.failed i{background:var(--bad)}
-.bar2.cancelled i{background:var(--warn)}
-.bar2.wait i{width:100%;background:var(--line)}
-.det{font:11px var(--mono);color:var(--tx3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.det .out{color:var(--ok)}
-.det .err{color:var(--bad)}
-.det .eta{color:var(--tx2)}
-.st{font-size:12.5px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;color:var(--tx2)}
-.st i{width:7px;height:7px;border-radius:50%;background:var(--tx3);flex:none}
-.st.running{color:var(--tx)}
-.st.running i{background:var(--ac);animation:pulse 1.6s ease-out infinite}
-.st.done,.st.skipped{color:var(--tx)}
-.st.done i,.st.skipped i{background:var(--ok)}
-.st.failed{color:var(--bad)}
-.st.failed i{background:var(--bad)}
-.st.cancelled i{background:var(--warn)}
-.acts{display:flex;gap:2px;justify-content:flex-end;opacity:0;transition:opacity .12s}
-.trow:hover .acts,.trow.sel .acts{opacity:1}
-.ib{width:27px;height:27px;border:0;background:transparent;border-radius:6px;color:var(--tx3);display:inline-flex;align-items:center;justify-content:center;padding:0}
-.ib:hover{background:var(--card);color:var(--tx);box-shadow:inset 0 0 0 1px var(--line2)}
+.btn.lg{height:40px;padding:0 18px;font-size:14px;border-radius:9px;gap:9px}
+.btn.lg .i{width:16px;height:16px}
+.btn.sm{height:28px;padding:0 10px;font-size:12.5px;border-radius:6px}
+.btn .cnt{font:650 12px/18px var(--mono);padding:0 7px;border-radius:9px;background:rgba(0,0,0,.16)}
+.ib{width:34px;height:34px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--tx2);display:grid;place-items:center;position:relative;transition:background .12s,color .12s}
+.ib:hover{background:var(--raised);border-color:var(--line2);color:var(--tx)}
+.ib:active{transform:translateY(1px)}
+.ib.on{background:var(--raised);border-color:var(--line2);color:var(--ac-tx)}
+.ib.sm{width:28px;height:28px;border-radius:6px}
+.ib.sm .i{width:15px;height:15px}
 .ib.danger:hover{color:var(--bad)}
-.ib svg{width:13px;height:13px}
-.ib svg.r{width:15px;height:15px}
+.badge{position:absolute;top:2px;right:0;min-width:15px;height:15px;padding:0 4px;border-radius:8px;background:var(--ac);color:var(--on-ac);font:700 10px/15px var(--ui);text-align:center}
+/* switch */
+.sw{display:inline-flex;align-items:center;gap:10px;cursor:default;user-select:none;position:relative}
+.sw input{position:absolute;opacity:0;width:1px;height:1px}
+.sw .trk{width:36px;height:20px;border-radius:10px;background:var(--sw-off);box-shadow:inset 0 1px 2px rgba(0,0,0,.3);position:relative;transition:background .15s;flex:none}
+.sw .trk::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--knob);box-shadow:0 1px 3px rgba(0,0,0,.35),0 0 0 .5px rgba(0,0,0,.1);transition:transform .16s cubic-bezier(.3,.7,.4,1.2)}
+.sw input:checked + .trk{background:linear-gradient(var(--ac-top),var(--ac-bot))}
+.sw input:checked + .trk::after{transform:translateX(16px)}
+.sw input:focus-visible + .trk{outline:2px solid var(--ac);outline-offset:2px}
+.sw input:disabled + .trk{opacity:.45}
+.sw:active .trk::after{width:19px}
+.sw input:checked:active + .trk::after{transform:translateX(13px)}
+/* checkbox */
+.cb{appearance:none;-webkit-appearance:none;width:16px;height:16px;margin:0;border-radius:4px;border:1px solid var(--line3);background:var(--well);display:inline-grid;place-items:center;flex:none;vertical-align:middle;transition:background .1s}
+.cb:hover{border-color:var(--tx3)}
+.cb:checked,.cb:indeterminate{background:var(--ac);border-color:var(--ac-edge)}
+.cb:checked::after{content:"";width:8px;height:4px;border-left:1.6px solid var(--on-ac);border-bottom:1.6px solid var(--on-ac);transform:translateY(-1px) rotate(-45deg)}
+.cb:indeterminate::after{content:"";width:8px;height:1.6px;background:var(--on-ac)}
+.cbl{display:inline-flex;align-items:center;gap:8px;cursor:default}
+/* segmented */
+.seg{display:inline-flex;padding:2px;gap:2px;border-radius:7px;background:var(--well);border:1px solid var(--line2);box-shadow:var(--inset)}
+.seg button{height:26px;padding:0 11px;border:0;border-radius:5px;background:transparent;color:var(--tx2);font-size:12.5px;white-space:nowrap}
+.seg button:hover:not(.on):not(:disabled){color:var(--tx)}
+.seg button.on{background:linear-gradient(var(--btn-top-h),var(--btn-bot));color:var(--tx);box-shadow:inset 0 1px 0 var(--hi),0 1px 2px rgba(0,0,0,.3);font-weight:550}
+.seg button:disabled{opacity:.4}
+/* inputs */
+.in{height:32px;min-width:0;flex:1;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--well);box-shadow:var(--inset);font:12.5px var(--mono);color:var(--tx)}
+.in:focus{border-color:var(--ac-line)}
+.in::placeholder{color:var(--tx3)}
+.num-in{width:96px;flex:none}
+select.mini{appearance:none;-webkit-appearance:none;height:26px;max-width:100%;padding:0 24px 0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--well) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238a8e96' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 6px center/14px;font:12px var(--mono);color:var(--tx);box-shadow:var(--inset)}
+select.mini:hover{border-color:var(--line3)}
+select.mini.suggested{border-color:var(--ac-line);color:var(--ac-tx)}
 
-.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--tx3);text-align:center;padding:40px}
-.empty .drop{width:140px;height:90px;border:1.5px dashed var(--line3);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--tx3);background:var(--bg2);transition:border-color .15s,color .15s}
-.empty .drop svg{width:22px;height:22px}
-.empty .drop span{font-size:11px}
-.empty b{color:var(--tx2);font-weight:500;font-size:14px}
-.empty span.hint{max-width:460px;line-height:1.5}
-.empty .row{margin-top:12px;display:flex;gap:8px}
-.empty kbd{font:11px var(--mono);color:var(--tx3);border:1px solid var(--line2);border-radius:4px;padding:0 5px;background:var(--card)}
-body.dragging .empty .drop{border-color:var(--ac);color:var(--ac)}
-.dropcue{position:absolute;inset:10px;border:2px dashed var(--ac);border-radius:14px;background:var(--ac-soft);display:none;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--ac);z-index:5;pointer-events:none}
-body.dragging .dropcue{display:flex}
+/* ── header ──────────────────────────────────────── */
+.header{height:52px;flex:none;display:flex;align-items:stretch;padding:0 10px 0 18px;background:var(--chrome);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;margin-right:26px}
+.brand b{font-size:15px;font-weight:650;letter-spacing:-.01em}
+.mark{width:24px;height:24px;border-radius:6px;background:linear-gradient(var(--ac-top),var(--ac-bot));color:var(--on-ac);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.mark .i{width:15px;height:15px;stroke-width:2.2}
+.tabs{display:flex;gap:2px}
+.tabs button{position:relative;border:0;background:none;padding:0 14px;color:var(--tx2);font-size:14px;font-weight:500}
+.tabs button:hover{color:var(--tx)}
+.tabs button.on{color:var(--tx);font-weight:600}
+.tabs button.on::after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:2px;border-radius:2px 2px 0 0;background:var(--ac)}
+.hr{display:flex;align-items:center;gap:6px;margin-left:auto}
+.hsep{width:1px;height:22px;background:var(--line2);margin:0 6px}
 
-/* activity panel — docked at the bottom, drag its top edge to resize */
-.act{flex:none;height:0;overflow:hidden;background:var(--card);display:flex;flex-direction:column;transition:height .2s cubic-bezier(.3,.8,.3,1);position:relative}
-.act.open{height:var(--act-h,260px);border-top:1px solid var(--line)}
-.act.resizing{transition:none}
-.drag{height:6px;margin-bottom:-6px;cursor:ns-resize;flex:none;position:relative;z-index:3}
-.drag::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:transparent;transition:background .12s}
-.drag:hover::after,.act.resizing .drag::after{background:var(--ac)}
-.act-h{height:40px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px 0 6px;border-bottom:1px solid var(--line)}
-.act-h .sub{font:12px var(--mono);color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;margin-left:4px}
-.act-h input[type=text]{height:26px;width:200px;background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:0 9px;font-size:12px;color:var(--tx);outline:none}
-.act-h input[type=text]:focus{border-color:var(--ac)}
-.act-h label{font-size:12px;color:var(--tx3);display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;margin:0 4px}
-.pane-h{height:48px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px 0 18px;border-bottom:1px solid var(--line);font-weight:600;font-size:13.5px}
-.pane-ft{height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;border-top:1px solid var(--line)}
-.ic{width:28px;height:28px;border:0;background:transparent;border-radius:6px;color:var(--tx3);display:inline-flex;align-items:center;justify-content:center;padding:0}
-.ic:hover{background:var(--hover);color:var(--tx)}
-.ic svg{width:13px;height:13px}
-.tabs{display:flex;gap:2px;flex:none;align-self:stretch}
-.tab{height:40px;padding:0 12px;border:0;background:transparent;color:var(--tx3);font-size:12.5px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
-.tab:hover{color:var(--tx)}
-.tab.on{color:var(--tx);border-bottom-color:var(--ink)}
-.logv{flex:1;overflow:auto;padding:8px 14px 12px;font:12px/1.6 var(--mono);color:var(--tx2)}
-/* Progress tab: one line of files, one line of numbers, a plain list of stages */
-.prog{flex:1;min-height:0;overflow:auto;padding:14px 18px 14px;display:flex;flex-direction:column;gap:10px}
-.prog>*{flex:none}
-.p-files{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:13px}
-.p-files .from{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
-.p-files .arr{color:var(--tx3);flex:none}
-.p-files .to{font:12px var(--mono);color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0}
-.p-files .to.ok{color:var(--ok)}
-.p-files .meta{margin-left:auto;flex:none;font-size:12px;color:var(--tx3);white-space:nowrap}
-.p-line{display:flex;align-items:baseline;gap:14px;font:12px var(--mono);color:var(--tx3);white-space:nowrap;min-width:0}
-.p-line .pct{font-size:13px;font-weight:600;color:var(--tx);min-width:38px}
-.p-line .pct.done{color:var(--ok)}.p-line .pct.failed{color:var(--bad)}.p-line .pct.cancelled{color:var(--warn)}
-.p-line .now{color:var(--tx2);overflow:hidden;text-overflow:ellipsis;min-width:0}
-.p-line .right{margin-left:auto;flex:none}
-.p-line .right b{color:var(--tx);font-weight:500}
-.stages{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:18px auto 1fr;column-gap:10px;row-gap:5px;align-items:baseline;max-width:640px;font-size:12.5px}
-.stages li{display:contents}
-.stages .mk{width:18px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:var(--tx3);font-size:11px}
-.stages .mk svg{width:12px;height:12px}
-.stages .nm{color:var(--tx3);white-space:nowrap}
-.stages .tm{font:12px var(--mono);color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.stages li.done .nm{color:var(--tx2)}.stages li.done .mk{color:var(--ok)}
-.stages li.running .nm{color:var(--tx);font-weight:500}.stages li.running .mk{color:var(--ac)}.stages li.running .tm{color:var(--tx2)}
-.stages li.running .mk i{width:7px;height:7px;border-radius:50%;background:var(--ac);display:block;animation:pulse 1.6s ease-out infinite}
-.stages li.failed .nm,.stages li.failed .tm,.stages li.failed .mk{color:var(--bad)}
-.stages li.cancelled .nm,.stages li.cancelled .tm,.stages li.cancelled .mk{color:var(--warn)}
-.p-err{font:12px var(--mono);color:var(--bad);white-space:pre-wrap;word-break:break-word;margin-top:2px}
-.p-empty{color:var(--tx3);font-size:12.5px}
-.logv .l{white-space:pre-wrap;word-break:break-all}
-.logv .t{color:var(--tx3)}
-.logv .WARNING{color:var(--warn)}
-.logv .ERROR{color:var(--bad)}
-.logv .src{color:var(--tx3)}
+/* ── job bar ─────────────────────────────────────── */
+.jobbar{position:relative;flex:none;display:flex;align-items:flex-end;gap:12px;padding:10px 16px 12px 18px;background:var(--surface);border-bottom:1px solid var(--line)}
+.fc{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fc.grow{flex:1 1 170px}
+.ml{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);padding-left:1px;white-space:nowrap}
+.ro{height:36px;display:inline-flex;align-items:center;gap:8px;padding:0 10px 0 12px;border-radius:7px;border:1px solid var(--line2);background:var(--well);box-shadow:var(--inset);font-size:13.5px;white-space:nowrap;min-width:0;text-align:left;transition:border-color .12s}
+.ro:hover{border-color:var(--line3)}
+.ro.open{border-color:var(--ac)}
+.ro.need{border-color:var(--bad);box-shadow:0 0 0 3px var(--bad-soft)}
+.ro .v{font-size:16px;font-weight:600}
+.ro .u{font-size:12px;color:var(--tx3);margin-left:-3px}
+.ro .chv{width:14px;height:14px;color:var(--tx3);margin-left:auto}
+.ro .ico{color:var(--tx2)}
+.ro .path{overflow:hidden;text-overflow:ellipsis;font-size:12.5px;min-width:0}
+.ro.dashed{border-style:dashed;background:transparent;box-shadow:none;color:var(--tx2)}
+.ro.dashed:hover{color:var(--tx)}
+.ro.set{border-color:var(--ac-line);background:var(--ac-soft)}
+.ro .fpsv{font:12px var(--mono);color:var(--ac-tx)}
+.ro .clr{width:22px;height:22px;margin-right:-4px;border:0;border-radius:5px;background:transparent;display:grid;place-items:center;color:var(--tx3)}
+.ro .clr:hover{background:var(--raised-h);color:var(--tx)}
+.ro .clr .i{width:13px;height:13px}
+/* LED toggle — a hardware-style on/off button */
+.led{height:36px;display:inline-flex;align-items:center;gap:9px;padding:0 14px 0 12px;border-radius:7px;border:1px solid var(--btn-edge);background:linear-gradient(var(--btn-top),var(--btn-bot));box-shadow:inset 0 1px 0 var(--hi),var(--drop);font-size:13px;font-weight:600;color:var(--tx2);transition:color .12s,border-color .12s}
+.led:hover:not(:disabled){border-color:var(--line3);color:var(--tx)}
+.led:active:not(:disabled){transform:translateY(1px);box-shadow:inset 0 1px 2px rgba(0,0,0,.3)}
+.led .lamp{width:9px;height:9px;border-radius:50%;background:var(--sw-off);box-shadow:inset 0 1px 1px rgba(0,0,0,.45);transition:background .15s,box-shadow .15s}
+.led.on{color:var(--tx);border-color:var(--ac-line)}
+.led.on .lamp{background:radial-gradient(circle at 35% 35%,#ffe2b0,var(--ac) 60%);box-shadow:0 0 0 3px var(--ac-soft),0 0 10px 1px rgba(242,163,58,.65)}
+.led:disabled{opacity:.45}
+.arrow{height:36px;display:grid;place-items:center;color:var(--tx3)}
+.speed{height:36px;display:flex;flex-direction:column;justify-content:center;font-size:12px;line-height:16px;color:var(--tx2);white-space:nowrap}
+.speed span+span{color:var(--tx3)}
+.vsep{width:1px;height:36px;background:var(--line);margin:0 2px;flex:none}
+.go{display:flex;align-items:center;gap:10px;padding-left:4px}
+.go .meta{font-size:12px;line-height:16px;color:var(--tx2);text-align:right;white-space:nowrap}
+.go .meta b{display:block;color:var(--tx);font-weight:600;font-size:13px}
+.toplp{position:absolute;left:0;bottom:-1px;height:2px;background:var(--ac);transition:width .45s ease,opacity .3s}
 
-/* ── settings dialog ────────────────────────────── */
-.dlg.settings{width:840px;height:min(640px,88vh)}
-.dlg.settings .body{flex:1;min-height:0;display:flex}
-.snav{width:150px;flex:none;border-right:1px solid var(--line);padding:8px 6px;display:flex;flex-direction:column;gap:1px;overflow:auto}
-.snav button{height:31px;padding:0 10px;border:0;background:transparent;border-radius:7px;color:var(--tx2);font-size:12.5px;text-align:left;display:flex;align-items:center;gap:9px;white-space:nowrap}
-.snav button:hover{background:var(--hover);color:var(--tx)}
-.snav button.on{background:var(--ac-soft);color:var(--ac);font-weight:600}
-.snav button svg{width:14px;height:14px}
-.sbody{flex:1;min-width:0;overflow:auto;padding:18px 22px 22px;display:flex;flex-direction:column;gap:22px}
-.ssec h3{margin:0 0 12px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3)}
-.ssec h3.gap{margin-top:22px}
-.toolrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);min-height:38px}
+/* ── content ─────────────────────────────────────── */
+.content{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:14px 16px 16px;position:relative}
+.banner{display:flex;align-items:center;gap:12px;padding:7px 8px 7px 14px;border-radius:9px;background:var(--warn-bg);border:1px solid var(--warn-line);font-size:13px;flex:none}
+.banner > .i{color:var(--ac-tx)}
+.banner.bad{background:var(--bad-bg);border-color:var(--bad-line)}
+.banner.bad > .i{color:var(--bad)}
+.banner b{font-weight:600}
+.banner .txt{flex:1;min-width:0}
+.table{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.cols{display:grid;grid-template-columns:46px minmax(0,1.5fr) minmax(180px,1fr) 86px 176px 200px 104px;align-items:center}
+.th{height:38px;flex:none;border-bottom:1px solid var(--line);font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+.th.bulk{background:var(--ac-soft);text-transform:none;letter-spacing:0;font-size:13px;color:var(--tx)}
+.th .end{display:flex;justify-content:flex-end;padding-right:12px}
+.th .end .btn{text-transform:none;letter-spacing:0}
+.bulkbar{grid-column:2/-1;display:flex;align-items:center;gap:8px;padding:0 12px}
+.tbody{flex:1;overflow:auto}
+.grp{display:flex;align-items:center;gap:8px;height:28px;padding:0 16px;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);background:var(--surface);border-bottom:1px solid var(--line)}
+.grp .n{font:600 11px var(--mono);color:var(--tx2);letter-spacing:0}
+.tr{position:relative;border-bottom:1px solid var(--line)}
+.tr > .cols{min-height:58px;position:relative;cursor:default}
+.tr:hover > .cols{background:var(--hover)}
+.tr.open{background:var(--hover)}
+.c{padding:0 12px;min-width:0}
+.c.f{padding-left:16px;display:flex;align-items:center}
+.fname{font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsub{font-size:11.5px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.tags{display:flex;gap:5px;align-items:center;flex-wrap:nowrap;overflow:hidden}
+.tag{font:600 10.5px/18px var(--mono);padding:0 6px;border-radius:4px;border:1px solid var(--line2);color:var(--tx2);white-space:nowrap}
+.tag.atmos{border-color:var(--ac-line);color:var(--ac-tx)}
+.tag.fps{border-style:dashed}
+.tag.fps.hit{border-color:var(--ok);color:var(--ok);border-style:solid}
+.tag.warn{border-color:var(--warn-line);color:var(--warn)}
+.l2{margin-top:4px;font-size:11.5px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.l2 select.mini{height:22px;font-size:11.5px}
+.dur{font-size:13px;color:var(--tx2)}
+.outc{display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;min-width:0}
+.outc > .i{width:14px;height:14px;color:var(--tx3)}
+.outc span{overflow:hidden;text-overflow:ellipsis}
+.why{font-size:11.5px;color:var(--tx3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.why.sug{color:var(--ac-tx)}
+.why.warn{color:var(--warn)}
+.st{display:flex;align-items:center;gap:8px;font-size:13px;min-width:0}
+.st .pct{margin-left:auto;font-size:12.5px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--tx3);flex:none}
+.dot.q{background:transparent;border:1.5px solid var(--tx3)}
+.dot.run{background:var(--ac);box-shadow:0 0 0 3px var(--ac-soft);animation:blink 1.6s ease-in-out infinite}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)} .dot.warn{background:var(--warn)}
+@keyframes blink{50%{opacity:.45}}
+.sub{font-size:11.5px;color:var(--tx3);margin-top:2px;padding-left:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub.bad{color:var(--bad)}
+.rowline{position:absolute;left:0;bottom:-1px;height:2px;background:var(--ac);transition:width .45s ease;z-index:1}
+.acts{display:flex;justify-content:flex-end;gap:2px;padding-right:10px}
+.acts .h{opacity:0}
+.tr:hover .acts .h,.tr:focus-within .acts .h,.tr.failed .acts .h,.tr.cancelled .acts .h{opacity:1}
+.chev-r{transition:transform .15s}
+.tr.open .chev-r{transform:rotate(180deg)}
+/* expanded row */
+.exp{padding:6px 18px 18px 62px;display:grid;gap:16px}
+.pipe{display:flex;align-items:flex-start;padding-right:8px}
+.node{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.node .b{display:flex;align-items:center}
+.node .k{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line3);background:var(--card);display:grid;place-items:center;flex:none;color:var(--tx3)}
+.node .k .i{width:10px;height:10px;stroke-width:2.6}
+.node .ln{flex:1;height:1.5px;background:var(--line2);margin:0 8px}
+.node:last-child{flex:0 0 auto}
+.node:last-child .ln{display:none}
+.node .nl{font-size:12.5px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:10px}
+.node .nt{font-size:11.5px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:10px}
+.node.done .k{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.node.done .ln{background:var(--ok)}
+.node.done .nl{color:var(--tx2)}
+.node.run .k{border-color:var(--ac)}
+.node.run .k::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--ac);animation:blink 1.2s ease-in-out infinite}
+.node.run .nl{color:var(--tx);font-weight:600}
+.node.run .nt{color:var(--ac-tx)}
+.node.fail .k{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.node.fail .nl{color:var(--bad)}
+.node.skip .k{border-style:dashed}
+.node.skip .ln{background:var(--line3)}
+.xgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+.kv{display:grid;grid-template-columns:76px minmax(0,1fr);gap:5px 12px;margin:0;font-size:12px;align-content:start}
+.kv dt{color:var(--tx3)}
+.kv dd{margin:0;font-family:var(--mono);color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kv dd.err{color:var(--bad);white-space:normal}
+.notes{margin:8px 0 0;padding-left:16px;font-size:12px;color:var(--warn)}
+.minilog{margin:0;font:11.5px/17px var(--mono);color:var(--tx2);background:var(--well);border:1px solid var(--line);border-radius:7px;padding:8px 10px;max-height:120px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.xact{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+/* empty */
+.empty{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
+.drop{width:min(540px,100%);padding:36px 28px 30px;border:1px dashed var(--line3);border-radius:13px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;background:var(--well)}
+.drop .di{width:44px;height:44px;border-radius:11px;border:1px solid var(--btn-edge);background:linear-gradient(var(--btn-top),var(--btn-bot));box-shadow:inset 0 1px 0 var(--hi);display:grid;place-items:center;color:var(--ac-tx);margin-bottom:6px}
+.drop .di .i{width:20px;height:20px}
+.drop h3{margin:0;font-size:16px;font-weight:600}
+.drop p{margin:0;color:var(--tx3);font-size:12.5px}
+.drop .btns{display:flex;gap:8px;margin-top:12px}
+.drop .fmts{font:11px var(--mono);color:var(--tx3);letter-spacing:.03em;margin-top:14px}
+.drop kbd{font:11px var(--mono);padding:0 5px;border-radius:4px;border:1px solid var(--line2);background:var(--raised)}
+.dropcue{position:absolute;inset:14px 16px 16px;border:2px dashed var(--ac);border-radius:12px;background:color-mix(in srgb,var(--bg) 82%,transparent);display:none;place-items:center;font-size:17px;font-weight:600;color:var(--ac-tx);z-index:8;pointer-events:none}
+body.dragging .dropcue{display:grid}
+
+/* ── status bar ──────────────────────────────────── */
+.status{height:28px;flex:none;display:flex;align-items:center;gap:16px;padding:0 14px;background:var(--chrome);border-top:1px solid var(--line);font-size:12px;color:var(--tx2);z-index:16;white-space:nowrap;overflow:hidden}
+.status .left{overflow:hidden;text-overflow:ellipsis}
+.sbi{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-size:12px;color:inherit}
+button.sbi:hover{color:var(--tx)}
+.sbi .dot{width:6px;height:6px}
+
+/* ── activity console ────────────────────────────── */
+.console{position:absolute;left:0;right:0;bottom:28px;height:var(--con-h,260px);display:flex;flex-direction:column;background:var(--surface);border-top:1px solid var(--line2);box-shadow:0 -16px 40px rgba(0,0,0,.3);z-index:15}
+.condrag{position:absolute;left:0;right:0;top:-3px;height:6px;cursor:ns-resize}
+.conh{display:flex;align-items:center;gap:8px;height:42px;padding:0 8px 0 10px;border-bottom:1px solid var(--line);flex:none}
+.conh .sub2{font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:30%}
+.conh .in{flex:0 1 180px;height:28px}
+.logv{flex:1;overflow:auto;margin:0;padding:8px 14px;font:12px/18px var(--mono);color:var(--tx2);background:var(--well);white-space:pre-wrap;word-break:break-all}
+.logv .t{color:var(--tx3)} .logv .ERROR,.logv .CRITICAL{color:var(--bad)} .logv .WARNING{color:var(--warn)} .logv .src{color:var(--tx3)}
+
+/* ── popover menus ───────────────────────────────── */
+.pop{position:fixed;z-index:30;min-width:190px;max-height:70vh;overflow:auto;padding:5px;background:var(--pop);border:1px solid var(--line2);border-radius:9px;box-shadow:var(--shadow)}
+.ph{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);padding:8px 10px 6px}
+.mi{display:flex;align-items:center;gap:10px;width:100%;height:32px;padding:0 10px;border:0;border-radius:6px;background:transparent;font-size:13px;text-align:left;white-space:nowrap}
+.mi:hover:not(:disabled){background:var(--raised-h)}
+.mi:disabled{color:var(--tx3)}
+.mi .tick{width:14px;color:var(--ac-tx);display:grid;place-items:center}
+.mi .tick .i{width:14px;height:14px;stroke-width:2.2}
+.mi small{margin-left:auto;padding-left:16px;color:var(--tx3);font-size:12px}
+.msep{height:1px;background:var(--line);margin:4px 2px}
+.ppath{font:12px var(--mono);color:var(--tx2);padding:6px 10px 8px;word-break:break-all;max-width:360px}
+.orow{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:9px 10px;font-size:13px;min-width:350px}
+.orow + .orow{border-top:1px solid var(--line)}
+.orow .hint{display:block;font-size:11.5px;color:var(--tx3)}
+.step{display:inline-flex;align-items:center;border:1px solid var(--line2);border-radius:7px;background:var(--well);box-shadow:var(--inset)}
+.step button{width:28px;height:28px;border:0;background:transparent;color:var(--tx2);font-size:15px;border-radius:6px}
+.step button:hover{color:var(--tx);background:var(--raised-h)}
+.step b{width:26px;text-align:center;font:600 13px var(--mono)}
+
+/* ── settings page ───────────────────────────────── */
+.spage{flex:1;min-height:0;overflow:auto;background:var(--bg)}
+.stop{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;height:61px;padding:0 18px 0 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+.stop h2{margin:0;font-size:16px;font-weight:600}
+.stabs{display:flex;gap:2px;margin-left:18px;align-self:stretch}
+.stabs button{position:relative;border:0;background:none;padding:0 12px;font-size:13px;color:var(--tx2)}
+.stabs button:hover{color:var(--tx)}
+.stabs button.on{color:var(--tx);font-weight:600}
+.stabs button.on::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2px;background:var(--ac);border-radius:2px 2px 0 0}
+.stabs .wd{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ac);margin-left:6px;vertical-align:middle}
+.snote{font-size:12px;color:var(--tx3);white-space:nowrap}
+.sin{max-width:900px;margin:0 auto;padding:22px 24px 40px}
+.sgrp{background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:16px}
+.sgh{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.sgh > span:first-child{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+.sgh .note{font-size:12px;color:var(--tx3)}
+.srow{display:flex;align-items:center;gap:14px;min-height:54px;padding:9px 16px;border-bottom:1px solid var(--line)}
+.srow:last-child{border-bottom:0}
+.srow .tx{min-width:0;flex:1}
+.srow .t{font-size:13.5px}
+.srow .d{font-size:12px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow .d.mono{font-size:11.5px}
+.srow .r{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none}
+.srow .lab{width:130px;flex:none;font-size:13px;color:var(--tx2)}
+.srow.form .in{flex:1}
+.toolrow{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);font-size:13px}
 .toolrow:last-child{border-bottom:0}
-.toolrow .name{width:92px;flex:none;display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--tx);font-weight:500}
-.toolrow .val{flex:1;font:11.5px var(--mono);color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.kvrow{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.kvrow label{width:118px;flex:none;font-size:12.5px;color:var(--tx2)}
-.kvrow .in{height:30px;flex:1;min-width:0;background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:0 10px;font:12px var(--mono);color:var(--tx);outline:none}
-.kvrow .in:hover{border-color:var(--line3)}
-.kvrow .in:focus{border-color:var(--ac)}
-.kvrow .in::placeholder{color:var(--tx3);opacity:1}
-.ssec .help{margin-top:8px;font-size:12px;color:var(--tx3);line-height:1.55}
-.ssec .help code{font-family:var(--mono);font-size:11px;color:var(--tx2)}
-.ssec .help b{color:var(--tx2);font-weight:500}
-.ssec .help a{color:var(--ac);text-decoration:none}
-.ssec .help a:hover{text-decoration:underline}
-.tgrow{display:flex;align-items:center;gap:9px;font-size:13px;cursor:pointer;color:var(--tx2);margin-bottom:12px;user-select:none}
-.tgrow:hover{color:var(--tx)}
-.tgrow .sub{color:var(--tx3)}
-.callout{display:flex;align-items:center;gap:10px;border:1px solid var(--line2);border-left:3px solid var(--warn);border-radius:8px;background:var(--bg);padding:10px 12px;font-size:12.5px;color:var(--tx2);margin:12px 0 4px;line-height:1.45}
-.callout.ok{border-left-color:var(--ok)}
-.callout.bad{border-left-color:var(--bad)}
-.callout .grow{flex:1}
-.stline{display:flex;gap:8px;align-items:center;margin-top:6px}
-.stline .m{font:12px var(--mono);color:var(--tx3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.about{height:100%;display:flex;align-items:center;justify-content:center}
-.about-card{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:28px 0}
-.about-card .logo{width:56px;height:56px;border-radius:16px;margin-bottom:10px}
-.about-card .logo svg{width:26px;height:26px}
-.about-name{font-size:18px;font-weight:600;letter-spacing:.1px}
-.about-ver{font:12px var(--mono);color:var(--tx3)}
-.about-by{margin-top:14px;font-size:13px;color:var(--tx2)}
-.about-by .heart{display:inline-block;margin-left:2px;animation:beat 1.6s ease-in-out infinite;transform-origin:center}
-@keyframes beat{0%,100%{transform:scale(1)}14%{transform:scale(1.2)}28%{transform:scale(1)}42%{transform:scale(1.15)}}
+.toolrow .name{width:120px;flex:none;display:flex;align-items:center;gap:8px;font-weight:550}
+.toolrow .val{flex:1;min-width:0;font:12px var(--mono);color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.callout{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:13px;border-bottom:1px solid var(--line)}
+.callout.ok{background:var(--ok-soft)} .callout.warn{background:var(--warn-bg)} .callout.bad{background:var(--bad-bg)}
+.help{padding:12px 16px;font-size:12.5px;line-height:1.6;color:var(--tx2);border-top:1px solid var(--line)}
+details.help summary{cursor:default;color:var(--tx);font-weight:550}
+details.help[open] summary{margin-bottom:8px}
+.stline{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--tx2)}
+.about{display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px 16px 22px;text-align:center}
+.about .mark{width:52px;height:52px;border-radius:14px;margin-bottom:10px}
+.about .mark .i{width:28px;height:28px}
+.about b{font-size:18px}
+.about .ver{font:12.5px var(--mono);color:var(--tx3)}
+.about .by{font-size:12.5px;color:var(--tx2);margin-top:6px}
 
-/* ── status bar ─────────────────────────────────── */
-.status{height:30px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;border-top:1px solid var(--line);background:var(--card);font-size:12px;color:var(--tx3)}
-.status .it{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.status .out{font-family:var(--mono);font-size:11.5px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;max-width:40vw}
-.status a{color:var(--tx3);cursor:pointer;text-decoration:underline dotted}
-.status a:hover{color:var(--tx)}
-
-/* ── dialogs (fallback file browser, MediaInfo) ─── */
-.ov{position:fixed;inset:0;background:var(--backdrop);display:none;align-items:center;justify-content:center;z-index:45}
+/* ── dialogs ─────────────────────────────────────── */
+.ov{position:fixed;inset:0;background:var(--backdrop);display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
 .ov.open{display:flex}
-@keyframes dlg-in{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
-.ov.open .dlg{animation:dlg-in .16s ease-out}
-.dlg{width:680px;max-width:94vw;max-height:84vh;background:var(--card);border:1px solid var(--line2);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow)}
-.dlg .h{height:48px;flex:none;padding:0 14px 0 18px;border-bottom:1px solid var(--line);font-weight:600;display:flex;align-items:center;gap:8px}
-.dlg .c{padding:14px 18px;overflow:auto;display:flex;flex-direction:column;gap:10px;min-height:0}
-.dlg .ft{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;align-items:center}
-.dlg .ft .note{flex:1;color:var(--tx3);font:11.5px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dlg .in{height:30px;flex:1;background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:0 10px;font:12px var(--mono);color:var(--tx);outline:none}
+.dlg{width:640px;max-width:100%;max-height:100%;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line2);border-radius:13px;box-shadow:var(--shadow);overflow:hidden}
+.dlg .h{display:flex;align-items:center;gap:8px;padding:12px 12px 12px 18px;border-bottom:1px solid var(--line);font-weight:600}
+.dlg .h span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlg .c{padding:14px 18px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
+.dlg .ft{display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid var(--line);background:var(--surface)}
+.dlg .ft .note{flex:1;min-width:0;color:var(--tx3);font:11.5px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dlg .row{display:flex;gap:8px;align-items:center}
-.list{border:1px solid var(--line2);border-radius:8px;overflow:auto;min-height:240px;max-height:48vh}
-.e{display:flex;align-items:center;gap:10px;padding:7px 12px;cursor:pointer;border-bottom:1px solid var(--line);font-size:12.5px}
-.e:last-child{border-bottom:0}.e:hover{background:var(--hover)}.e svg{color:var(--tx3);width:14px;height:14px}
-pre.mi{margin:0;padding:14px 18px;font:12px/1.5 var(--mono);color:var(--tx2);white-space:pre;overflow:auto;max-height:70vh}
+.list{border:1px solid var(--line2);border-radius:8px;overflow:auto;min-height:240px;max-height:48vh;background:var(--well)}
+.e{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--line);font-size:12.5px}
+.e:last-child{border-bottom:0}
+.e:hover{background:var(--hover)}
+.e .i{color:var(--tx3);width:15px;height:15px}
+pre.mireport{margin:0;padding:14px 18px;font:12px/1.5 var(--mono);color:var(--tx2);white-space:pre;overflow:auto;max-height:70vh}
 
-/* ── toast ──────────────────────────────────────── */
-.toast{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--ink-tx);padding:9px 16px;border-radius:9px;display:none;z-index:60;font-size:13px;box-shadow:var(--shadow);max-width:70vw}
+.toast{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:8px;max-width:70vw;padding:9px 16px;border-radius:9px;background:var(--tx);color:var(--bg);font-size:13px;font-weight:550;box-shadow:var(--shadow);z-index:60}
 .toast.bad{background:var(--bad);color:#fff}
 .closed-msg{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--tx3)}
 .closed-msg b{color:var(--tx2);font-weight:500;font-size:14px}
+
+/* ── narrower windows (the window's minimum is 960 px) ── */
+@media (max-width:1240px){
+  .speed{display:none}
+  .opt-sum{display:none}
+  .cols{grid-template-columns:42px minmax(0,1.4fr) minmax(150px,1fr) 80px 156px 176px 100px}
+}
+@media (max-width:1080px){
+  .hide-narrow{display:none}
+  .jobbar{gap:8px;padding-left:14px;padding-right:12px}
+  .tabs button{padding:0 10px}
+  .cols{grid-template-columns:40px minmax(0,1.4fr) minmax(130px,1fr) 146px 164px 96px}
+  .cols > :nth-child(4){display:none}
+  .xgrid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 
-<header class="top">
-  <div class="brand"><span class="logo"><svg viewBox="0 0 24 24" width="11" height="11"><path d="M9.6 8.1v7.8l6.4-3.9z" fill="currentColor"/></svg></span>FPSConv<span class="chip" id="ver">…</span></div>
-  <div class="grow"></div>
-  <button class="bar-btn" id="btn-act" onclick="toggleAct()" title="Job and app logs">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12.5 15H17"/></svg>Activity<span class="live" id="act-live" hidden>0</span>
-  </button>
-  <button class="bar-btn" id="btn-theme" onclick="toggleTheme()" title="Switch between light and dark">
-    <svg id="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-    <svg id="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" hidden><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
-  </button>
-  <button class="bar-btn" onclick="openSettings()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings
-  </button>
+<header class="header" id="header">
+  <div class="brand"><span class="mark" id="mark"></span><b>FPSConv</b></div>
+  <nav class="tabs" role="tablist" aria-label="Task">
+    <button role="tab" id="task-fps" onclick="setTask('fps')" title="Change the speed of an audio track so it fits a video with another frame rate">FPS change</button>
+    <button role="tab" id="task-encode" onclick="setTask('encode')" title="Re-encode an audio track to DD, DDP or DDP Atmos — no speed change">Audio encode</button>
+  </nav>
+  <div class="hr">
+    <span id="hdr-files" style="display:contents">
+      <button class="btn" onclick="addFiles()" title="Add audio or video files (Ctrl+O)"><span data-i="docAdd"></span>Add files</button>
+      <button class="btn ghost" onclick="addFolder()" title="Add every audio file in a folder" aria-label="Add folder"><span data-i="folderAdd"></span><span class="hide-narrow">Add folder</span></button>
+      <span class="hsep"></span>
+    </span>
+    <button class="ib" id="btn-act" onclick="toggleCon()" title="Activity — job and app logs" aria-label="Activity"><span data-i="pulse"></span><span class="badge" id="act-live" hidden>0</span></button>
+    <button class="ib" id="btn-set" onclick="toggleSettings()" title="Settings" aria-label="Settings"><span data-i="gear"></span></button>
+  </div>
 </header>
 
-<div class="banner" id="banner" hidden>
-  <span class="dot warn"></span><span id="banner-text"></span>
-  <span class="grow"></span>
-  <button class="btn sm primary" id="banner-btn" onclick="installUpdate()">Restart to update</button>
-  <button class="ic" onclick="$('banner').hidden=true" title="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-</div>
+<section class="jobbar" id="jobbar" aria-label="Conversion settings"></section>
 
-<div class="setup" id="setup">
-  <div class="seg" id="seg-task">
-    <button id="task-fps" onclick="setTask('fps')" title="Change the speed of an audio track so it fits a video with another frame rate">FPS change</button>
-    <button id="task-encode" onclick="setTask('encode')" title="Re-encode an audio track to DD, DDP or DDP Atmos — no speed change">Audio encode</button>
-  </div>
-  <div class="sep"></div>
-  <div class="seg small" id="seg-mode" title="Single: adding a file replaces the previous one. Batch: add as many files or folders as you like; they run N at a time.">
-    <button id="seg-single" onclick="setMode('single')">Single</button>
-    <button id="seg-batch" onclick="setMode('batch')">Batch</button>
-  </div>
-  <div class="sep"></div>
+<main class="content" id="content">
+  <div id="banners" style="display:contents"></div>
+  <div class="table" id="table"></div>
+  <div class="dropcue">Drop to add to the queue</div>
+</main>
 
-  <div class="ctl" id="ctl-conv" title="Conversion applied to every file (a Target video or the file's own fps can override it per row)"><select id="mode" onchange="onConv()"></select></div>
-  <span class="ratio" id="ratio"></span>
-
-  <div class="ctl" id="ctl-format" hidden title="Output format. TrueHD / DTS-HD MA decode losslessly; anything lossy (AAC, DD+) is re-encoded — quality can only stay the same, never improve.">
-    <select id="enc-target" onchange="onEncode()"><option value="ddp" title="DDP (E-AC-3)">DDP</option><option value="dd" title="DD (AC-3)">DD</option></select>
-  </div>
-  <div class="ctl" id="ctl-ch" hidden title="Never upmixes: a 2.0 source stays 2.0. DD has no 7.1.">Channels
-    <select id="enc-channels" onchange="onEncode()"><option value="0">As source</option><option value="8">7.1</option><option value="6">5.1</option><option value="2">2.0</option><option value="1">1.0</option></select>
-  </div>
-  <div class="ctl" id="ctl-br" hidden>Bitrate
-    <select id="enc-bitrate" onchange="onEncode()"></select>
-  </div>
-  <label class="swlabel" id="ctl-atmos" hidden title="Keep Atmos: TrueHD Atmos → DDP Atmos (needs truehdd, DeeZy and DEE 5.2). Off = encode the bed only."><input type="checkbox" class="switch" id="enc-atmos" onchange="onEncode()">Atmos</label>
-  <div class="ctl" id="ctl-layout" hidden>Layout
-    <select id="enc-atmos71" onchange="onEncode()"><option value="flat" title="Flat 7.1 — Lb Rb (patched DEE)">Flat 7.1</option><option value="dee" title="DEE default — 5.1 + 2 heights (Tfl Tfr)">DEE default</option></select>
-  </div>
-  <div class="ctl" id="ctl-drc" hidden title="Dynamic range control profile">DRC
-    <select id="enc-drc" onchange="onEncode()"></select>
-  </div>
-
-  <div class="grow"></div>
-
-  <button class="ctl path dashed" id="refbtn" onclick="chooseRef()" title="Optional. The video this audio has to fit: its frame rate and duration are compared with every file and the conversion is suggested per row.">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></svg>
-    <span class="txt" id="reftxt">+ Target video</span>
-    <span class="x" id="ref-x" hidden onclick="event.stopPropagation();setRef(null)" title="Clear the target video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
-  </button>
-  <button class="ctl path dashed" id="outbtn" onclick="chooseOut()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-    <span class="txt" id="outtxt">Choose output folder…</span>
-  </button>
-  <button class="ic2" id="morebtn" onclick="togglePop(event)" title="More options">
-    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
-  </button>
-</div>
-
-<div class="notice" id="notice" hidden><span class="dot warn"></span><span id="notice-text"></span><span class="grow"></span><a id="notice-link" onclick="openSettings(noticeSec)">Open Settings</a></div>
-
-<div class="pop" id="pop">
-  <div class="pgroup" id="pop-workers">
-    <div class="plabel">Parallel jobs <span class="plain">(batch)</span></div>
-    <div class="step">
-      <button onclick="stepWorkers(-1)" title="Fewer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></button>
-      <span class="v" id="workers">2</span>
-      <button onclick="stepWorkers(1)" title="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
-    </div>
-    <div class="hint">DEE encodes are CPU-heavy; 2 is a good default.</div>
-  </div>
-  <div class="pgroup" id="pop-br">
-    <div class="plabel">Output bitrate</div>
-    <div class="row"><select id="br-mode" onchange="onBitrate()"><option value="auto">Same as source</option><option value="custom">Custom</option></select><input type="number" id="br" min="32" max="6144" step="8" placeholder="kbps" hidden onchange="onBitrate()"></div>
-  </div>
-  <div class="pgroup">
-    <div class="plabel">If the output already exists</div>
-    <select id="overwrite" onchange="save({overwrite:this.value})"><option value="overwrite">Overwrite it</option><option value="skip">Skip the file</option><option value="rename">Write a numbered copy</option></select>
-  </div>
-</div>
-
-<div class="work">
-  <section class="queue">
-    <div class="qhead">
-      <input type="checkbox" class="cb" id="all" onchange="toggleAll(this.checked)" title="Select every row">
-      <h1>Queue</h1><span class="sum" id="sum">empty</span>
-      <span class="selinfo" id="selinfo" hidden><span id="selcount"></span><button class="btn sm ghost" onclick="removeChecked()" title="Remove the checked files and finished jobs (Delete)">Remove</button></span>
-      <div class="grow"></div>
-      <button class="btn" onclick="addFiles()" title="Add audio or video files (Ctrl+O)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 12v6M9 15h6"/></svg>Add files
-      </button>
-      <button class="btn" onclick="addFolder()" title="Add every audio file in a folder">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></svg>Add folder
-      </button>
-      <button class="btn ghost" id="btn-clear" onclick="clearAll()" title="Remove every loaded file and every finished job (running jobs are kept)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg>Clear
-      </button>
-      <button class="btn ghost danger" id="btn-cancel" onclick="cancelSelected()" disabled title="Cancel the checked jobs — or every running and queued job when none is checked">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>Cancel
-      </button>
-      <button class="btn primary" id="btn-start" onclick="start()" disabled title="Queue every Ready file (Ctrl+Enter)">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg><span id="start-lbl">Start</span>
-      </button>
-    </div>
-    <div class="total" id="total"><i></i></div>
-    <div class="qbody" id="qbody"></div>
-    <div class="dropcue">Drop to add to the queue</div>
-  </section>
-
-  <aside class="act" id="act">
-    <div class="drag" id="drag" title="Drag to resize"></div>
-    <div class="act-h">
-      <div class="tabs">
-        <button class="tab on" id="tab-prog" onclick="setTab('prog')">Progress</button>
-        <button class="tab" id="tab-job" onclick="setTab('job')">Job log</button>
-        <button class="tab" id="tab-app" onclick="setTab('app')">App log</button>
-      </div>
-      <span class="sub" id="act-sub"></span>
-      <div class="grow"></div>
-      <span id="log-tools" style="display:contents">
-      <input type="text" id="flt" placeholder="filter…" oninput="renderLog()">
-      <label><input type="checkbox" class="cb" id="follow" checked>follow</label>
-      <button class="btn sm" onclick="copyLog()">Copy</button>
-      <button class="btn sm" onclick="post('/api/logs/open',{})">Open folder</button>
-      </span>
-      <button class="ic" onclick="closeAct()" title="Close (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-    </div>
-    <div class="prog" id="prog"></div>
-    <div class="logv" id="logv" hidden></div>
-  </aside>
-</div>
-
-<footer class="status">
-  <span class="it" id="st-ffmpeg"><span class="dot"></span>ffmpeg</span>
-  <span class="it" id="st-dee"><span class="dot"></span>DEE</span>
-  <span class="it" id="st-atmos" hidden><span class="dot"></span>Atmos</span>
-  <span class="it" id="st-upd" hidden></span>
-  <div class="grow"></div>
-  <span class="out" id="st-out"></span>
-  <a onclick="openSettings()">Settings</a>
-</footer>
-
-<!-- settings -->
-<div class="ov" id="settings" onclick="if(event.target===this)closeSettings()">
-<div class="dlg settings">
-  <div class="pane-h">Settings<div class="grow"></div><button class="ic" onclick="closeSettings()" title="Close (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-  <div class="body">
-    <nav class="snav" id="snav">
-      <button class="on" data-sec="tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.8-.7-.7-2.8z"/></svg>Tools</button>
-      <button data-sec="dee"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 9.5 12 4l9 5.5M3 14.5 12 19l9-4.5M3 9.5v10L12 24l9-4.5v-10"/></svg>Dolby Engine</button>
-      <button data-sec="patch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 5h6M16 2v6M12 6h2M12 2v6"/><rect x="3" y="12" width="18" height="9" rx="2"/></svg>7.1 patcher</button>
-      <button data-sec="folders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Folders</button>
-      <button data-sec="updates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 12a9 9 0 1 1-2.6-6.3L21 8"/><path d="M21 3v5h-5"/></svg>Updates</button>
-      <button data-sec="about"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>About</button>
+<section class="spage" id="spage" hidden>
+  <div class="stop">
+    <button class="ib" onclick="closeSettings()" title="Back (Esc)" aria-label="Back"><span data-i="back"></span></button>
+    <h2>Settings</h2>
+    <nav class="stabs" role="tablist" id="stabs">
+      <button data-sec="tools">Tools<span class="wd" id="tools-wd" hidden></span></button>
+      <button data-sec="dee">Dolby Engine</button>
+      <button data-sec="patch">7.1 Patcher</button>
+      <button data-sec="folders">Folders</button>
+      <button data-sec="general">General</button>
     </nav>
-    <div class="sbody">
-      <div class="ssec" data-pane="tools">
-        <h3>Status</h3>
-        <div id="tools"></div>
-        <div class="stline" id="ffdl" hidden><button class="btn sm" id="ffdl-btn" onclick="downloadFfmpeg()">Download ffmpeg (Windows static build)</button><span class="m" id="ffdl-st"></span></div>
+    <span class="grow"></span>
+    <span class="snote" id="settings-note"></span>
+    <button class="btn primary" onclick="saveTools()" title="Save tool paths and folders">Save</button>
+  </div>
+  <div class="sin">
+    <div data-pane="tools">
+      <div class="sgrp">
+        <div class="sgh"><span>Status</span></div>
         <div class="callout" id="tools-callout"><span class="dot"></span><span class="grow" id="tools-callout-text"></span></div>
-        <h3 class="gap">Paths <span style="text-transform:none;letter-spacing:0;font-weight:400">(empty = PATH / bundled)</span></h3>
-        <div class="kvrow"><label>ffmpeg</label><input class="in" id="t-ffmpeg" placeholder="ffmpeg.exe"><button class="btn sm" onclick="browseFor('t-ffmpeg')">Browse</button></div>
-        <div class="kvrow"><label>ffprobe</label><input class="in" id="t-ffprobe" placeholder="ffprobe.exe"><button class="btn sm" onclick="browseFor('t-ffprobe')">Browse</button></div>
-        <div class="kvrow"><label>python for deew</label><input class="in" id="t-deew" placeholder="only to use an external deew"><button class="btn sm" onclick="browseFor('t-deew')">Browse</button></div>
-        <div class="kvrow"><label>mediainfo</label><input class="in" id="t-mediainfo" placeholder="mediainfo.exe (detects Atmos; bundled pymediainfo otherwise)"><button class="btn sm" onclick="browseFor('t-mediainfo')">Browse</button></div>
-        <div class="kvrow"><label>truehdd</label><input class="in" id="t-truehdd" placeholder="truehdd.exe (DDP Atmos)"><button class="btn sm" onclick="browseFor('t-truehdd')">Browse</button></div>
-        <div class="kvrow"><label>deezy.exe</label><input class="in" id="t-deezy" placeholder="DeeZy standalone build (DDP Atmos)"><button class="btn sm" onclick="browseFor('t-deezy')">Browse</button></div>
+        <div id="tools"></div>
+        <div class="srow" id="ffdl" hidden><div class="tx"><div class="t">ffmpeg</div><div class="d" id="ffdl-st">Windows static build, installed for FPSConv only</div></div><div class="r"><button class="btn primary sm" id="ffdl-btn" onclick="downloadFfmpeg()"><span data-i="download"></span>Download ffmpeg</button></div></div>
       </div>
-      <div class="ssec" data-pane="dee" hidden>
-        <h3>Dolby Encoding Engine</h3>
-        <div class="kvrow"><label>dee.exe</label><input class="in" id="t-dee" placeholder="C:\Dolby\DEE\dee.exe"><button class="btn sm" onclick="browseFor('t-dee')">Browse</button><button class="btn sm primary" onclick="saveDee()">Apply</button></div>
+      <div class="sgrp">
+        <div class="sgh"><span>Paths</span><span class="note">Empty = PATH or the bundled copy</span></div>
+        <div class="srow form"><span class="lab">ffmpeg</span><input class="in" id="t-ffmpeg" placeholder="ffmpeg.exe"><button class="btn sm" onclick="browseFor('t-ffmpeg')">Browse…</button></div>
+        <div class="srow form"><span class="lab">ffprobe</span><input class="in" id="t-ffprobe" placeholder="ffprobe.exe"><button class="btn sm" onclick="browseFor('t-ffprobe')">Browse…</button></div>
+        <div class="srow form"><span class="lab">Python for deew</span><input class="in" id="t-deew" placeholder="only to use an external deew"><button class="btn sm" onclick="browseFor('t-deew')">Browse…</button></div>
+        <div class="srow form"><span class="lab">mediainfo</span><input class="in" id="t-mediainfo" placeholder="mediainfo.exe (detects Atmos; bundled pymediainfo otherwise)"><button class="btn sm" onclick="browseFor('t-mediainfo')">Browse…</button></div>
+        <div class="srow form"><span class="lab">truehdd</span><input class="in" id="t-truehdd" placeholder="truehdd.exe (DDP Atmos)"><button class="btn sm" onclick="browseFor('t-truehdd')">Browse…</button></div>
+        <div class="srow form"><span class="lab">deezy.exe</span><input class="in" id="t-deezy" placeholder="DeeZy standalone build (DDP Atmos)"><button class="btn sm" onclick="browseFor('t-deezy')">Browse…</button></div>
+      </div>
+    </div>
+    <div data-pane="dee" hidden>
+      <div class="sgrp">
+        <div class="sgh"><span>Dolby Encoding Engine</span></div>
+        <div class="srow form"><span class="lab">dee.exe</span><input class="in" id="t-dee" placeholder="C:\Dolby\DEE\dee.exe"><button class="btn sm" onclick="browseFor('t-dee')">Browse…</button><button class="btn sm primary" onclick="saveDee()">Apply</button></div>
+        <div id="dee-build"></div>
         <div class="help">FPSConv writes deew's <code>config.toml</code> from this path. deew itself is bundled — nothing else to install.</div>
-        <div id="dee-build" style="margin-top:14px"></div>
       </div>
-      <div class="ssec" data-pane="patch" hidden>
-        <h3>DD+ 7.1 Atmos (flat 7.1, Lb Rb)</h3>
+    </div>
+    <div data-pane="patch" hidden>
+      <div class="sgrp">
+        <div class="sgh"><span>DD+ 7.1 Atmos — flat 7.1 (Lb Rb)</span></div>
         <div id="patcher-kv"></div>
-        <div class="kvrow" style="margin-top:12px"><label>patcher folder</label><input class="in" id="t-patcher" placeholder="empty = the in-app download"><button class="btn sm" onclick="browseDirFor('t-patcher')">Browse</button><button class="btn sm" id="patcher-btn" onclick="downloadPatcher()">Download</button></div>
-        <div class="stline" id="patcher-stline" hidden><span class="m" id="patcher-st"></span></div>
-        <label class="tgrow" style="margin-top:14px"><input type="checkbox" class="cb" id="t-bedconform" onchange="save({encode:Object.assign(S.encode,{bed_conform:this.checked})})">truehdd --bed-conform <span class="sub">(conform the Atmos bed to 7.1.2)</span></label>
-        <div class="help">DEE 5.2.1 renders the legacy 7.1 of a Blu-ray DD+ Atmos encode as 5.1 + 2 <b>height</b> channels (MediaInfo: Tfl Tfr). The <a href="https://github.com/LumaVistaLab/DEE_DDPlusJOC_7.1_Patcher" target="_blank">DD+ 7.1 patcher</a> (LumaVistaLab, GPL-3.0) patches DEE's <code>dee_audio_filter_ddp_atmos.dll</code> for the run (backup, restore afterwards) so the encode is a real flat 7.1 with a Pro Logic IIx 5.1 core and Surround EX flag — MediaInfo: L R C LFE Ls Rs <b>Lb Rb</b>. Validated by its authors for DEE build 5.2.1-5994839 only (the DLL hash is checked before every run), so far with LAV Audio and Dolby Media Decoder on a synthetic master — <b>listen to your first encode on your own AVR</b>. Dolby says the height layout is by design and no DEE/DME version or setting changes it; this patch is the only known way to a real flat 7.1. Runs inside FPSConv's own Python — nothing else to install.</div>
+        <div class="srow form"><span class="lab">Patcher folder</span><input class="in" id="t-patcher" placeholder="empty = the in-app download"><button class="btn sm" onclick="browseDirFor('t-patcher')">Browse…</button><button class="btn sm" id="patcher-btn" onclick="downloadPatcher()"><span data-i="download"></span>Download</button></div>
+        <div class="srow" id="patcher-stline" hidden><span class="stline" id="patcher-st"></span></div>
+        <div class="srow"><div class="tx"><div class="t">Bed conform</div><div class="d">truehdd --bed-conform: conform the Atmos bed to 7.1.2</div></div><div class="r"><label class="sw"><input type="checkbox" id="t-bedconform" onchange="setEnc('bed_conform',this.checked)"><span class="trk"></span></label></div></div>
+        <details class="help"><summary>About the flat 7.1 patch</summary>DEE 5.2.1 renders the legacy 7.1 of a Blu-ray DD+ Atmos encode as 5.1 + 2 <b>height</b> channels (MediaInfo: Tfl Tfr). The <a href="https://github.com/LumaVistaLab/DEE_DDPlusJOC_7.1_Patcher" target="_blank">DD+ 7.1 patcher</a> (LumaVistaLab, GPL-3.0) patches DEE's <code>dee_audio_filter_ddp_atmos.dll</code> for the run (backup, restore afterwards) so the encode is a real flat 7.1 with a Pro Logic IIx 5.1 core and Surround EX flag — MediaInfo: L R C LFE Ls Rs <b>Lb Rb</b>. Validated by its authors for DEE build 5.2.1-5994839 only (the DLL hash is checked before every run), so far with LAV Audio and Dolby Media Decoder on a synthetic master — <b>listen to your first encode on your own AVR</b>. Dolby says the height layout is by design and no DEE/DME version or setting changes it; this patch is the only known way to a real flat 7.1. Runs inside FPSConv's own Python — nothing else to install.</details>
       </div>
-      <div class="ssec" data-pane="folders" hidden>
-        <h3>Folders <span style="text-transform:none;letter-spacing:0;font-weight:400">(empty = default)</span></h3>
-        <div class="kvrow"><label>Output</label><input class="in" id="d-out" placeholder="where finished files go"><button class="btn sm" onclick="browseDirFor('d-out')">Browse</button><button class="btn sm" onclick="openDir('d-out')">Open</button></div>
-        <div class="kvrow"><label>Temp</label><input class="in" id="d-temp"><button class="btn sm" onclick="browseDirFor('d-temp')">Browse</button><button class="btn sm" onclick="openDir('d-temp')">Open</button></div>
-        <div class="kvrow"><label>Working</label><input class="in" id="d-work"><button class="btn sm" onclick="browseDirFor('d-work')">Browse</button><button class="btn sm" onclick="openDir('d-work')">Open</button></div>
-        <div class="kvrow"><label>Logs</label><input class="in" id="d-logs"><button class="btn sm" onclick="browseDirFor('d-logs')">Browse</button><button class="btn sm" onclick="openDir('d-logs')">Open</button></div>
+    </div>
+    <div data-pane="folders" hidden>
+      <div class="sgrp">
+        <div class="sgh"><span>Folders</span><span class="note">Empty = default</span></div>
+        <div class="srow form"><span class="lab">Output</span><input class="in" id="d-out" placeholder="where finished files go"><button class="btn sm" onclick="browseDirFor('d-out')">Browse…</button><button class="btn sm ghost" onclick="openDir('d-out')">Open</button></div>
+        <div class="srow form"><span class="lab">Temp</span><input class="in" id="d-temp"><button class="btn sm" onclick="browseDirFor('d-temp')">Browse…</button><button class="btn sm ghost" onclick="openDir('d-temp')">Open</button></div>
+        <div class="srow form"><span class="lab">Working</span><input class="in" id="d-work"><button class="btn sm" onclick="browseDirFor('d-work')">Browse…</button><button class="btn sm ghost" onclick="openDir('d-work')">Open</button></div>
+        <div class="srow form"><span class="lab">Logs</span><input class="in" id="d-logs"><button class="btn sm" onclick="browseDirFor('d-logs')">Browse…</button><button class="btn sm ghost" onclick="openDir('d-logs')">Open</button></div>
         <div class="help"><b>Temp</b>: one sub-folder per job for the big intermediates (decoded WAVs, truehdd Atmos masters, deew / DEE temp) — put it on a fast drive with room for ~3× the source. Deleted when the job ends. <b>Working</b>: DeeZy's logs and batch results. <b>Logs</b>: FPSConv's own log files (a change applies at the next start). Settings and history stay in <code id="cfgdir2"></code>.</div>
       </div>
-      <div class="ssec" data-pane="updates" hidden>
-        <h3>Updates &amp; window</h3>
-        <label class="tgrow"><input type="checkbox" class="cb" id="t-auto" onchange="save({auto_update:this.checked})">Install updates automatically when no job is running</label>
-        <label class="tgrow"><input type="checkbox" class="cb" id="t-win" onchange="save({native_window:this.checked})">Open in a desktop window <span class="sub">(takes effect on next start)</span></label>
-        <div class="stline"><span class="m" id="upd-line"></span><button class="btn sm primary" id="upd-install" hidden onclick="installUpdate()">Install</button><button class="btn sm" id="upd-check" onclick="checkUpdate()">Check now</button></div>
+    </div>
+    <div data-pane="general" hidden>
+      <div class="sgrp">
+        <div class="sgh"><span>Updates &amp; window</span></div>
+        <div class="srow"><div class="tx"><div class="t">Install updates automatically</div><div class="d">Only when no job is running</div></div><div class="r"><label class="sw"><input type="checkbox" id="t-auto" onchange="save({auto_update:this.checked})"><span class="trk"></span></label></div></div>
+        <div class="srow"><div class="tx"><div class="t">Open in a desktop window</div><div class="d">Takes effect on the next start</div></div><div class="r"><label class="sw"><input type="checkbox" id="t-win" onchange="save({native_window:this.checked})"><span class="trk"></span></label></div></div>
+        <div class="srow"><div class="tx"><div class="t" id="upd-title">Updates</div><div class="d" id="upd-line"></div></div><div class="r"><button class="btn sm primary" id="upd-install" hidden onclick="installUpdate()">Install</button><button class="btn sm" id="upd-check" onclick="checkUpdate()"><span data-i="refresh"></span>Check now</button></div></div>
       </div>
-      <div class="ssec about" data-pane="about" hidden>
-        <div class="about-card">
-          <span class="logo"><svg viewBox="0 0 24 24"><path d="M9.6 8.1v7.8l6.4-3.9z" fill="currentColor"/></svg></span>
-          <div class="about-name">FPSConv</div>
-          <div class="about-ver" id="verline"></div>
-          <div class="about-by">Built by Ionicboy with <span class="heart">❤️</span></div>
-        </div>
+      <div class="sgrp">
+        <div class="sgh"><span>Appearance</span></div>
+        <div class="srow"><div class="tx"><div class="t">Theme</div></div><div class="r"><div class="seg" id="theme-seg"><button data-t="system" onclick="setTheme('system')">System</button><button data-t="light" onclick="setTheme('light')">Light</button><button data-t="dark" onclick="setTheme('dark')">Dark</button></div></div></div>
+      </div>
+      <div class="sgrp">
+        <div class="about"><span class="mark" id="mark2"></span><b>FPSConv</b><span class="ver" id="verline"></span><span class="by">Built by Ionicboy with <span class="heart">❤️</span></span></div>
+        <div class="srow"><div class="tx"><div class="t">Quit FPSConv</div><div class="d">Running jobs are cancelled</div></div><div class="r"><button class="btn sm danger" onclick="quitApp()"><span data-i="power"></span>Quit</button></div></div>
       </div>
     </div>
   </div>
-  <div class="pane-ft"><span class="sum" id="settings-note" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><button class="btn ghost danger" onclick="quitApp()">Quit FPSConv</button><button class="btn" onclick="closeSettings()">Close</button><button class="btn primary" onclick="saveTools()">Save</button></div>
-</div>
-</div>
+</section>
+
+<footer class="status" id="status"></footer>
+
+<section class="console" id="console" hidden aria-label="Activity">
+  <div class="condrag" id="condrag" title="Drag to resize"></div>
+  <div class="conh">
+    <div class="seg"><button id="ctab-job" onclick="setConTab('job')">Job log</button><button id="ctab-app" onclick="setConTab('app')">App log</button></div>
+    <span class="sub2" id="con-sub"></span>
+    <span class="grow"></span>
+    <input class="in" id="flt" placeholder="Filter…" oninput="renderLog()">
+    <label class="cbl" style="font-size:12.5px;color:var(--tx2)"><input type="checkbox" class="cb" id="follow" checked>Follow</label>
+    <button class="btn sm ghost" onclick="copyLog()"><span data-i="copy"></span>Copy</button>
+    <button class="btn sm ghost" onclick="post('/api/logs/open',{})"><span data-i="folder"></span>Logs folder</button>
+    <button class="ib sm" onclick="closeCon()" title="Close (Esc)" aria-label="Close"><span data-i="x"></span></button>
+  </div>
+  <div class="logv" id="logv"></div>
+</section>
+
+<div class="pop" id="pop" hidden></div>
 
 <!-- fallback file browser (only when no native dialog is available) -->
 <div class="ov" id="fb" onclick="if(event.target===this)closeFb()">
-  <div class="dlg" style="width:640px">
-    <div class="h" id="fb-title">Choose</div>
+  <div class="dlg">
+    <div class="h"><span id="fb-title">Choose</span></div>
     <div class="c">
       <div class="row"><input class="in" id="fb-path" onkeydown="if(event.key==='Enter')fbGo(this.value)"><button class="btn sm" onclick="fbUp()">Up</button><button class="btn sm" onclick="fbGo('~')">Home</button></div>
       <div class="list" id="fb-list"></div>
     </div>
-    <div class="ft"><span class="note" id="fb-note"></span><label class="tgrow" id="fb-rec" style="margin:0" hidden><input type="checkbox" class="cb" id="recursive">sub-folders</label><button class="btn" onclick="closeFb()">Cancel</button><button class="btn primary" id="fb-ok" onclick="fbOk()">Select</button></div>
+    <div class="ft"><span class="note" id="fb-note"></span><label class="cbl" id="fb-rec" hidden style="font-size:12.5px"><input type="checkbox" class="cb" id="recursive">Sub-folders</label><button class="btn" onclick="closeFb()">Cancel</button><button class="btn primary" id="fb-ok" onclick="fbOk()">Select</button></div>
   </div>
 </div>
 <!-- MediaInfo report -->
 <div class="ov" id="mi" onclick="if(event.target===this)closeMi()">
   <div class="dlg" style="width:860px">
-    <div class="h"><span id="mi-title">MediaInfo</span><div class="grow"></div><button class="btn sm" onclick="copyMi()">Copy</button><button class="ic" onclick="closeMi()" title="Close (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-    <div class="c" style="padding:0"><pre class="mi" id="mi-pre"></pre></div>
+    <div class="h"><span id="mi-title">MediaInfo</span><span class="grow"></span><button class="btn sm" onclick="copyMi()"><span data-i="copy"></span>Copy</button><button class="ib sm" onclick="closeMi()" title="Close (Esc)" aria-label="Close"><span data-i="x"></span></button></div>
+    <div class="c" style="padding:0"><pre class="mireport" id="mi-pre"></pre></div>
     <div class="ft"><span class="note" id="mi-path"></span><button class="btn" onclick="closeMi()">Close</button></div>
   </div>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 const $=id=>document.getElementById(id);
-const I={
-  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
-  cross:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M18 6 6 18"/></svg>',
-  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18"/></svg>',
-  retry:'<svg class="r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
-  open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v4M10 13h4"/></svg>',
-  folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
-  file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 3h6l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/></svg>',
-  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
-  drop:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>'};
-let S={}, modes=[], ratios={}, ENC={}, pending=[], jobs=[], checked=new Set(), selected=null, lastVersion=-1, wasBusy=false, tab='prog', appLog=[], logSeq=0, doctor={}, ref=null, workersN=2, noticeSec='patch';
+const P={
+  wave:'<path d="M2 10h2.5l2-5 3.5 10 3-7.5 1.5 2.5H18"/>',
+  docAdd:'<path d="M10.5 17.5H6A1.5 1.5 0 0 1 4.5 16V4A1.5 1.5 0 0 1 6 2.5h5l4.5 4.5v3"/><path d="M11 2.5V7h4.5"/><path d="M15 12.5v5M12.5 15h5"/>',
+  folderAdd:'<path d="M10 16H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 4h3.5L9 5.5h7A1.5 1.5 0 0 1 17.5 7v2.5"/><path d="M15 12v5M12.5 14.5h5"/>',
+  folder:'<path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3.5L9 5.5h7A1.5 1.5 0 0 1 17.5 7v7.5A1.5 1.5 0 0 1 16 16H4a1.5 1.5 0 0 1-1.5-1.5z"/>',
+  file:'<path d="M11 2.5H6A1.5 1.5 0 0 0 4.5 4v12A1.5 1.5 0 0 0 6 17.5h8a1.5 1.5 0 0 0 1.5-1.5V7z"/><path d="M11 2.5V7h4.5"/>',
+  pulse:'<path d="M2 10h3.5l2-5.5 4 11 2.5-7 1.5 1.5H18"/>',
+  gear:'<circle cx="10" cy="10" r="2.5"/><path d="M8.6 2.6h2.8l.4 2a5.6 5.6 0 0 1 1.5.9l1.9-.7 1.4 2.4-1.5 1.3a5.6 5.6 0 0 1 0 1.8l1.5 1.3-1.4 2.4-1.9-.7a5.6 5.6 0 0 1-1.5.9l-.4 2H8.6l-.4-2a5.6 5.6 0 0 1-1.5-.9l-1.9.7-1.4-2.4 1.5-1.3a5.6 5.6 0 0 1 0-1.8L3.4 7.2l1.4-2.4 1.9.7a5.6 5.6 0 0 1 1.5-.9z"/>',
+  chev:'<path d="M5.5 8l4.5 4.5L14.5 8"/>',
+  arrow:'<path d="M3.5 10h13M11.5 5l5 5-5 5"/>',
+  film:'<rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M6 3.5v13M14 3.5v13M2.5 7.5H6M2.5 12.5H6M14 7.5h3.5M14 12.5h3.5"/>',
+  sliders:'<path d="M3.5 6h7M14.5 6h2M3.5 14h2M9.5 14h7"/><circle cx="12.5" cy="6" r="2"/><circle cx="7.5" cy="14" r="2"/>',
+  play:'<path d="M6.5 4.6v10.8a.6.6 0 0 0 .9.5l8.6-5.4a.6.6 0 0 0 0-1L7.4 4.1a.6.6 0 0 0-.9.5z" fill="currentColor" stroke="none"/>',
+  stop:'<rect x="5.5" y="5.5" width="9" height="9" rx="1.5"/>',
+  check:'<path d="M4.5 10.5l3.5 3.5 7.5-8"/>',
+  x:'<path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/>',
+  retry:'<path d="M3.5 10a6.5 6.5 0 1 0 2-4.7L3.5 7.3"/><path d="M3.5 3.5v3.8h3.8"/>',
+  open:'<path d="M11 3.5h5.5V9M16.5 3.5 9.5 10.5"/><path d="M14 11.5v4A1.5 1.5 0 0 1 12.5 17h-8A1.5 1.5 0 0 1 3 15.5v-8A1.5 1.5 0 0 1 4.5 6h4"/>',
+  copy:'<rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M13 7V4.5A1.5 1.5 0 0 0 11.5 3h-7A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13H7"/>',
+  trash:'<path d="M3.5 5.5h13M8 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5M5 5.5l.8 10.6A1.5 1.5 0 0 0 7.3 17.5h5.4a1.5 1.5 0 0 0 1.5-1.4L15 5.5"/>',
+  warn:'<path d="M10 3 18 17H2z"/><path d="M10 8.5v3.5M10 14.6v.2"/>',
+  back:'<path d="M16.5 10h-13M8.5 5l-5 5 5 5"/>',
+  upload:'<path d="M10 13V3.5M6 7.5l4-4 4 4"/><path d="M3.5 13v2.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V13"/>',
+  download:'<path d="M10 3.5V13M6 9l4 4 4-4"/><path d="M3.5 13v2.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V13"/>',
+  info:'<circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.6v.2"/>',
+  refresh:'<path d="M16.5 9a6.5 6.5 0 0 0-12-2.5M3.5 11a6.5 6.5 0 0 0 12 2.5"/><path d="M4 3.5V7h3.5M16 16.5V13h-3.5"/>',
+  power:'<path d="M10 3v6.5"/><path d="M6 5.5a6 6 0 1 0 8 0"/>',
+  log:'<rect x="3" y="3.5" width="14" height="13" rx="1.5"/><path d="M6 7.5h8M6 10.5h8M6 13.5h5"/>',
+};
+const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 20 20" aria-hidden="true">${P[n]}</svg>`;
+function fillIcons(root=document){root.querySelectorAll('[data-i]').forEach(el=>{el.outerHTML=ic(el.dataset.i)})}
+
+let S={}, modes=[], ratios={}, ENC={}, pending=[], jobs=[], checked=new Set(), selected=null, openKey=null, lastVersion=-1, wasBusy=false,
+    conTab='job', appLog=[], logSeq=0, doctor=null, ref=null, workersN=2, noticeSec='patch', notice='', menu=null, needOut=false, upd=null, version='', frozen=true;
+let recursive=false;try{recursive=localStorage.getItem('fpsconv-recursive')==='1'}catch(e){}
 const sessionStart=Date.now()/1000-1;
 
 async function get(u){return (await fetch(u)).json()}
 async function post(u,b,quiet){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json();if(j.error&&!quiet)toast(j.error,true);return j}
-function toast(m,bad){const t=$('toast');t.textContent=m;t.className='toast'+(bad?' bad':'');t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',3500)}
+function toast(m,bad){const t=$('toast');t.textContent=m;t.className='toast'+(bad?' bad':'');t.style.display='flex';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',3500)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-const short=t=>String(t||'').replace(/^00:/,'');           // 00:01:12 → 01:12
+const js=v=>esc(JSON.stringify(v));                              // a value inside an inline handler
+const short=t=>String(t||'').replace(/^00:/,'');                 // 00:01:12 → 01:12
 const khz=hz=>(hz/1000).toFixed(hz%1000?1:0);
+const dirOf=p=>String(p||'').replace(/[\\/][^\\/]*$/,'');
+const CH={1:'1.0',2:'2.0',3:'2.1',6:'5.1',7:'6.1',8:'7.1'}, chl=n=>CH[n]||(n?n+' ch':'');
+const CODEC={truehd:'TRUEHD',eac3:'E-AC-3',ac3:'AC-3',aac:'AAC',dts:'DTS',flac:'FLAC',pcm:'PCM',opus:'OPUS',mp3:'MP3',vorbis:'VORBIS'};
+const codecTag=c=>CODEC[c]||String(c||'?').toUpperCase();
 let saveT;function save(u){Object.assign(S,u);clearTimeout(saveT);saveT=setTimeout(()=>post('/api/settings',u),250)}
 
 /* theme: remembered per machine, otherwise follows Windows */
-function applyTheme(t){document.documentElement.dataset.theme=t;$('ico-sun').toggleAttribute('hidden',t!=='dark');$('ico-moon').toggleAttribute('hidden',t==='dark')}   // SVG has no .hidden property
-function toggleTheme(){const t=document.documentElement.dataset.theme==='dark'?'light':'dark';applyTheme(t);try{localStorage.setItem('fpsconv-theme',t)}catch(e){}}
-(()=>{let t=null;try{t=localStorage.getItem('fpsconv-theme')}catch(e){}applyTheme(t||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'))})();
+function themePref(){try{return localStorage.getItem('fpsconv-theme')||'system'}catch(e){return 'system'}}
+function applyTheme(){const p=themePref();document.documentElement.dataset.theme=p==='system'?(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):p;
+  document.querySelectorAll('#theme-seg button').forEach(b=>b.classList.toggle('on',b.dataset.t===p))}
+function setTheme(t){try{t==='system'?localStorage.removeItem('fpsconv-theme'):localStorage.setItem('fpsconv-theme',t)}catch(e){}applyTheme()}
+applyTheme();matchMedia('(prefers-color-scheme: light)').addEventListener?.('change',applyTheme);
 
 /* ── boot ───────────────────────────────────────── */
 async function init(){
-  const m=await get('/api/modes');modes=m.modes;ratios=m.ratios;ENC=m.encode||{};
-  $('ver').textContent='v'+m.version+(m.frozen?'':' · source');$('verline').textContent='version '+m.version+(m.frozen?'':' · running from source');
-  $('mode').innerHTML=modes.map(k=>`<option value="${k}">${k.replace('-',' → ')} fps</option>`).join('');
-  $('enc-drc').innerHTML=(ENC.drc||[]).map(d=>`<option value="${d}">${d.replace('_',' ')}</option>`).join('');
+  fillIcons();$('mark').innerHTML=ic('wave');$('mark2').innerHTML=ic('wave');
+  const m=await get('/api/modes');modes=m.modes;ratios=m.ratios;ENC=m.encode||{};version=m.version;frozen=m.frozen;
+  $('verline').textContent='Version '+m.version+(m.frozen?'':' · running from source');
   S=await get('/api/settings');
   S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,atmos71:'flat',bed_conform:true,drc:'film_light'},S.encode||{});
-  $('mode').value=modes.includes(S.conv_type)?S.conv_type:'23.976-25';updateRatio();
-  $('enc-target').value=S.encode.target;$('enc-channels').value=String(S.encode.channels);$('enc-atmos').checked=!!S.encode.atmos;$('enc-drc').value=S.encode.drc;$('enc-atmos71').value=S.encode.atmos71||'flat';
-  fillBitrates();setTask(S.task||'fps',false);
-  setOut(S.out_dir||'',false);setMode(S.mode||'single',false);
-  workersN=S.workers||2;$('workers').textContent=workersN;$('overwrite').value=S.overwrite||'overwrite';
-  $('br-mode').value=S.bitrate?'custom':'auto';$('br').value=S.bitrate||'';$('br').hidden=!S.bitrate;
-  document.addEventListener('keydown',onKey);initDrag();
+  if(!modes.includes(S.conv_type))S.conv_type=modes.includes('23.976-25')?'23.976-25':modes[0];
+  if(!brList().includes(+S.encode.bitrate))S.encode.bitrate=0;
+  workersN=S.workers||2;S.task=S.task||'fps';S.mode=S.mode||'single';
+  document.querySelectorAll('#stabs button').forEach(b=>b.onclick=()=>showPane(b.dataset.sec));
+  document.addEventListener('keydown',onKey);initConDrag();
+  setTask(S.task,false);
   await loadDoctor();render();poll();pollUpdate();pollLog();setInterval(pollUpdate,5000);setInterval(pollLog,1200);
 }
 function onKey(e){
   const typing=['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName);
   if(e.key==='Escape'){
     if($('fb').classList.contains('open')||$('mi').classList.contains('open')){closeFb();closeMi()}
-    else if($('settings').classList.contains('open'))closeSettings();
-    else if($('pop').classList.contains('open'))closePop();
-    else closeAct();
+    else if(menu)closeMenu();
+    else if(!$('spage').hidden)closeSettings();
+    else closeCon();
     return;
   }
   if(e.key==='Delete'&&!typing){removeChecked();return}
@@ -659,7 +617,7 @@ function onKey(e){
 /* ── tools / doctor ─────────────────────────────── */
 async function loadDoctor(){
   const d=doctor=await get('/api/doctor');
-  const rows=[['ffmpeg',d.ffmpeg?'ok':'bad',d.ffmpeg||'not found — download below or set a path'],
+  const rows=[['ffmpeg',d.ffmpeg?'ok':'bad',d.ffmpeg||'not found — download it above or set a path below'],
     ['ffprobe',d.ffprobe?'ok':'bad',d.ffprobe||'not found'],
     ['deew',d.deew?'ok':'bad',d.deew?(d.deew_via==='bundled'?'bundled':'via '+d.deew_via):(d.frozen?'bundled deew failed to start — see App log':'not installed (pip install deew)')],
     ['DEE',d.dee?'ok':'bad',d.dee||(d.dee_path?'not found at '+d.dee_path:'not configured')],
@@ -674,23 +632,20 @@ async function loadDoctor(){
   const dl=d.dee_dll||{},dlTxt={supported:['ok','DEE 5.2.1-5994839 — supported by the flat-7.1 patch'],patched:['ok','DEE 5.2.1-5994839 — DLL left patched by an interrupted run; the patcher restores it from its backup before the next encode'],unsupported:['bad','this DEE build is NOT the one the patch is validated for (needs 5.2.1-5994839) — flat 7.1 will refuse to run'],'no-dll':['bad','dee_audio_filter_ddp_atmos.dll is not next to dee.exe'],'no-dee':['warn','DEE not configured'],unreadable:['bad','DLL unreadable']}[dl.state]||['warn','?'];
   const buildRow=`<div class="toolrow"><span class="name"><span class="dot ${dlTxt[0]}"></span>DEE build</span><span class="val" title="${esc(dl.sha256||'')}">${esc(dlTxt[1])}</span></div>`;
   $('dee-build').innerHTML=buildRow;
-  $('patcher-kv').innerHTML=`<div class="toolrow"><span class="name"><span class="dot ${d.patcher?'ok':'warn'}"></span>patcher</span><span class="val" title="${esc(d.patcher||d.patcher_dir)}">${esc(d.patcher?'installed in '+d.patcher_dir:'not installed — press Download (goes to '+d.patcher_dir+')')}</span></div>`+buildRow;
+  $('patcher-kv').innerHTML=`<div class="toolrow"><span class="name"><span class="dot ${d.patcher?'ok':'warn'}"></span>Patcher</span><span class="val" title="${esc(d.patcher||d.patcher_dir)}">${esc(d.patcher?'installed in '+d.patcher_dir:'not installed — press Download (goes to '+d.patcher_dir+')')}</span></div>`+buildRow;
   const atmosOk=d.dee&&d.deezy&&d.truehdd, flatOk=!!(d.flat71&&d.flat71.ok);
-  const co=$('tools-callout');let cls,txt;
-  if(!(d.ffmpeg&&d.ffprobe)){cls='bad';txt='ffmpeg is missing — nothing can run. Download it above or set a path below.'}
+  let cls,txt;
+  if(!(d.ffmpeg&&d.ffprobe)){cls='bad';txt='ffmpeg is missing — nothing can run. Download it or set a path below.'}
   else if(!d.dee){cls='warn';txt='FPS change is ready. DD / DDP encodes need dee.exe — set it in the Dolby Engine tab.'}
   else if(!atmosOk){cls='warn';txt='FPS change and DD / DDP encodes are ready. Atmos needs truehdd and deezy — set their paths below.'}
-  else if(!flatOk){cls='warn';txt='FPS change, DD / DDP and Atmos encodes are ready. Flat 7.1 Atmos needs the patcher — see the 7.1 patcher tab.'}
+  else if(!flatOk){cls='warn';txt='FPS change, DD / DDP and Atmos encodes are ready. Flat 7.1 Atmos needs the patcher — see the 7.1 Patcher tab.'}
   else{cls='ok';txt='Everything needed is present. Atmos encodes will run with the flat-7.1 patch.'}
-  co.className='callout '+cls;co.firstElementChild.className='dot '+cls;$('tools-callout-text').textContent=txt;
-  updateAtmos71Help();
+  $('tools-callout').className='callout '+cls;$('tools-callout').firstElementChild.className='dot '+cls;$('tools-callout-text').textContent=txt;
+  $('tools-wd').hidden=!!(d.ffmpeg&&d.ffprobe);
   $('cfgdir2').textContent=d.config_dir;
-  $('st-atmos').innerHTML=`<span class="dot ${atmosOk?'ok':'warn'}"></span>Atmos ${atmosOk?'ready':(d.dee?(d.deezy?'needs truehdd':'needs deezy'):'needs DEE')}${flatOk?' · flat 7.1 ready':''}`;
-  $('st-atmos').title=atmosOk?'truehdd + DeeZy + DEE found':'DDP Atmos needs DEE, DeeZy and truehdd — see Settings → Tools';
   $('t-dee').value=d.dee_path||'';$('t-auto').checked=S.auto_update!==false;$('t-win').checked=S.native_window!==false;
   $('ffdl').hidden=!(d.can_download_ffmpeg&&!(d.ffmpeg&&d.ffprobe));
-  $('st-ffmpeg').innerHTML=`<span class="dot ${d.ffmpeg&&d.ffprobe?'ok':'bad'}"></span>ffmpeg ${d.ffmpeg&&d.ffprobe?'ready':'missing'}`;$('st-ffmpeg').title=d.ffmpeg||'ffmpeg not found — Settings → Tools';
-  $('st-dee').innerHTML=`<span class="dot ${d.dee?'ok':(d.deew?'warn':'bad')}"></span>DEE ${d.dee?'ready':(d.deew?'not configured':'unavailable')}`;$('st-dee').title=d.dee||'Dolby Encoding Engine — set dee.exe in Settings → Dolby Engine';
+  updateAtmos71Help();renderStatus();renderBanners();
 }
 async function saveTools(){
   S=await post('/api/settings',{tools:{ffmpeg:$('t-ffmpeg').value,ffprobe:$('t-ffprobe').value,deew_python:$('t-deew').value,mediainfo:$('t-mediainfo').value,truehdd:$('t-truehdd').value,deezy:$('t-deezy').value},
@@ -698,70 +653,67 @@ async function saveTools(){
   // patcher folder lives in tools too (separate post so an empty value clears it)
   S=await post('/api/settings',{tools:{patcher:$('t-patcher').value}});
   S.encode=Object.assign({target:'ddp',channels:0,bitrate:0,atmos:true,atmos71:'flat',bed_conform:true,drc:'film_light'},S.encode||{});
+  S.task=S.task||'fps';
   setOut(S.out_dir||'',false);await loadDoctor();$('settings-note').textContent='Saved '+new Date().toLocaleTimeString([],{hour12:false});toast('Settings saved')}
 async function browseDirFor(id){const r=await post('/api/pick',{kind:'folder',start:$(id).value||$(id).placeholder||''});if(r.native){if(r.paths[0])$(id).value=r.paths[0]}else fbOpen('folder',p=>{$(id).value=p[0]})}
 function openDir(id){post('/api/open',{path:$(id).value||$(id).placeholder||''})}
 async function saveDee(){const r=await post('/api/dee',{dee_path:$('t-dee').value});if(r.ok){toast('DEE configured — deew config written');await loadDoctor()}}
 async function browseFor(id){const r=await post('/api/pick',{kind:'files',start:''});if(r.native){if(r.paths[0])$(id).value=r.paths[0]}else{fbOpen('file',p=>{$(id).value=p[0]})}}
 async function downloadPatcher(){await post('/api/patcher/download',{});$('patcher-btn').disabled=true;$('patcher-stline').hidden=false;const t=setInterval(async()=>{const st=await get('/api/patcher/status');$('patcher-st').textContent=st.state==='running'?`${st.step} ${st.percent}%`:st.state==='error'?'failed: '+st.error:'installed';if(st.state!=='running'){clearInterval(t);$('patcher-btn').disabled=false;loadDoctor()}},800)}
-async function downloadFfmpeg(){await post('/api/ffmpeg/download',{});$('ffdl-btn').disabled=true;const t=setInterval(async()=>{const st=await get('/api/ffmpeg/status');$('ffdl-st').textContent=st.state==='running'?`${st.step} ${st.percent}%`:st.state==='error'?'failed: '+st.error:'installed';if(st.state!=='running'){clearInterval(t);$('ffdl-btn').disabled=false;loadDoctor()}},800)}
-function showPane(sec){document.querySelectorAll('#snav button').forEach(x=>x.classList.toggle('on',x.dataset.sec===sec));document.querySelectorAll('[data-pane]').forEach(p=>p.hidden=p.dataset.pane!==sec)}
-document.querySelectorAll('#snav button').forEach(b=>b.onclick=()=>showPane(b.dataset.sec));
-function openSettings(sec){loadDoctor();closePop();if(sec)showPane(sec);$('settings').classList.add('open')}
-function closeSettings(){$('settings').classList.remove('open')}
+async function downloadFfmpeg(){openSettings('tools');await post('/api/ffmpeg/download',{});$('ffdl-btn').disabled=true;const t=setInterval(async()=>{const st=await get('/api/ffmpeg/status');$('ffdl-st').textContent=st.state==='running'?`${st.step} ${st.percent}%`:st.state==='error'?'failed: '+st.error:'installed';if(st.state!=='running'){clearInterval(t);$('ffdl-btn').disabled=false;loadDoctor()}},800)}
+function showPane(sec){document.querySelectorAll('#stabs button').forEach(x=>x.classList.toggle('on',x.dataset.sec===sec));document.querySelectorAll('[data-pane]').forEach(p=>p.hidden=p.dataset.pane!==sec)}
+function openSettings(sec){loadDoctor();closeMenu();closeCon();showPane(sec||document.querySelector('#stabs button.on')?.dataset.sec||'tools');
+  $('spage').hidden=false;$('jobbar').hidden=true;$('content').hidden=true;$('hdr-files').hidden=true;$('btn-set').classList.add('on');renderTabs()}
+function closeSettings(){$('spage').hidden=true;$('jobbar').hidden=false;$('content').hidden=false;$('hdr-files').hidden=false;$('btn-set').classList.remove('on');renderTabs()}
+function toggleSettings(){$('spage').hidden?openSettings():closeSettings()}
 async function quitApp(){if(!confirm('Quit FPSConv? Running jobs will be cancelled.'))return;await post('/api/quit',{});document.body.innerHTML='<div class="closed-msg"><b>FPSConv has been closed.</b><span>You can close this window.</span></div>'}
 
-/* ── setup bar ──────────────────────────────────── */
+/* ── task / mode / options ──────────────────────── */
+function renderTabs(){const set=!$('spage').hidden;$('task-fps').classList.toggle('on',!set&&S.task!=='encode');$('task-encode').classList.toggle('on',!set&&S.task==='encode');
+  $('task-fps').setAttribute('aria-selected',S.task!=='encode');$('task-encode').setAttribute('aria-selected',S.task==='encode')}
 function setTask(t,persist=true){
-  S.task=t;if(persist)save({task:t});const enc=t==='encode';
-  $('task-fps').classList.toggle('on',!enc);$('task-encode').classList.toggle('on',enc);
-  ['ctl-format','ctl-ch','ctl-br','ctl-atmos','ctl-layout','ctl-drc'].forEach(id=>$(id).hidden=!enc);
-  $('ctl-conv').hidden=enc;$('ratio').hidden=enc;$('refbtn').hidden=enc;$('pop-br').hidden=enc;$('st-atmos').hidden=!enc;
-  outHint=enc?'Encodes are written here as name_DDP7.1Atmos_1536k.ec3 (raw stream — mux it with mkvmerge)':'Converted files are written here as name_mode.ext';setOut(S.out_dir||'',false);
-  if(enc){updateAtmos71Help();refreshPlans()}else{$('notice').hidden=true;render()}
+  S.task=t;if(persist)save({task:t});
+  if(!$('spage').hidden)closeSettings();
+  closeMenu();renderTabs();updateAtmos71Help();
+  if(t==='encode')refreshPlans();else render();
 }
-function setMode(m,persist=true){S.mode=m;if(persist)save({mode:m});$('seg-single').classList.toggle('on',m==='single');$('seg-batch').classList.toggle('on',m==='batch');if(m==='single'&&pending.length>1)pending=pending.slice(-1);render()}
-function onConv(){save({conv_type:$('mode').value});updateRatio();pending.forEach(f=>{f.conv_type=$('mode').value;f.suggest=null});suggestAll()}
-function updateRatio(){const k=$('mode').value;$('ratio').textContent=`×${parseFloat((+ratios[k]).toFixed(4))} · ${atempo(ratios[k])}`;$('ratio').title='Speed factor and the ffmpeg filter it becomes'}
+function setMode(m,persist=true){S.mode=m;if(persist)save({mode:m});if(m==='single'&&pending.length>1)pending=pending.slice(-1);render()}
+function stepWorkers(d){workersN=Math.max(1,Math.min(8,workersN+d));save({workers:workersN});renderBar();renderPop()}
+function setRecursive(on){recursive=on;try{localStorage.setItem('fpsconv-recursive',on?'1':'0')}catch(e){}}
+const parts=k=>k.split('-');
+const srcList=()=>[...new Set(modes.map(k=>parts(k)[0]))];
+const dstList=src=>modes.filter(k=>parts(k)[0]===src).map(k=>parts(k)[1]);
+function setConv(k){if(!modes.includes(k))return;S.conv_type=k;save({conv_type:k});pending.forEach(f=>{f.conv_type=k;f.suggest=null});suggestAll();renderBar()}
+function pickSource(v){const to=parts(S.conv_type)[1];setConv(modes.includes(`${v}-${to}`)?`${v}-${to}`:modes.find(k=>parts(k)[0]===v))}
+function pickTarget(v){setConv(`${parts(S.conv_type)[0]}-${v}`)}
 function atempo(r){const p=[];if(Math.abs(r-1)<1e-4)return'anull';while(r>2){p.push('atempo=2.0');r/=2}while(r<0.5){p.push('atempo=0.5');r*=2}p.push('atempo='+r.toFixed(6));return p.join(',')}
-let outHint='';
-function setOut(p,persist=true){S.out_dir=p;if(persist)save({out_dir:p});$('outtxt').textContent=p||'Choose output folder…';$('outbtn').classList.toggle('dashed',!p);$('outbtn').classList.remove('need');$('outbtn').title=(p?p+'\n':'')+outHint;$('st-out').textContent=p?'→ '+p:'';$('st-out').title=p;render()}
-function onBitrate(){const c=$('br-mode').value==='custom';$('br').hidden=!c;save({bitrate:c?(+$('br').value||0):0})}
-function stepWorkers(d){workersN=Math.max(1,Math.min(8,workersN+d));$('workers').textContent=workersN;save({workers:workersN})}
-function togglePop(e){const p=$('pop');if(p.classList.contains('open')){closePop();return}const b=e.currentTarget.getBoundingClientRect();p.style.top=(b.bottom+8)+'px';p.style.left=Math.max(8,b.right-290)+'px';p.classList.add('open');$('morebtn').classList.add('on')}
-function closePop(){$('pop').classList.remove('open');$('morebtn').classList.remove('on')}
-document.addEventListener('click',e=>{if(!$('pop').contains(e.target)&&!e.target.closest('#morebtn'))closePop()});
+function setOut(p,persist=true){S.out_dir=p;if(persist)save({out_dir:p});needOut=false;render()}
+function setBitrate(custom,val){save({bitrate:custom?(+val||0):0});S._brCustom=custom;renderBar();renderPop()}
 
 /* encode options */
-function encSettings(){return{target:$('enc-target').value,channels:+$('enc-channels').value,bitrate:+$('enc-bitrate').value||0,atmos:$('enc-atmos').checked,atmos71:$('enc-atmos71').value,bed_conform:S.encode?.bed_conform!==false,drc:$('enc-drc').value}}
-function updateAtmos71Help(){
-  const enc=S.task==='encode', show=$('enc-target').value==='ddp'&&$('enc-atmos').checked&&![6,2,1].includes(+$('enc-channels').value);
-  $('ctl-layout').hidden=!(enc&&show);
-  const flat=$('enc-atmos71').value==='flat', d=doctor||{}, f=d.flat71||{};
-  // the same verdict the job preflight gives (engine.flat71_ready), so the notice never disagrees with it
-  let warn='';
-  if(enc&&show&&flat&&f.ok===false){warn=`Flat 7.1 Atmos: ${f.reason} — jobs will refuse to run until then.`;noticeSec=/dee\.exe|Encoding Engine|\.dll/.test(f.reason)?'dee':/patcher/.test(f.reason)?'patch':'tools'}
-  $('notice').hidden=!warn;$('notice-text').textContent=warn;
-  $('ctl-layout').title=flat?'Flat 7.1 — Lb Rb: truehdd → patched DEE 5.2.1 → Surround EX flag. MediaInfo shows L R C LFE Ls Rs Lb Rb.':'DEE default — its own Blu-ray JOC: MediaInfo shows Tfl Tfr; legacy 7.1 decoders get heights, not back surrounds.';
-}
-function fillBitrates(){
-  const e=S.encode,fmt=$('enc-target').value,ch=+$('enc-channels').value;
+function brList(){
+  const e=S.encode||{},fmt=e.target||'ddp',ch=+e.channels||0;
   // an explicit layout shows its own list (DD has no 7.1: a 7.1 request becomes 5.1);
   // "same as source" shows the union so any file in a batch can be served
   let list;
   if(ch)list=(ENC.bitrates?.[fmt]?.[String(fmt==='dd'&&ch===8?6:ch)]||[]).slice();
   else list=[...new Set([].concat(...Object.values(ENC.bitrates?.[fmt]||{})))].sort((a,b)=>a-b);
-  if(fmt==='ddp'&&$('enc-atmos').checked)list=[...new Set(list.concat(ENC.atmos_bitrates?.streaming||[],$('enc-atmos71').value==='flat'?(ENC.flat71_bitrates||[]):(ENC.atmos_bitrates?.bluray||[])))].sort((a,b)=>a-b);
-  const sel=$('enc-bitrate');
-  sel.innerHTML='<option value="0">Auto</option>'+list.map(b=>`<option value="${b}">${b}k</option>`).join('');
-  sel.value=list.includes(+e.bitrate)?String(e.bitrate):'0';
-  const d=ENC.defaults||{};
-  $('ctl-br').title='Auto = DEE default for the layout — '+(fmt==='dd'?`2.0 ${d.dd_2} · 5.1 ${d.dd_6} kbps (max 640)`:`2.0 ${d.ddp_2} · 5.1 ${d.ddp_6} · 7.1 ${d.ddp_8} · Atmos 5.1 ${d.atmos_6} / 7.1 ${d.atmos_8} kbps. DDP 5.1 tops out at 1024 kbps; 1536 kbps is 7.1 only.`);
+  if(fmt==='ddp'&&e.atmos)list=[...new Set(list.concat(ENC.atmos_bitrates?.streaming||[],e.atmos71==='flat'?(ENC.flat71_bitrates||[]):(ENC.atmos_bitrates?.bluray||[])))].sort((a,b)=>a-b);
+  return list;
 }
-function onEncode(){
-  const before=S.encode;S.encode=encSettings();
-  if(before.target!==S.encode.target||before.channels!==S.encode.channels||before.atmos!==S.encode.atmos||before.atmos71!==S.encode.atmos71){fillBitrates();S.encode=encSettings()}
-  updateAtmos71Help();save({encode:S.encode});refreshPlans();
+function brTitle(){const d=ENC.defaults||{},fmt=S.encode.target;return 'Auto = DEE default for the layout — '+(fmt==='dd'?`2.0 ${d.dd_2} · 5.1 ${d.dd_6} kbps (max 640)`:`2.0 ${d.ddp_2} · 5.1 ${d.ddp_6} · 7.1 ${d.ddp_8} · Atmos 5.1 ${d.atmos_6} / 7.1 ${d.atmos_8} kbps. DDP 5.1 tops out at 1024 kbps; 1536 kbps is 7.1 only.`)}
+const layoutRelevant=()=>S.encode.target==='ddp'&&S.encode.atmos&&![6,2,1].includes(+S.encode.channels);
+function setEnc(k,v){
+  S.encode[k]=v;
+  if(['target','channels','atmos','atmos71'].includes(k)&&!brList().includes(+S.encode.bitrate))S.encode.bitrate=0;
+  updateAtmos71Help();save({encode:S.encode});refreshPlans();renderBar();renderPop();
+}
+function updateAtmos71Help(){
+  const enc=S.task==='encode',flat=S.encode?.atmos71==='flat',f=(doctor||{}).flat71||{};
+  // the same verdict the job preflight gives (engine.flat71_ready), so the notice never disagrees with it
+  notice='';
+  if(enc&&S.encode&&layoutRelevant()&&flat&&f.ok===false){notice=`Flat 7.1 Atmos: ${f.reason} — jobs will refuse to run until then.`;noticeSec=/dee\.exe|Encoding Engine|\.dll/.test(f.reason)?'dee':/patcher/.test(f.reason)?'patch':'tools'}
+  renderBanners();
 }
 let planT;
 function refreshPlans(){clearTimeout(planT);planT=setTimeout(async()=>{
@@ -774,8 +726,7 @@ function refreshPlans(){clearTimeout(planT);planT=setTimeout(async()=>{
 
 /* target video (fps task) */
 const FPS_SRC={video:'from the video track in this file',tag:'from a frame-rate tag in the container',name:'from the file name'};
-const parts=k=>k.split('-');
-function autoMode(f){const to=parts($('mode').value)[1];if(!f.fps)return null;if(f.fps===to)return{conv_type:null,reason:`already ${to} fps`};const k=`${f.fps}-${to}`;return modes.includes(k)?{conv_type:k,reason:`audio is ${f.fps} fps (${f.fps_source}) → ${to} fps`}:null}
+function autoMode(f){const to=parts(S.conv_type)[1];if(!f.fps)return null;if(f.fps===to)return{conv_type:null,reason:`already ${to} fps`};const k=`${f.fps}-${to}`;return modes.includes(k)?{conv_type:k,reason:`audio is ${f.fps} fps (${f.fps_source}) → ${to} fps`}:null}
 async function suggestAll(){
   if(ref){const r=await post('/api/suggest',{reference:ref,items:pending.map(f=>({fps:f.fps,duration_s:f.duration_s}))});(r.suggestions||[]).forEach((sg,i)=>{pending[i].suggest=sg;if(sg&&sg.conv_type)pending[i].conv_type=sg.conv_type})}
   else pending.forEach(f=>{f.suggest=autoMode(f);if(f.suggest&&f.suggest.conv_type)f.conv_type=f.suggest.conv_type});
@@ -784,34 +735,31 @@ async function suggestAll(){
 async function chooseRef(){const r=await post('/api/pick',{kind:'files',start:S.last_dir||''});if(r.native){if(r.paths[0])await setRefPath(r.paths[0])}else fbOpen('file',p=>setRefPath(p[0]))}
 async function setRefPath(p){const r=await get('/api/reference?path='+encodeURIComponent(p));if(r.error){toast(r.error,true);return}setRef(r)}
 function setRef(r){
-  ref=r;const b=$('refbtn'),t=$('reftxt');
-  if(!r){t.textContent='+ Target video';b.classList.add('dashed');$('ref-x').hidden=true;b.title='Optional. The video this audio has to fit: its frame rate and duration are compared with every file and the conversion is suggested per row.'}
-  else{t.textContent=(r.name||r.path)+(r.fps?' · '+r.fps+' fps':'');b.classList.remove('dashed');$('ref-x').hidden=false;
-    b.title=`${r.path}\n${r.fps?r.fps+' fps ('+(FPS_SRC[r.fps_source]||r.fps_source)+')':'frame rate unknown'} · ${r.duration}`;
-    if(r.fps){const to=parts($('mode').value)[1];if(to!==r.fps){const k=modes.find(m=>parts(m)[1]===r.fps&&parts(m)[0]===parts($('mode').value)[0])||modes.find(m=>parts(m)[1]===r.fps);if(k){$('mode').value=k;save({conv_type:k});updateRatio()}}}}
-  suggestAll();
+  ref=r;
+  if(r&&r.fps){const cur=S.conv_type,to=parts(cur)[1];if(to!==r.fps){const k=modes.find(m=>parts(m)[1]===r.fps&&parts(m)[0]===parts(cur)[0])||modes.find(m=>parts(m)[1]===r.fps);if(k){S.conv_type=k;save({conv_type:k})}}}
+  renderBar();suggestAll();
 }
-function fpsTxt(f){if(!f.fps)return `<span class="fps-txt" title="No video track, fps tag or fps in the file name. Pick a Target video to work it out from the durations.">fps ?</span>`;const hit=ref&&ref.fps&&f.fps===ref.fps;return `<span class="fps-txt ${hit?'hit':''}" title="${esc(FPS_SRC[f.fps_source]||f.fps_source)}${hit?' — matches the target video':''}">${f.fps} fps${f.fps_source!=='video'?' ~':''}</span>`}
+function fpsTag(f){if(!f.fps)return `<span class="tag fps" title="No video track, fps tag or fps in the file name. Pick a video to match to work it out from the durations.">FPS ?</span>`;const hit=ref&&ref.fps&&f.fps===ref.fps;return `<span class="tag fps ${hit?'hit':''}" title="${esc(FPS_SRC[f.fps_source]||f.fps_source)}${hit?' — matches the video':''}">${esc(f.fps)}${f.fps_source!=='video'?'~':''}</span>`}
 
 /* ── adding files ───────────────────────────────── */
-async function chooseOut(){const r=await post('/api/pick',{kind:'folder',start:S.out_dir||''});if(r.native){if(r.paths[0])setOut(r.paths[0])}else fbOpen('folder',p=>setOut(p[0]))}
+async function chooseOut(){closeMenu();const r=await post('/api/pick',{kind:'folder',start:S.out_dir||''});if(r.native){if(r.paths[0])setOut(r.paths[0])}else fbOpen('folder',p=>setOut(p[0]))}
 async function addFiles(){const r=await post('/api/pick',{kind:'files',start:S.last_dir||''});if(r.native){if(r.paths.length)await addPaths(S.mode==='single'?r.paths.slice(0,1):r.paths)}else fbOpen('files',addPaths)}
 async function addFolder(){const r=await post('/api/pick',{kind:'folder',start:S.last_dir||''});if(r.native){if(r.paths[0])await addFolderPath(r.paths[0])}else fbOpen('folder-add',p=>addFolderPath(p[0]))}
-async function addFolderPath(folder){const r=await post('/api/expand',{path:folder,recursive:$('recursive').checked});if(r.files){if(!r.files.length)toast('No audio files in that folder',true);await addPaths(S.mode==='single'?r.files.slice(0,1):r.files)}}
+async function addFolderPath(folder){const r=await post('/api/expand',{path:folder,recursive});if(r.files){if(!r.files.length)toast('No audio files in that folder',true);await addPaths(S.mode==='single'?r.files.slice(0,1):r.files)}}
 async function addPaths(paths){
   let added=0;
   for(const p of paths){
     if(pending.some(f=>f.path===p))continue;
     const info=await get('/api/probe?path='+encodeURIComponent(p));
     if(info.error){toast(info.error+': '+p,true);continue}
-    info.stream_index=0;info.conv_type=$('mode').value;
+    info.stream_index=0;info.conv_type=S.conv_type;
     if(S.mode==='single')pending=[];
-    pending.push(info);added++;S.last_dir=p.replace(/[\\/][^\\/]*$/,'');
+    pending.push(info);added++;S.last_dir=dirOf(p);
   }
   if(S.task==='encode')refreshPlans();else await suggestAll();
   return added;
 }
-function removePending(i){const f=pending[i];checked.delete('p:'+f.path);pending.splice(i,1);render()}
+function removePending(i){const f=pending[i];checked.delete('p:'+f.path);if(openKey==='p:'+f.path)openKey=null;pending.splice(i,1);render()}
 function setPendingStream(i,v){pending[i].stream_index=+v;if(S.task==='encode')refreshPlans();else render()}
 function setPendingMode(i,v){pending[i].conv_type=v;pending[i].suggest=null;render()}
 
@@ -837,22 +785,26 @@ window.onNativeDrop=async paths=>{
 /* ── start / cancel / clear ─────────────────────── */
 async function start(){
   if(!pending.length)return;
-  if(!S.out_dir){$('outbtn').classList.add('need');toast('Choose an output folder first',true);chooseOut();return}
+  if(!S.out_dir){needOut=true;renderBar();toast('Choose an output folder first',true);chooseOut();return}
   if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
-  const r=await post('/api/jobs',{items:pending.map(f=>({path:f.path,stream_index:f.stream_index,conv_type:f.conv_type})),conv_type:$('mode').value,out_dir:S.out_dir,workers:S.mode==='batch'?workersN:1,bitrate:S.bitrate||0,overwrite:S.overwrite||'overwrite',task:S.task||'fps',encode:S.encode});
-  if(r.added){pending=[];checked.clear();if(r.added[0]){selected=r.added[0];setTab('prog');openAct()}render()}
+  const r=await post('/api/jobs',{items:pending.map(f=>({path:f.path,stream_index:f.stream_index,conv_type:f.conv_type})),conv_type:S.conv_type,out_dir:S.out_dir,workers:S.mode==='batch'?workersN:1,bitrate:S.bitrate||0,overwrite:S.overwrite||'overwrite',task:S.task||'fps',encode:S.encode});
+  if(r.added){pending=[];checked.clear();if(r.added[0]){selected=openKey=r.added[0]}render()}
 }
 async function clearAll(){
   const n=pending.length, fin=jobs.filter(j=>!['queued','running'].includes(j.state)).length;
   if(!n&&!fin){toast('Nothing to clear');return}
-  pending=[];checked.clear();selected=null;
+  pending=[];checked.clear();selected=null;openKey=null;
   const r=await post('/api/clear',{});
   render();toast(`Cleared ${n} loaded file${n===1?'':'s'} and ${r.removed||0} finished job${r.removed===1?'':'s'}`);
 }
-function toggleAll(on){checked=new Set(on?[...pending.map(f=>'p:'+f.path),...jobs.map(j=>j.id)]:[]);render()}
+function rowKeys(){return [...pending.map(f=>'p:'+f.path),...jobs.map(j=>j.id)]}
+function toggleAll(on){checked=new Set(on?rowKeys():[]);render()}
 function toggleCheck(id,on){on?checked.add(id):checked.delete(id);render()}
 async function cancelSelected(){const ids=jobs.filter(j=>checked.has(j.id)&&(j.state==='queued'||j.state==='running')).map(j=>j.id);if(!ids.length){await post('/api/cancel_all',{});return}for(const id of ids)await post('/api/cancel',{id})}
 async function removeChecked(){if(!checked.size)return;pending=pending.filter(f=>!checked.has('p:'+f.path));for(const j of jobs)if(checked.has(j.id)&&!['queued','running'].includes(j.state))await post('/api/remove',{id:j.id});checked.clear();render()}
+async function retryChecked(){for(const j of jobs)if(checked.has(j.id)&&['failed','cancelled'].includes(j.state))await post('/api/retry',{id:j.id});checked.clear();render()}
+async function retryFailed(){for(const j of jobs)if(['failed','cancelled'].includes(j.state))await post('/api/retry',{id:j.id})}
+function toggleOpen(key){openKey=openKey===key?null:key;if(openKey&&!openKey.startsWith('p:'))selected=openKey;render();if(conTab==='job')renderLog()}
 
 /* ── MediaInfo ──────────────────────────────────── */
 async function showMi(path,id){
@@ -864,124 +816,272 @@ async function showMi(path,id){
 function closeMi(){$('mi').classList.remove('open')}
 function copyMi(){navigator.clipboard?.writeText($('mi-pre').textContent).then(()=>toast('MediaInfo copied'))}
 
-/* ── polling + render ───────────────────────────── */
-async function poll(){try{const s=await get('/api/status');if(s.version!==lastVersion){lastVersion=s.version;jobs=s.jobs;render()}}catch(e){}setTimeout(poll,600)}
+/* ── job bar ────────────────────────────────────── */
+const ro=(k,label,valHtml,cls='',extra='',tip='')=>`<div class="fc ${cls}"><span class="ml" id="l-${k}">${label}</span><button class="ro ${menu===k?'open':''} ${extra}" data-menu="${k}" onclick="toggleMenu('${k}')" aria-haspopup="listbox" aria-labelledby="l-${k}"${tip?` title="${esc(tip)}"`:''}>${valHtml}${ic('chev','chv')}</button></div>`;
+const EX={overwrite:'Overwrite',skip:'Skip',rename:'Numbered copy'};
+function session(){return jobs.filter(j=>['running','queued'].includes(j.state)||j.finished_at>=sessionStart)}
+function etaMin(){const run=jobs.filter(j=>j.state==='running');let best=0;for(const j of run){const p=j.overall??j.percent,el=hms(j.elapsed);if(p>=5)best=Math.max(best,el*(100-p)/p)}return best?Math.max(1,Math.round(best/60)):0}
+function renderBar(){
+  const enc=S.task==='encode', run=jobs.filter(j=>j.state==='running'), queued=jobs.filter(j=>j.state==='queued'), busy=run.length+queued.length>0;
+  let h='';
+  if(!enc){
+    const [src,dst]=parts(S.conv_type),r=+ratios[S.conv_type]||1,rt=(1/r-1)*100;
+    h+=ro('from','Source',`<span class="v mono">${esc(src)}</span><span class="u">fps</span>`);
+    h+=`<span class="arrow">${ic('arrow')}</span>`;
+    h+=ro('to','Target',`<span class="v mono">${esc(dst)}</span><span class="u">fps</span>`);
+    h+=`<div class="speed mono" title="Speed factor · ffmpeg filter: ${esc(atempo(r))}"><span>×${r.toFixed(6)}</span><span>${rt>0?'+':''}${rt.toFixed(2)}% runtime</span></div><span class="vsep"></span>`;
+    h+=`<div class="fc"><span class="ml">Match video</span>${ref
+      ?`<div class="ro set" title="${esc(`${ref.path}\n${ref.fps?ref.fps+' fps ('+(FPS_SRC[ref.fps_source]||ref.fps_source)+')':'frame rate unknown'} · ${ref.duration||''}`)}">${ic('film','ico')}<span class="path" style="max-width:170px">${esc(ref.name||ref.path)}</span>${ref.fps?`<span class="fpsv">${esc(ref.fps)} fps</span>`:''}<button class="clr" onclick="setRef(null)" title="Clear the video" aria-label="Clear the video">${ic('x')}</button></div>`
+      :`<button class="ro dashed" onclick="chooseRef()" title="Optional. The video this audio has to fit: its frame rate and duration are compared with every file and the conversion is suggested per row.">${ic('film','ico')}Choose video…</button>`}</div>`;
+  }else{
+    const e=S.encode,dd=e.target==='dd';
+    h+=ro('fmt','Format',`<span class="v">${dd?'DD':'DD+'}</span>`);
+    h+=ro('ch','Channels',`<span class="v mono">${+e.channels?chl(+e.channels):'Auto'}</span>`);
+    h+=ro('br','Bitrate',`<span class="v mono">${+e.bitrate?e.bitrate:'Auto'}</span>${+e.bitrate?'<span class="u">kbps</span>':''}`,'','',brTitle());
+    h+=ro('drc','Dynamic range',`<span>${esc(cap((e.drc||'').replace('_',' ')))}</span>`);
+    h+=`<div class="fc"><span class="ml">Atmos</span><button class="led ${e.atmos&&!dd?'on':''}" onclick="setEnc('atmos',${!e.atmos})" ${dd?'disabled':''} aria-pressed="${!!e.atmos&&!dd}" title="${dd?'DD cannot carry Atmos':'Keep Atmos: TrueHD Atmos → DDP Atmos (needs truehdd, DeeZy and DEE 5.2). Off = encode the bed only.'}"><span class="lamp"></span>${e.atmos&&!dd?'On':'Off'}</button></div>`;
+  }
+  h+=`<span class="vsep"></span>`;
+  h+=S.out_dir?ro('out','Save to',`${ic('folder','ico')}<span class="path mono">${esc(S.out_dir)}</span>`,'grow',needOut?'need':'',S.out_dir)
+    :`<div class="fc grow"><span class="ml">Save to</span><button class="ro dashed ${needOut?'need':''}" onclick="chooseOut()">${ic('folder','ico')}Choose output folder…</button></div>`;
+  h+=ro('options','Options',`${ic('sliders','ico')}<span class="opt-sum">${S.mode==='batch'?workersN+' at once':'Single'} · ${EX[S.overwrite||'overwrite']}</span>`);
+  let go='';
+  if(busy){const done=session().filter(j=>!['running','queued'].includes(j.state)).length,eta=etaMin(),liveSel=jobs.some(j=>checked.has(j.id)&&['running','queued'].includes(j.state));
+    go+=`<div class="meta"><b class="mono">${done} / ${session().length}</b>${eta?'~'+eta+' min left':'working…'}</div><button class="btn lg" onclick="cancelSelected()" title="Cancel the checked jobs — or every running and queued job when none is checked">${ic('stop')}${liveSel?'Stop selected':'Stop'}</button>`}
+  if(pending.length)go+=`<button class="btn primary lg" onclick="start()" title="Queue every Ready file (Ctrl+Enter)">${ic('play')}Start${pending.length>1?`<span class="cnt">${pending.length}</span>`:''}</button>`;
+  else if(!busy){const fin=jobs.filter(j=>!['running','queued'].includes(j.state)),bad=fin.filter(j=>['failed','cancelled'].includes(j.state)).length;
+    if(fin.length)go+=`${bad?`<button class="btn lg" onclick="retryFailed()">${ic('retry')}Retry failed</button>`:''}<button class="btn primary lg" onclick="post('/api/open',{path:${js(S.out_dir)}})" ${S.out_dir?'':'disabled'}>${ic('open')}Open folder</button>`;
+    else go+=`<button class="btn primary lg" disabled title="Add files first">${ic('play')}Start</button>`}
+  const sess=session(),pct=sess.length?(sess.filter(j=>!['running','queued'].includes(j.state)).length+run.reduce((a,j)=>a+(j.overall??j.percent)/100,0))/sess.length*100:0;
+  h+=`<div class="go">${go}</div><div class="toplp" style="width:${busy?pct:0}%;opacity:${busy?1:0}"></div>`;
+  $('jobbar').innerHTML=h;
+  if(menu)renderPop();
+}
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+
+/* popover menus */
+function toggleMenu(k){menu=menu===k?null:k;renderBar();renderPop()}
+function closeMenu(){if(!menu)return;menu=null;renderBar();renderPop()}
+document.addEventListener('mousedown',e=>{if(menu&&!$('pop').contains(e.target)&&!e.target.closest('[data-menu]'))closeMenu()});
+addEventListener('resize',()=>{if(menu)renderPop()});
+function renderPop(){
+  const pop=$('pop');
+  if(!menu){pop.hidden=true;return}
+  const a=document.querySelector(`[data-menu="${menu}"]`);if(!a){menu=null;pop.hidden=true;return}
+  const tick=on=>`<span class="tick">${on?ic('check'):''}</span>`;
+  const item=(on,label,fn,small='')=>`<button class="mi" onclick="${fn}">${tick(on)}${label}${small?`<small>${small}</small>`:''}</button>`;
+  const e=S.encode;let h='';
+  if(menu==='from')h=`<div class="ph">Source frame rate</div>`+srcList().map(v=>item(parts(S.conv_type)[0]===v,`<span class="mono">${esc(v)}</span>`,`pickSource(${js(v)});closeMenu()`,'fps')).join('');
+  else if(menu==='to')h=`<div class="ph">Target frame rate</div>`+dstList(parts(S.conv_type)[0]).map(v=>item(parts(S.conv_type)[1]===v,`<span class="mono">${esc(v)}</span>`,`pickTarget(${js(v)});closeMenu()`,`×${(+ratios[parts(S.conv_type)[0]+'-'+v]).toFixed(4)}`)).join('');
+  else if(menu==='fmt')h=[['ddp','Dolby Digital Plus','DDP · E-AC-3'],['dd','Dolby Digital','DD · AC-3']].map(([v,t,s])=>item(e.target===v,t,`setEnc('target','${v}');closeMenu()`,s)).join('');
+  else if(menu==='ch')h=[[0,'Same as source'],[8,'7.1'],[6,'5.1'],[2,'2.0'],[1,'1.0']].map(([v,t])=>item(+e.channels===v,t,`setEnc('channels',${v});closeMenu()`,v===8&&e.target==='dd'?'DD → 5.1':'')).join('')+`<div class="msep"></div><div class="ph" style="text-transform:none;letter-spacing:0;font-weight:400">Never upmixes: a 2.0 source stays 2.0</div>`;
+  else if(menu==='br')h=item(!+e.bitrate,'Auto','setEnc(\'bitrate\',0);closeMenu()','DEE default')+brList().map(b=>item(+e.bitrate===b,`<span class="mono">${b}</span>`,`setEnc('bitrate',${b});closeMenu()`,'kbps')).join('');
+  else if(menu==='drc')h=(ENC.drc||[]).map(d=>item(e.drc===d,esc(cap(d.replace('_',' '))),`setEnc('drc',${js(d)});closeMenu()`)).join('');
+  else if(menu==='out')h=`<div class="ppath">${esc(S.out_dir)}</div><div class="msep"></div>${item(false,'Change folder…','chooseOut()')}${item(false,'Open in Explorer',`post('/api/open',{path:${js(S.out_dir)}});closeMenu()`)}`;
+  else if(menu==='options'){
+    const seg=(cur,opts,fn)=>`<div class="seg">${opts.map(([v,t])=>`<button class="${cur===v?'on':''}" onclick="${fn}(${js(v)})">${t}</button>`).join('')}</div>`;
+    const custom=!!S.bitrate||S._brCustom;
+    h=`<div class="ph">Options</div>
+      <div class="orow"><span>Queue<span class="hint">Single: a new file replaces the last one</span></span>${seg(S.mode,[['batch','Batch'],['single','Single']],'setMode')}</div>
+      ${S.mode==='batch'?`<div class="orow"><span>Files at once<span class="hint">DEE encodes are CPU-heavy; 2 is a good default</span></span><div class="step"><button onclick="stepWorkers(-1)" aria-label="Fewer">−</button><b>${workersN}</b><button onclick="stepWorkers(1)" aria-label="More">+</button></div></div>`:''}
+      <div class="orow"><span>If the output exists</span>${seg(S.overwrite||'overwrite',[['overwrite','Overwrite'],['skip','Skip'],['rename','Numbered copy']],'setOverwrite')}</div>
+      <div class="orow"><span>Include sub-folders<span class="hint">When adding a folder</span></span><label class="sw"><input type="checkbox" ${recursive?'checked':''} onchange="setRecursive(this.checked)"><span class="trk"></span></label></div>
+      ${S.task!=='encode'?`<div class="orow"><span>Output bitrate</span><span style="display:flex;gap:8px;align-items:center">${custom?`<input class="in num-in" type="number" min="32" max="6144" step="8" placeholder="kbps" value="${S.bitrate||''}" onchange="setBitrate(true,this.value)">`:''}${seg(custom?'custom':'auto',[['auto','Same as source'],['custom','Custom']],'pickBr')}</span></div>`
+        :`<div class="orow"><span>7.1 Atmos layout<span class="hint">${layoutRelevant()?(e.atmos71==='flat'?'Lb Rb through the patched DEE 5.2.1':'DEE’s own 5.1 + 2 heights (Tfl Tfr)'):'Only for DDP Atmos 7.1'}</span></span>${seg(e.atmos71||'flat',[['flat','Flat 7.1'],['dee','DEE default']],'setLayout')}</div>
+          <div class="orow"><span>Bed conform<span class="hint">truehdd --bed-conform</span></span><label class="sw"><input type="checkbox" ${e.bed_conform!==false?'checked':''} onchange="setEnc('bed_conform',this.checked);$('t-bedconform').checked=this.checked"><span class="trk"></span></label></div>`}`;
+  }
+  pop.innerHTML=h;pop.hidden=false;
+  const r=a.getBoundingClientRect();
+  pop.style.minWidth=Math.max(190,r.width)+'px';
+  pop.style.top=(r.bottom+6)+'px';
+  pop.style.left=Math.max(8,Math.min(r.left,innerWidth-pop.offsetWidth-8))+'px';
+}
+function setOverwrite(v){save({overwrite:v});renderBar()}
+function setLayout(v){setEnc('atmos71',v)}
+function pickBr(v){if(v==='auto'){S._brCustom=false;setBitrate(false)}else{S._brCustom=true;renderPop()}}
+
+/* ── table ──────────────────────────────────────── */
 const ST={done:'Done',failed:'Failed',cancelled:'Cancelled',running:'Running',queued:'Queued',skipped:'Skipped'};
 function pendingRow(f,i){
-  const id='p:'+f.path, st=f.streams.find(s=>s.index===f.stream_index)||f.streams[0], enc=S.task==='encode';
-  const track=f.streams.length>1
-    ?`<select class="tracksel" title="Audio stream to use" onchange="setPendingStream(${i},this.value)">${f.streams.map(s=>`<option value="${s.index}" ${s.index===f.stream_index?'selected':''}>#${s.index} ${esc(enc?(s.pretty||s.codec_name):s.codec_name)} ${s.channels}ch${s.language?' '+s.language:''}</option>`).join('')}</select>`
-    :`<span class="tracksel plain" title="Audio stream">#${st.index}</span>`;
-  const unknown=enc&&st.atmos===null&&st.codec==='truehd'?' · <span class="warn">Atmos unknown (no mediainfo)</span>':'';
-  const meta=enc?`<b>${esc(st.pretty||st.codec.toUpperCase())}</b> · ${st.channels} ch · ${khz(st.sample_rate)} kHz · ${short(f.duration)} · ${f.size} · ${esc(st.engine_encode||'')}${unknown}`
-               :`${fpsTxt(f)} · <b>${esc(st.codec.toUpperCase())}</b> · ${st.bitrate} kbps · ${st.channels} ch · ${short(f.duration)} · ${f.size} · ${esc(st.engine||'')}`;
-  const mode=enc
-    ?(f.plan?`<div class="plan" title="${esc((f.plan.notes||[]).join('\n'))}">${esc(f.plan.label)}${f.plan.notes?.length?`<div class="why warn">${esc(f.plan.notes[0])}</div>`:''}</div>`:'<span class="plan muted">…</span>')
-    :`<select class="mini ${f.suggest&&f.suggest.conv_type?'suggested':''}" title="${esc(f.suggest?f.suggest.reason:'Conversion for this file')}" onchange="setPendingMode(${i},this.value)">${modes.map(k=>`<option value="${k}" ${k===f.conv_type?'selected':''}>${k.replace('-',' → ')}</option>`).join('')}</select>${f.suggest?`<div class="why" title="${esc(f.suggest.reason)}">${f.suggest.conv_type?'suggested':'no change needed'}${f.suggest.delta?` · Δ ${f.suggest.delta} s`:''}</div>`:''}`;
-  return `<div class="trow">
-    <input type="checkbox" class="cb" ${checked.has(id)?'checked':''} onchange="toggleCheck(${esc(JSON.stringify(id))},this.checked)">
-    <div class="fcol"><div class="n" title="${esc(f.path)}">${esc(f.name)}</div><div class="s"><span class="grow">${meta}</span>${track}</div></div>
-    <div>${mode}</div>
-    <div><div class="bar2 wait"><i></i></div><div class="det">waiting for Start</div></div>
-    <div class="st ready"><i></i>Ready</div>
-    <div class="acts"><button class="ib" title="MediaInfo of the source" onclick='showMi(${esc(JSON.stringify(f.path))})'>${I.info}</button><button class="ib danger" title="Remove" onclick="removePending(${i})">${I.x}</button></div>
-  </div>`;
+  const key='p:'+f.path, st=f.streams.find(s=>s.index===f.stream_index)||f.streams[0], enc=S.task==='encode', open=openKey===key;
+  const track=f.streams.length>1?`<div class="l2"><select class="mini" title="Audio stream to use" onclick="event.stopPropagation()" onchange="setPendingStream(${i},this.value)">${f.streams.map(s=>`<option value="${s.index}" ${s.index===f.stream_index?'selected':''}>Track ${s.index+1} · ${esc(codecTag(s.codec))} ${esc(chl(s.channels))}${s.language?' · '+esc(s.language):''}</option>`).join('')}</select></div>`:'';
+  const unknown=enc&&st.atmos===null&&st.codec==='truehd'?`<span class="tag warn" title="No mediainfo: Atmos cannot be detected">ATMOS ?</span>`:'';
+  const out=enc
+    ?(f.plan?`<div class="outc">${ic('arrow')}<span title="${esc(f.plan.label)}">${esc(f.plan.label)}</span></div>${f.plan.notes?.length?`<div class="why warn" title="${esc(f.plan.notes.join('\n'))}">${esc(f.plan.notes[0])}</div>`:''}`:`<div class="outc muted">${ic('arrow')}…</div>`)
+    :`<select class="mini ${f.suggest&&f.suggest.conv_type?'suggested':''}" title="${esc(f.suggest?f.suggest.reason:'Conversion for this file')}" onclick="event.stopPropagation()" onchange="setPendingMode(${i},this.value)">${modes.map(k=>`<option value="${k}" ${k===f.conv_type?'selected':''}>${k.replace('-',' → ')}</option>`).join('')}</select>${f.suggest?`<div class="why ${f.suggest.conv_type?'sug':''}" title="${esc(f.suggest.reason)}">${f.suggest.conv_type?'Suggested':'No change needed'}${f.suggest.delta?` · Δ ${esc(f.suggest.delta)} s`:''}</div>`:''}`;
+  const exp=open?`<div class="exp"><div class="xgrid"><div><dl class="kv">
+      <dt>Source</dt><dd title="${esc(f.path)}">${esc(f.path)}</dd>
+      <dt>Stream</dt><dd>#${st.index} ${esc(st.pretty||codecTag(st.codec))} · ${st.channels} ch · ${khz(st.sample_rate)} kHz${st.bitrate?' · '+st.bitrate+' kbps':''}${st.language?' · '+esc(st.language):''}</dd>
+      <dt>Duration</dt><dd>${esc(f.duration)} · ${esc(f.size)}</dd>
+      ${enc?'':`<dt>Frame rate</dt><dd>${f.fps?esc(f.fps)+' fps ('+esc(FPS_SRC[f.fps_source]||f.fps_source)+')':'unknown'}</dd>`}
+      <dt>Engine</dt><dd>${esc(enc?st.engine_encode:st.engine)}</dd></dl>
+      ${enc&&f.plan?.notes?.length?`<ul class="notes">${f.plan.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>`:''}
+      <div class="xact"><button class="btn sm" onclick='showMi(${js(f.path)})'>${ic('info')}MediaInfo</button><button class="btn sm ghost" onclick="removePending(${i})">${ic('x')}Remove</button></div></div>
+      <div class="minilog muted">Waiting for Start. The steps and the log appear here once the job runs.</div></div></div>`:'';
+  return `<div class="tr ready ${open?'open':''}">
+    <div class="cols" onclick='toggleOpen(${js(key)})'>
+      <div class="c f"><input type="checkbox" class="cb" ${checked.has(key)?'checked':''} onclick="event.stopPropagation()" onchange='toggleCheck(${js(key)},this.checked)' aria-label="Select ${esc(f.name)}"></div>
+      <div class="c"><div class="fname" title="${esc(f.path)}">${esc(f.name)}</div><div class="fsub mono" title="${esc(dirOf(f.path))}">${esc(dirOf(f.path))}</div></div>
+      <div class="c"><div class="tags"><span class="tag">${esc(codecTag(st.codec))}</span><span class="tag">${esc(chl(st.channels))}</span>${st.atmos?'<span class="tag atmos">ATMOS</span>':''}${unknown}${enc?'':fpsTag(f)}</div>${track}</div>
+      <div class="c dur mono">${esc(short(f.duration))}</div>
+      <div class="c">${out}</div>
+      <div class="c"><div class="st"><span class="dot"></span>Ready</div><div class="sub">${esc(f.size)}</div></div>
+      <div class="acts"><button class="ib sm h" onclick='event.stopPropagation();showMi(${js(f.path)})' title="MediaInfo of the source" aria-label="MediaInfo">${ic('info')}</button><button class="ib sm h danger" onclick="event.stopPropagation();removePending(${i})" title="Remove" aria-label="Remove">${ic('x')}</button><button class="ib sm" onclick='event.stopPropagation();toggleOpen(${js(key)})' aria-expanded="${open}" title="Details" aria-label="Details">${ic('chev','chev-r')}</button></div>
+    </div>${exp}</div>`;
 }
-function jobRow(j){
-  const live=j.state==='queued'||j.state==='running', fin=['done','skipped'].includes(j.state);
-  const miPath=fin&&j.out_path?j.out_path:j.source;
-  const mi=`<button class="ib" title="${miPath===j.out_path?'MediaInfo of the encoded output':'MediaInfo of the source'}" onclick='event.stopPropagation();showMi(${esc(JSON.stringify(miPath))},"${j.id}")'>${I.info}</button>`;
-  const acts=live?`${mi}<button class="ib danger" title="Cancel" onclick="event.stopPropagation();post('/api/cancel',{id:'${j.id}'})">${I.x}</button>`
-    :`${mi}${fin?`<button class="ib" title="Open output folder" onclick="event.stopPropagation();post('/api/open',{path:${esc(JSON.stringify(j.out_dir))}})">${I.open}</button>`:`<button class="ib" title="Retry" onclick="event.stopPropagation();post('/api/retry',{id:'${j.id}'})">${I.retry}</button>`}<button class="ib danger" title="Remove from list" onclick="event.stopPropagation();post('/api/remove',{id:'${j.id}'})">${I.x}</button>`;
-  let det, plain; const pc=Math.round(j.overall??j.percent);
-  if(j.state==='running'){plain=`${pc}% · ${j.detail||j.step||''} · ${short(j.elapsed)}${j.eta?' · '+short(j.eta)+' left':''}`;det=`${pc}%${j.detail||j.step?' · '+esc(j.detail||j.step):''} · ${short(j.elapsed)}${j.eta?` · <span class="eta">${short(j.eta)} left</span>`:''}`}
-  else if(j.state==='queued'){plain='queued';det='queued'}
-  else if(j.state==='done'){plain=`→ ${j.out_name}${j.out_size?' · '+j.out_size:''}`;det=`→ <span class="out">${esc(j.out_name)}</span>${j.out_size?' · '+esc(j.out_size):''}${j.elapsed&&j.elapsed!=='00:00:00'?' · '+short(j.elapsed):''}`}
-  else if(j.state==='skipped'){plain='skipped — '+j.error;det='skipped — '+esc(j.error)}
-  else if(j.state==='cancelled'){plain='cancelled';det='cancelled'}
-  else{plain=j.error||'failed';det=`<span class="err">${esc(j.error||'failed')}</span>`}
-  const meta=`<b>${esc(j.task==='encode'?(j.pretty||(j.codec||'').toUpperCase()):(j.codec||'').toUpperCase())}</b>${j.codec&&j.task!=='encode'?' · '+j.bitrate+' kbps':''}${j.channels?' · '+j.channels+' ch':''}${j.duration&&j.duration!=='00:00:00'?' · '+short(j.duration):''}`;
-  return `<div class="trow job ${selected===j.id?'sel':''}" onclick="select('${j.id}')">
-    <input type="checkbox" class="cb" ${checked.has(j.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleCheck('${j.id}',this.checked)">
-    <div class="fcol"><div class="n" title="${esc(j.source)}">${esc(j.name)}</div><div class="s"><span class="grow">${meta}</span><span class="tracksel plain" title="Audio stream">#${j.stream_index}</span></div></div>
-    <div><span class="plan" title="${esc(j.label||j.conv_type)}">${esc(j.task==='encode'?j.label:(j.conv_type||'').replace('-',' → '))}</span></div>
-    <div><div class="bar2 ${j.state}"><i style="width:${fin||j.state==='failed'?100:(j.overall??j.percent)}%"></i></div><div class="det" title="${esc(plain)}">${det}</div></div>
-    <div class="st ${j.state}"><i></i>${ST[j.state]||j.state}</div>
-    <div class="acts">${acts}</div>
-  </div>`;
-}
-function render(){
-  const run=jobs.filter(j=>j.state==='running'), queued=jobs.filter(j=>j.state==='queued'), fin=jobs.filter(j=>!['running','queued'].includes(j.state));
-  const secs=[['Running',run.map(jobRow)],['Queued',queued.map(jobRow)],['Ready',pending.map(pendingRow)],['Finished',fin.map(jobRow)]].filter(s=>s[1].length);
-  const enc=S.task==='encode';
-  $('qbody').innerHTML=secs.length?secs.map(([t,rows])=>`<div class="sec-h">${t}<span class="cnt">${rows.length}</span></div>${rows.join('')}`).join('')
-    :`<div class="empty"><div class="drop">${I.drop}<span>drag &amp; drop</span></div><b>Drop audio files here or add them</b><span class="hint">${enc?'Choose format, channels and bitrate above. Each row shows what it will really become before you press Start.':'Pick the conversion above — or a Target video, and the right conversion is suggested for every file.'}</span><div class="row"><button class="btn" onclick="addFiles()">Add files</button><button class="btn" onclick="addFolder()">Add folder</button></div><span style="margin-top:6px;font-size:11.5px"><kbd>Ctrl</kbd> <kbd>O</kbd> add files · <kbd>Ctrl</kbd> <kbd>Enter</kbd> start</span></div>`;
-  const n=pending.length+jobs.length, parts=[];
-  if(pending.length)parts.push(pending.length+' ready');if(run.length)parts.push(run.length+' running');if(queued.length)parts.push(queued.length+' queued');if(fin.length)parts.push(fin.length+' finished');
-  $('sum').textContent=n?parts.join(' · '):'empty';
-  $('btn-start').disabled=!pending.length;$('start-lbl').textContent='Start'+(pending.length>1?' '+pending.length:'');
-  $('btn-cancel').disabled=!(run.length+queued.length);
-  $('btn-clear').style.visibility=(pending.length||fin.length)?'':'hidden';
-  const all=$('all');all.disabled=!n;all.checked=n>0&&checked.size>=n;all.indeterminate=checked.size>0&&checked.size<n;
-  $('selinfo').hidden=!checked.size;$('selcount').textContent=checked.size+' selected';
-  $('act-live').hidden=!run.length;$('act-live').textContent=run.length;
-  const busy=run.length+queued.length>0, session=jobs.filter(j=>['running','queued'].includes(j.state)||j.finished_at>=sessionStart);
-  $('total').classList.toggle('on',busy);
-  if(busy){const done=session.filter(j=>!['running','queued'].includes(j.state)).length+run.reduce((a,j)=>a+j.percent/100,0);$('total').firstElementChild.style.width=(session.length?done/session.length*100:0)+'%'}
-  if(wasBusy&&!busy){const ok=session.filter(j=>['done','skipped'].includes(j.state)).length,bad=session.filter(j=>j.state==='failed').length;const msg=`Finished: ${ok} done${bad?`, ${bad} failed`:''}`;toast(msg);if('Notification' in window&&Notification.permission==='granted')new Notification('FPSConv',{body:msg})}
-  wasBusy=busy;
-  if(tab==='job')renderLog();else if(tab==='prog')renderProg();
-}
-function select(id){selected=id;setTab('prog');openAct();render()}
-
-/* ── activity pane ──────────────────────────────── */
-function openAct(){$('act').classList.add('open');$('btn-act').classList.add('on');tab==='prog'?renderProg():renderLog()}
-function closeAct(){$('act').classList.remove('open');$('btn-act').classList.remove('on')}
-function initDrag(){                                   // resize the panel from its top edge; the height is remembered
-  const a=$('act');let h0=0,y0=0;
-  try{const h=+localStorage.getItem('fpsconv-act-h');if(h)a.style.setProperty('--act-h',h+'px')}catch(e){}
-  $('drag').onmousedown=e=>{e.preventDefault();y0=e.clientY;h0=a.offsetHeight;a.classList.add('resizing');
-    document.onmousemove=ev=>a.style.setProperty('--act-h',Math.max(120,Math.min(innerHeight-300,h0+(y0-ev.clientY)))+'px');
-    document.onmouseup=()=>{document.onmousemove=document.onmouseup=null;a.classList.remove('resizing');try{localStorage.setItem('fpsconv-act-h',a.offsetHeight)}catch(e){}}};
-}
-function toggleAct(){$('act').classList.contains('open')?closeAct():openAct()}
-function setTab(t){tab=t;for(const k of ['prog','job','app'])$('tab-'+k).classList.toggle('on',t===k);$('prog').hidden=t!=='prog';$('logv').hidden=t==='prog';$('log-tools').hidden=t==='prog';t==='prog'?renderProg():renderLog()}
-/* the Progress tab: files, numbers, stages — from the job's own stage list */
 const dur=(a,b)=>short(fmtT(Math.max(0,(b||0)-(a||0))));
 function fmtT(sec){sec=Math.round(sec);const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),x=sec%60;return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`}
 function hms(t){const p=String(t||'0').split(':').map(Number);return p.length===3?p[0]*3600+p[1]*60+p[2]:p.length===2?p[0]*60+p[1]:p[0]||0}
-function renderProg(){
-  if(!$('act').classList.contains('open'))return;
-  const j=jobs.find(x=>x.id===selected);$('act-sub').textContent='';
-  if(!j){$('prog').innerHTML='<div class="p-empty">Click a job to see its progress. Files that are still Ready have nothing to show yet.</div>';return}
-  const pct=Math.round(j.overall??j.percent), st=j.state, now=j.now||Date.now()/1000;
-  const meta=[j.pretty||(j.codec||'').toUpperCase(),j.channels?j.channels+' ch':'',j.duration&&j.duration!=='00:00:00'?short(j.duration):''].filter(Boolean).join(' · ');
-  const to=j.out_name?`<span class="to ${st==='done'?'ok':''}" title="${esc(j.out_path)}">${esc(j.out_name)}${st==='done'&&j.out_size?' · '+esc(j.out_size):''}</span>`:'<span class="to"></span>';
-  const failedIn=(j.stages||[]).find(s=>s.state==='failed'||s.state==='cancelled');
-  const nowTxt={running:esc(j.detail||j.step||'working'),queued:'queued',done:'finished',failed:failedIn?`stopped in ${esc(failedIn.name)}`:'failed',cancelled:'cancelled',skipped:'skipped — '+esc(j.error)}[st]||esc(st);
-  let right='';
-  if(st==='running'){const sec=hms(j.elapsed);let left='';if(pct>=5)left=`<b>~${short(fmtT(sec*(100-pct)/pct))}</b> left`;else if(j.eta)left=`<b>~${short(j.eta)}</b> left in this stage`;right=`<b>${short(j.elapsed)}</b> elapsed${left?' · '+left:''}`}
-  else if(st==='done')right=`<b>${short(j.elapsed)}</b> total`;
-  else if(j.elapsed&&j.elapsed!=='00:00:00')right=`<b>${short(j.elapsed)}</b> elapsed`;
-  const mark=s=>s.state==='done'?I.check:s.state==='failed'||s.state==='cancelled'?I.cross:s.state==='skip'?'–':s.state==='running'?'<i></i>':'';
-  const time=s=>s.state==='done'?dur(s.started,s.finished):s.state==='skip'?`skipped — ${esc(s.note)}`:s.state==='running'?`${dur(s.started,now)}${s.pct>0?' · '+Math.round(s.pct)+'%':''}`:s.state==='failed'?`failed after ${dur(s.started,s.finished)}`:s.state==='cancelled'?`cancelled after ${dur(s.started,s.finished)}`:'';
-  const list=(j.stages||[]).map(s=>`<li class="${s.state}"><span class="mk">${mark(s)}</span><span class="nm">${esc(s.name)}</span><span class="tm">${time(s)}</span></li>`).join('');
-  $('prog').innerHTML=`<div class="p-files"><span class="from" title="${esc(j.source)}">${esc(j.name)}</span><span class="arr">→</span>${to}<span class="meta">${esc(meta)}</span></div>
-    <div class="p-line"><span class="pct ${st}">${pct}%</span><span class="now">${nowTxt}</span><span class="right">${right}</span></div>
-    ${list?`<ul class="stages">${list}</ul>`:''}${st==='failed'&&j.error?`<div class="p-err">${esc(j.error)}</div>`:''}`;
+function jobRow(j){
+  const live=j.state==='queued'||j.state==='running', fin=['done','skipped'].includes(j.state), open=openKey===j.id, pc=Math.round(j.overall??j.percent);
+  const miPath=fin&&j.out_path?j.out_path:j.source;
+  const miBtn=`<button class="ib sm h" title="${miPath===j.out_path?'MediaInfo of the encoded output':'MediaInfo of the source'}" aria-label="MediaInfo" onclick='event.stopPropagation();showMi(${js(miPath)},${js(j.id)})'>${ic('info')}</button>`;
+  const acts=live?`${miBtn}<button class="ib sm h danger" title="Cancel" aria-label="Cancel" onclick="event.stopPropagation();post('/api/cancel',{id:'${j.id}'})">${ic('stop')}</button>`
+    :`${miBtn}${fin?`<button class="ib sm h" title="Open output folder" aria-label="Open output folder" onclick='event.stopPropagation();post("/api/open",{path:${js(j.out_dir)}})'>${ic('open')}</button>`:`<button class="ib sm h" title="Retry" aria-label="Retry" onclick="event.stopPropagation();post('/api/retry',{id:'${j.id}'})">${ic('retry')}</button>`}<button class="ib sm h danger" title="Remove from list" aria-label="Remove" onclick="event.stopPropagation();post('/api/remove',{id:'${j.id}'})">${ic('x')}</button>`;
+  let stat;
+  if(j.state==='running')stat=`<div class="st"><span class="dot run"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(j.step||'Running')}</span><span class="pct mono">${pc}%</span></div><div class="sub mono" title="${esc(j.detail||'')}">${short(j.elapsed)}${j.eta?' · '+short(j.eta)+' left':''}</div>`;
+  else if(j.state==='queued')stat=`<div class="st" style="color:var(--tx2)"><span class="dot q"></span>Queued</div>`;
+  else if(j.state==='done')stat=`<div class="st"><span class="dot ok"></span>Done</div><div class="sub mono">${esc(j.out_size||'')}${j.elapsed&&j.elapsed!=='00:00:00'?' · '+short(j.elapsed):''}</div>`;
+  else if(j.state==='skipped')stat=`<div class="st"><span class="dot warn"></span>Skipped</div><div class="sub" title="${esc(j.error)}">${esc(j.error)}</div>`;
+  else if(j.state==='cancelled')stat=`<div class="st" style="color:var(--tx2)"><span class="dot"></span>Cancelled</div>`;
+  else stat=`<div class="st"><span class="dot bad"></span>Failed</div><div class="sub bad" title="${esc(j.error||'failed')}">${esc(j.error||'failed')}</div>`;
+  const outLabel=j.task==='encode'?j.label:(j.conv_type||'').replace('-',' → ');
+  return `<div class="tr ${j.state} ${open?'open':''}">
+    <div class="cols" onclick='toggleOpen(${js(j.id)})'>
+      <div class="c f"><input type="checkbox" class="cb" ${checked.has(j.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleCheck('${j.id}',this.checked)" aria-label="Select ${esc(j.name)}"></div>
+      <div class="c"><div class="fname" title="${esc(j.source)}">${esc(j.name)}</div><div class="fsub mono" title="${esc(dirOf(j.source))}">${esc(dirOf(j.source))}</div></div>
+      <div class="c"><div class="tags">${j.codec?`<span class="tag">${esc(codecTag(j.codec))}</span>`:''}${j.channels?`<span class="tag">${esc(chl(j.channels))}</span>`:''}</div><div class="l2">Track ${(+j.stream_index||0)+1}</div></div>
+      <div class="c dur mono">${j.duration&&j.duration!=='00:00:00'?esc(short(j.duration)):'—'}</div>
+      <div class="c"><div class="outc">${ic('arrow')}<span title="${esc(j.label||j.conv_type)}">${esc(outLabel)}</span></div>${j.out_name&&fin?`<div class="why mono" title="${esc(j.out_path)}">${esc(j.out_name)}</div>`:''}</div>
+      <div class="c">${stat}</div>
+      <div class="acts">${acts}<button class="ib sm" onclick='event.stopPropagation();toggleOpen(${js(j.id)})' aria-expanded="${open}" title="Details" aria-label="Details">${ic('chev','chev-r')}</button></div>
+      ${j.state==='running'?`<div class="rowline" style="width:${j.overall??j.percent}%"></div>`:''}
+    </div>${open?jobExp(j):''}</div>`;
 }
-async function pollLog(){try{const r=await get('/api/logs?since='+logSeq);if(r.records.length){appLog.push(...r.records);appLog=appLog.slice(-3000);logSeq=r.seq;if(tab==='app')renderLog()}}catch(e){}}
+function jobExp(j){
+  const now=j.now||Date.now()/1000, stages=j.stages||[], fin=['done','skipped'].includes(j.state);
+  const nodes=stages.map(s=>{
+    const c=s.state==='done'?'done':s.state==='running'?'run':s.state==='failed'||s.state==='cancelled'?'fail':s.state==='skip'?'skip':'';
+    const t=s.state==='done'?dur(s.started,s.finished):s.state==='running'?`${dur(s.started,now)}${s.pct>0?' · '+Math.round(s.pct)+'%':''}`:s.state==='skip'?'skipped':s.state==='failed'?'failed':s.state==='cancelled'?'cancelled':'—';
+    return `<div class="node ${c}" title="${esc(s.name)}${s.note?' — '+esc(s.note):''}"><div class="b"><span class="k">${c==='done'?ic('check'):c==='fail'?ic('x'):''}</span><span class="ln"></span></div><span class="nl">${esc(s.name)}</span><span class="nt mono">${t}</span></div>`}).join('');
+  const pc=Math.round(j.overall??j.percent);
+  let timeTxt='';
+  if(j.state==='running'){const sec=hms(j.elapsed);let left='';if(pc>=5)left='~'+short(fmtT(sec*(100-pc)/pc))+' left';else if(j.eta)left='~'+short(j.eta)+' left in this stage';timeTxt=`${short(j.elapsed)} elapsed${left?' · '+left:''}`}
+  else if(j.state==='done')timeTxt=`${short(j.elapsed)} total`;
+  else if(j.elapsed&&j.elapsed!=='00:00:00')timeTxt=`${short(j.elapsed)} elapsed`;
+  const lines=(j.log||[]).slice(-60).map(l=>{const m=l.match(/^(\d\d:\d\d:\d\d)\s\s(.*)$/s);const body=m?m[2]:l;const bad=/failed|error|exited with code [1-9]|not found|cancelled/i.test(body);return `${m?`<span class="t">${m[1]}</span>  `:''}${bad?`<span style="color:var(--bad)">${esc(body)}</span>`:esc(body)}`}).join('\n');
+  const btns=[];
+  if(fin&&j.out_dir)btns.push(`<button class="btn sm" onclick='post("/api/open",{path:${js(j.out_dir)}})'>${ic('open')}Show in folder</button>`);
+  if(['failed','cancelled'].includes(j.state))btns.push(`<button class="btn sm primary" onclick="post('/api/retry',{id:'${j.id}'})">${ic('retry')}Retry</button>`);
+  if(j.state==='running'||j.state==='queued')btns.push(`<button class="btn sm" onclick="post('/api/cancel',{id:'${j.id}'})">${ic('stop')}Cancel</button>`);
+  btns.push(`<button class="btn sm ghost" onclick='showMi(${js(fin&&j.out_path?j.out_path:j.source)},${js(j.id)})'>${ic('info')}MediaInfo</button>`);
+  btns.push(`<button class="btn sm ghost" onclick="openCon('job')">${ic('log')}Full log</button>`);
+  return `<div class="exp">${nodes?`<div class="pipe">${nodes}</div>`:''}
+    <div class="xgrid"><div><dl class="kv">
+      <dt>Source</dt><dd title="${esc(j.source)}">${esc(j.source)}</dd>
+      <dt>Output</dt><dd title="${esc(j.out_path||j.out_dir)}">${esc(j.out_path||j.out_dir)}</dd>
+      ${j.task==='encode'?`<dt>Encode</dt><dd title="${esc(j.label)}">${esc(j.label)}</dd>`:`<dt>Speed</dt><dd>×${(+ratios[j.conv_type]||1).toFixed(6)} · ${esc((j.conv_type||'').replace('-',' → '))} fps</dd>`}
+      ${timeTxt?`<dt>Time</dt><dd>${timeTxt}</dd>`:''}
+      ${j.state==='running'&&j.detail?`<dt>Now</dt><dd title="${esc(j.detail)}">${esc(j.detail)}</dd>`:''}
+      ${['failed','skipped'].includes(j.state)&&j.error?`<dt>${j.state==='failed'?'Error':'Reason'}</dt><dd class="err">${esc(j.error)}</dd>`:''}
+    </dl><div class="xact">${btns.join('')}</div></div>
+    <pre class="minilog" data-follow="1">${lines||'<span class="t">no output yet</span>'}</pre></div></div>`;
+}
+let deferRender=false;
+function renderTable(){
+  // a native <select> in a row closes when its row is redrawn: wait until it is done
+  const a=document.activeElement;if(a&&a.tagName==='SELECT'&&$('table').contains(a)){if(!deferRender){deferRender=true;a.addEventListener('blur',()=>{deferRender=false;renderTable()},{once:true})}return}
+  const run=jobs.filter(j=>j.state==='running'), queued=jobs.filter(j=>j.state==='queued'), fin=jobs.filter(j=>!['running','queued'].includes(j.state));
+  const groups=[['Running',run.map(jobRow)],['Queued',queued.map(jobRow)],['Ready',pending.map(pendingRow)],['Finished',fin.map(jobRow)]].filter(g=>g[1].length);
+  const n=pending.length+jobs.length,enc=S.task==='encode';
+  if(!n){
+    const [src,dst]=parts(S.conv_type||'-');
+    $('table').innerHTML=`<div class="empty"><div class="drop">
+      <div class="di">${ic('upload')}</div>
+      <h3>Drop audio or video files</h3>
+      <p>${enc?'Each row shows what it will really become before you press Start':`Converted from ${esc(src)} to ${esc(dst)} fps — or pick a video to match and it’s suggested per file`}</p>
+      <div class="btns"><button class="btn primary" onclick="addFiles()">${ic('docAdd')}Add files</button><button class="btn" onclick="addFolder()">${ic('folderAdd')}Add folder</button></div>
+      <div class="fmts">AC-3 · E-AC-3 · TRUEHD · DTS · AAC · FLAC · WAV · MKV · MP4</div>
+      <p style="margin-top:6px;font-size:11.5px"><kbd>Ctrl</kbd> <kbd>O</kbd> add files · <kbd>Ctrl</kbd> <kbd>Enter</kbd> start</p></div></div>`;
+    return;
+  }
+  const all=n>0&&checked.size>=n,some=checked.size>0;
+  const liveSel=jobs.some(j=>checked.has(j.id)&&['running','queued'].includes(j.state)),retrySel=jobs.some(j=>checked.has(j.id)&&['failed','cancelled'].includes(j.state));
+  const head=some
+    ?`<div class="th cols bulk"><div class="c f"><input type="checkbox" class="cb" id="all" ${all?'checked':''} onchange="toggleAll(this.checked)" aria-label="Select all"></div><div class="bulkbar"><b>${checked.size} selected</b><span class="grow"></span>${retrySel?`<button class="btn sm" onclick="retryChecked()">${ic('retry')}Retry</button>`:''}${liveSel?`<button class="btn sm" onclick="cancelSelected()">${ic('stop')}Cancel</button>`:''}<button class="btn sm" onclick="removeChecked()" title="Remove the checked files and finished jobs (Delete)">${ic('trash')}Remove</button><button class="btn sm ghost" onclick="toggleAll(false)">Clear selection</button></div></div>`
+    :`<div class="th cols"><div class="c f"><input type="checkbox" class="cb" id="all" onchange="toggleAll(this.checked)" aria-label="Select all"></div><div class="c">File</div><div class="c">Stream</div><div class="c">Duration</div><div class="c">Output</div><div class="c">Status</div><div class="end">${pending.length||fin.length?`<button class="btn sm ghost" onclick="clearAll()" title="Remove every loaded file and every finished job (running jobs are kept)">Clear</button>`:''}</div></div>`;
+  const tb=$('table').querySelector('.tbody'),keep=tb?tb.scrollTop:0;
+  const logs=[...$('table').querySelectorAll('.minilog')].map(x=>x.scrollHeight-x.scrollTop-x.clientHeight<24);
+  $('table').innerHTML=head+`<div class="tbody">${groups.length>1?groups.map(([t,rows])=>`<div class="grp">${t}<span class="n">${rows.length}</span></div>${rows.join('')}`).join(''):groups[0][1].join('')}</div>`;
+  $('table').querySelector('.tbody').scrollTop=keep;
+  $('table').querySelectorAll('.minilog[data-follow]').forEach((x,k)=>{if(logs[k]!==false)x.scrollTop=x.scrollHeight});
+  const ca=$('all');if(ca)ca.indeterminate=some&&!all;
+}
+
+function renderBanners(){
+  const b=[], d=doctor;
+  if(upd&&['available','ready','downloading','installing'].includes(upd.state)){
+    const txt=updTxt(upd);b.push(`<div class="banner">${ic('download')}<span class="txt">${upd.state==='ready'?`Update <b>v${esc(upd.latest)}</b> is downloaded — ${upd.auto?'it installs when no job is running':'restart to install it'}.`:esc(cap(txt))}</span>${upd.state==='ready'?`<button class="btn sm primary" onclick="installUpdate()">Restart to update</button>`:''}</div>`)}
+  if(d&&!(d.ffmpeg&&d.ffprobe))b.push(`<div class="banner bad">${ic('warn')}<span class="txt"><b>ffmpeg isn’t installed.</b> Nothing can run until it is.</span>${d.can_download_ffmpeg?`<button class="btn sm primary" onclick="downloadFfmpeg()">${ic('download')}Download ffmpeg</button>`:''}<button class="btn sm ghost" onclick="openSettings('tools')">Settings</button></div>`);
+  if(notice)b.push(`<div class="banner">${ic('warn')}<span class="txt">${esc(notice)}</span><button class="btn sm ghost" onclick="openSettings(noticeSec)">Open Settings</button></div>`);
+  $('banners').innerHTML=b.join('');
+}
+
+function renderStatus(){
+  const run=jobs.filter(j=>j.state==='running'),queued=jobs.filter(j=>j.state==='queued'),fin=jobs.filter(j=>!['running','queued'].includes(j.state)),parts_=[];
+  if(pending.length)parts_.push(pending.length+' ready');if(run.length)parts_.push(run.length+' running');if(queued.length)parts_.push(queued.length+' queued');if(fin.length)parts_.push(fin.length+' finished');
+  const eta=etaMin(),d=doctor||{},enc=S.task==='encode';
+  const ff=d.ffmpeg&&d.ffprobe,atmosOk=d.dee&&d.deezy&&d.truehdd,flatOk=!!(d.flat71&&d.flat71.ok);
+  let h=`<span class="left">${parts_.length?parts_.join(' · ')+(eta?` · about ${eta} min left`:''):'Ready'}</span><span class="grow"></span>`;
+  if(doctor){
+    h+=`<button class="sbi" onclick="openSettings('tools')" title="${esc(d.ffmpeg||'ffmpeg not found — Settings → Tools')}"><span class="dot ${ff?'ok':'bad'}"></span>ffmpeg ${ff?'ready':'missing'}</button>`;
+    h+=`<button class="sbi" onclick="openSettings('dee')" title="${esc(d.dee||'Dolby Encoding Engine — set dee.exe in Settings → Dolby Engine')}"><span class="dot ${d.dee?'ok':(d.deew?'warn':'bad')}"></span>DEE ${d.dee?'ready':(d.deew?'not configured':'unavailable')}</button>`;
+    if(enc)h+=`<button class="sbi" onclick="openSettings('tools')" title="${atmosOk?'truehdd + DeeZy + DEE found':'DDP Atmos needs DEE, DeeZy and truehdd — see Settings → Tools'}"><span class="dot ${atmosOk?'ok':'warn'}"></span>Atmos ${atmosOk?'ready':(d.dee?(d.deezy?'needs truehdd':'needs deezy'):'needs DEE')}${flatOk?' · flat 7.1':''}</button>`;
+  }
+  if(upd&&upd.state!=='disabled')h+=`<button class="sbi" onclick="openSettings('general')" title="${esc(upd.state==='error'?(upd.error||''):'')}"><span class="dot ${upd.state==='up-to-date'?'ok':upd.state==='error'?'bad':'warn'}"></span>${esc(updTxt(upd))}</button>`;
+  h+=`<span class="mono">v${esc(version)}${frozen?'':' · source'}</span>`;
+  $('status').innerHTML=h;
+}
+
+function render(){
+  renderBar();renderTable();renderStatus();
+  const run=jobs.filter(j=>j.state==='running'), queued=jobs.filter(j=>j.state==='queued');
+  $('act-live').hidden=!run.length;$('act-live').textContent=run.length;
+  const busy=run.length+queued.length>0, sess=session();
+  if(wasBusy&&!busy){const ok=sess.filter(j=>['done','skipped'].includes(j.state)).length,bad=sess.filter(j=>j.state==='failed').length;const msg=`Finished: ${ok} done${bad?`, ${bad} failed`:''}`;toast(msg);if('Notification' in window&&Notification.permission==='granted')new Notification('FPSConv',{body:msg})}
+  wasBusy=busy;
+  if(!$('console').hidden&&conTab==='job')renderLog();
+}
+
+/* ── polling ────────────────────────────────────── */
+async function poll(){try{const s=await get('/api/status');if(s.version!==lastVersion){lastVersion=s.version;jobs=s.jobs;
+  const ids=new Set(jobs.map(j=>j.id));for(const k of [...checked])if(!k.startsWith('p:')&&!ids.has(k))checked.delete(k);if(openKey&&!openKey.startsWith('p:')&&!ids.has(openKey))openKey=null;
+  render()}}catch(e){}setTimeout(poll,600)}
+
+/* ── activity console ───────────────────────────── */
+function openCon(t){if(t)conTab=t;$('console').hidden=false;$('btn-act').classList.add('on');setConTab(conTab)}
+function closeCon(){$('console').hidden=true;$('btn-act').classList.remove('on')}
+function toggleCon(){$('console').hidden?openCon():closeCon()}
+function setConTab(t){conTab=t;$('ctab-job').classList.toggle('on',t==='job');$('ctab-app').classList.toggle('on',t==='app');renderLog()}
+function initConDrag(){
+  const c=$('console');let h0=0,y0=0;
+  try{const h=+localStorage.getItem('fpsconv-con-h');if(h)c.style.setProperty('--con-h',h+'px')}catch(e){}
+  $('condrag').onmousedown=e=>{e.preventDefault();y0=e.clientY;h0=c.offsetHeight;
+    document.onmousemove=ev=>c.style.setProperty('--con-h',Math.max(140,Math.min(innerHeight-200,h0+(y0-ev.clientY)))+'px');
+    document.onmouseup=()=>{document.onmousemove=document.onmouseup=null;try{localStorage.setItem('fpsconv-con-h',c.offsetHeight)}catch(e){}}};
+}
+async function pollLog(){try{const r=await get('/api/logs?since='+logSeq);if(r.records.length){appLog.push(...r.records);appLog=appLog.slice(-3000);logSeq=r.seq;if(conTab==='app')renderLog()}}catch(e){}}
 function renderLog(){
-  if(!$('act').classList.contains('open'))return;
+  if($('console').hidden)return;
   const v=$('logv'), f=$('flt').value.toLowerCase(), atBottom=v.scrollHeight-v.scrollTop-v.clientHeight<40;
   let html='';
-  if(tab==='job'){
+  if(conTab==='job'){
     const j=jobs.find(x=>x.id===selected);
-    $('act-sub').textContent=j?j.name:'';$('act-sub').title=j?j.source:'';
+    $('con-sub').textContent=j?j.name:'Expand a job row to follow its log';$('con-sub').title=j?j.source:'';
     const lines=j?j.log:[];
-    html=lines.filter(l=>!f||l.toLowerCase().includes(f)).map(l=>{const m=l.match(/^(\d\d:\d\d:\d\d)\s\s(.*)$/s);const body=m?m[2]:l;const cls=/failed|error|exited with code [1-9]|not found|cancelled/i.test(body)?'ERROR':/warn/i.test(body)?'WARNING':'';return `<div class="l ${cls}"><span class="t">${m?m[1]:''}</span>  ${esc(body)}</div>`}).join('')||'<div class="l t">'+(j?'no output yet':'Click a job row to see its log; the App log tab shows everything else.')+'</div>';
+    html=lines.filter(l=>!f||l.toLowerCase().includes(f)).map(l=>{const m=l.match(/^(\d\d:\d\d:\d\d)\s\s(.*)$/s);const body=m?m[2]:l;const cls=/failed|error|exited with code [1-9]|not found|cancelled/i.test(body)?'ERROR':/warn/i.test(body)?'WARNING':'';return `<div class="l ${cls}"><span class="t">${m?m[1]:''}</span>  ${esc(body)}</div>`}).join('')||'<div class="l t">'+(j?'no output yet':'Click a job row to see its log; the App log shows everything else.')+'</div>';
   }else{
-    $('act-sub').textContent=appLog.length+' lines';$('act-sub').title='';
+    $('con-sub').textContent=appLog.length+' lines';$('con-sub').title='';
     html=appLog.filter(r=>!f||r.msg.toLowerCase().includes(f)||r.logger.includes(f)).map(r=>`<div class="l ${r.level}"><span class="t">${new Date(r.t*1000).toLocaleTimeString([],{hour12:false})}</span>  <span class="src">${esc(r.logger.padEnd(8))}</span> ${esc(r.msg)}</div>`).join('')||'<div class="l t">nothing logged yet</div>';
   }
   v.innerHTML=html;
@@ -990,31 +1090,32 @@ function renderLog(){
 function copyLog(){navigator.clipboard?.writeText($('logv').innerText).then(()=>toast('Log copied'))}
 
 /* ── updates ────────────────────────────────────── */
+function updTxt(u){return {idle:'update check pending',checking:'checking for updates…','up-to-date':`v${u.current} is up to date`,available:`v${u.latest} available — downloading`,downloading:`downloading v${u.latest} ${u.progress}%`,ready:`v${u.latest} downloaded — ${u.auto?'installs when no job is running':'press Install'}`,installing:'installing update, the app will restart…',error:'update check failed'}[u.state]||u.state}
 async function pollUpdate(){
   let u;try{u=await get('/api/update')}catch(e){return}
-  const b=$('banner');
-  if(u.state==='disabled'){$('upd-line').textContent='Auto-update applies to the installed Windows build.';$('st-upd').hidden=true;return}
-  const txt={idle:'update check pending',checking:'checking for updates…','up-to-date':`v${u.current} is up to date`,available:`v${u.latest} available — downloading`,downloading:`downloading v${u.latest} ${u.progress}%`,ready:`v${u.latest} downloaded — ${u.auto?'installs when no job is running':'press Install'}`,installing:'installing update, the app will restart…',error:'update check failed'}[u.state]||u.state;
-  $('st-upd').hidden=false;$('st-upd').innerHTML=`<span class="dot ${u.state==='up-to-date'?'ok':u.state==='error'?'bad':'warn'}"></span>${txt}`;$('st-upd').title=u.state==='error'?(u.error||''):'';
-  $('upd-line').textContent=(u.state==='error'?u.error:txt)+(u.checked_at?' · checked '+new Date(u.checked_at*1000).toLocaleTimeString([],{hour12:false}):'');
+  upd=u;
+  if(u.state==='disabled'){$('upd-line').textContent='Auto-update applies to the installed Windows build.';$('upd-check').disabled=true;renderStatus();renderBanners();return}
+  const txt=updTxt(u);
+  $('upd-title').textContent='FPSConv '+(u.current||version);
+  $('upd-line').textContent=(u.state==='error'?u.error:cap(txt))+(u.checked_at?' · checked '+new Date(u.checked_at*1000).toLocaleTimeString([],{hour12:false}):'');
   const canInstall=['available','ready'].includes(u.state)||(u.state==='error'&&u.latest);
   $('upd-install').hidden=!canInstall;$('upd-install').textContent='Install v'+u.latest;$('upd-install').disabled=u.state==='downloading';
   $('upd-check').disabled=['checking','downloading','installing'].includes(u.state);
-  if(['available','ready','downloading','installing'].includes(u.state)){b.hidden=false;$('banner-text').innerHTML=(u.state==='ready'?`Update <b>v${esc(u.latest)}</b> is downloaded. `:'')+esc(txt);$('banner-btn').hidden=u.state!=='ready'}else b.hidden=true;
+  renderStatus();renderBanners();
   if(u.state==='installing')setTimeout(()=>{document.body.innerHTML='<div class="closed-msg"><b>Updating to v'+esc(u.latest)+'…</b><span>FPSConv reopens by itself in a few seconds.</span></div>'},1500);
 }
 async function installUpdate(){$('upd-install').disabled=true;await post('/api/update/install',{});pollUpdate()}
-async function checkUpdate(){$('upd-check').disabled=true;$('upd-line').textContent='checking…';await post('/api/update/check',{});await pollUpdate()}
+async function checkUpdate(){$('upd-check').disabled=true;$('upd-line').textContent='Checking…';await post('/api/update/check',{});await pollUpdate()}
 
 /* ── fallback browser (no native dialog available) ─ */
 let fbKind='files', fbCb=null, fbDir='', fbSel=new Set();
-function fbOpen(kind,cb){fbKind=kind;fbCb=cb;fbSel=new Set();$('fb-title').textContent={folder:'Choose output folder',files:'Add files',file:'Choose a file','folder-add':'Add folder'}[kind];$('fb-ok').textContent=kind.startsWith('folder')?'Use this folder':'Add';$('fb-rec').hidden=kind!=='folder-add';$('fb').classList.add('open');fbGo(fbDir||S.out_dir||'~')}
+function fbOpen(kind,cb){fbKind=kind;fbCb=cb;fbSel=new Set();$('fb-title').textContent={folder:'Choose a folder',files:'Add files',file:'Choose a file','folder-add':'Add folder'}[kind];$('fb-ok').textContent=kind.startsWith('folder')?'Use this folder':'Add';$('fb-rec').hidden=kind!=='folder-add';$('recursive').checked=recursive;$('fb').classList.add('open');fbGo(fbDir||S.out_dir||'~')}
 function closeFb(){$('fb').classList.remove('open')}
-async function fbGo(p){const r=await get('/api/browse?path='+encodeURIComponent(p||''));if(r.error)toast(r.error,true);fbDir=r.path;$('fb-path').value=r.path;const a=v=>esc(JSON.stringify(v));const files=fbKind==='files'||fbKind==='file';
-  $('fb-list').innerHTML=(r.drives||[]).map(d=>`<div class="e" onclick='fbGo(${a(d)})'>${I.folder}<span>${esc(d)}</span></div>`).join('')+r.entries.filter(e=>e.dir||files).map(e=>e.dir?`<div class="e" onclick='fbGo(${a(e.path)})'>${I.folder}<span>${esc(e.name)}</span></div>`:`<div class="e" data-p='${a(e.path)}' onclick='fbToggle(${a(e.path)})'><input type="checkbox" class="cb" onclick="event.stopPropagation()" onchange='fbToggle(${a(e.path)},this.checked)'>${I.file}<span>${esc(e.name)}</span></div>`).join('')||'<div class="e muted">empty</div>';$('fb-note').textContent=r.path}
+async function fbGo(p){const r=await get('/api/browse?path='+encodeURIComponent(p||''));if(r.error)toast(r.error,true);fbDir=r.path;$('fb-path').value=r.path;const files=fbKind==='files'||fbKind==='file';
+  $('fb-list').innerHTML=(r.drives||[]).map(d=>`<div class="e" onclick='fbGo(${js(d)})'>${ic('folder')}<span>${esc(d)}</span></div>`).join('')+r.entries.filter(e=>e.dir||files).map(e=>e.dir?`<div class="e" onclick='fbGo(${js(e.path)})'>${ic('folder')}<span>${esc(e.name)}</span></div>`:`<div class="e" data-p='${js(e.path)}' onclick='fbToggle(${js(e.path)})'><input type="checkbox" class="cb" onclick="event.stopPropagation()" onchange='fbToggle(${js(e.path)},this.checked)'>${ic('file')}<span>${esc(e.name)}</span></div>`).join('')||'<div class="e muted">empty</div>';$('fb-note').textContent=r.path}
 function fbUp(){fbGo(fbDir.replace(/[\\/][^\\/]*$/,'')||fbDir)}
 function fbToggle(p,force){const on=force!==undefined?force:!fbSel.has(p);if(fbKind==='file'||S.mode==='single')fbSel.clear();on?fbSel.add(p):fbSel.delete(p);document.querySelectorAll('#fb-list .e[data-p]').forEach(x=>x.querySelector('.cb').checked=fbSel.has(JSON.parse(x.dataset.p)));$('fb-note').textContent=fbSel.size+' selected'}
-async function fbOk(){closeFb();if(fbKind.startsWith('folder'))await fbCb([fbDir]);else if(fbSel.size)await fbCb([...fbSel])}
+async function fbOk(){if(fbKind==='folder-add')setRecursive($('recursive').checked);closeFb();if(fbKind.startsWith('folder'))await fbCb([fbDir]);else if(fbSel.size)await fbCb([...fbSel])}
 init();
 </script>
 </body>
